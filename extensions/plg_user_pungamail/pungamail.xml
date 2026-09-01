@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension type="plugin" group="user" method="upgrade">
+	<name>PLG_USER_PUNGAMAIL</name>
+	<version>0.1.0</version>
+	<creationDate>2026-09-01</creationDate>
+	<author>Punga</author>
+	<license>MIT License</license>
+	<description>PLG_USER_PUNGAMAIL_DESCRIPTION</description>
+	<namespace path="src">Punga\Plugin\User\PungaMail</namespace>
+	<files>
+		<folder plugin="pungamail">services</folder>
+		<folder>forms</folder>
+		<folder>language</folder>
+		<folder>src</folder>
+	</files>
+</extension>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension type="plugin" group="task" method="upgrade">
+	<name>PLG_TASK_PUNGAMAIL</name>
+	<version>0.1.0</version>
+	<creationDate>2026-09-01</creationDate>
+	<author>Punga</author>
+	<license>MIT License</license>
+	<description>PLG_TASK_PUNGAMAIL_DESCRIPTION</description>
+	<namespace path="src">Punga\Plugin\Task\PungaMail</namespace>
+	<files>
+		<folder plugin="pungamail">services</folder>
+		<folder>src</folder>
+		<folder>language</folder>
+	</files>
+</extension>
