@@ -9,6 +9,7 @@
 namespace Punga\Component\PungaMail\Administrator\View\Preflight;
 
 use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
 
@@ -17,6 +18,7 @@ use Joomla\CMS\Toolbar\ToolbarHelper;
  */
 final class HtmlView extends BaseHtmlView
 {
+	/** @var array<string,mixed> */
 	public array $data = [];
 
 	/** @return void */
@@ -24,11 +26,11 @@ final class HtmlView extends BaseHtmlView
 	{
 		if (!Factory::getApplication()->getIdentity()->authorise('core.manage', 'com_pungamail'))
 		{
-			throw new \RuntimeException('Not authorised.', 403);
+			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
 
 		$this->data = $this->getModel()->getData();
-		ToolbarHelper::title('Newsletter preflight', 'check');
+		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_PREFLIGHT'), 'check');
 		parent::display($tpl);
 	}
 }

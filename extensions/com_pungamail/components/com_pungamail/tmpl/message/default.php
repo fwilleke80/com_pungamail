@@ -3,16 +3,18 @@
 
 defined('_JEXEC') or die;
 
+use Joomla\CMS\Language\Text;
+
 $messages = [
-	'requested' => ['Check your email', 'If the address is eligible for subscription, a confirmation email has been sent.'],
-	'confirmed' => ['Subscription confirmed', 'Your email address is now subscribed to the newsletter.'],
-	'unsubscribed' => ['Unsubscribed', 'Your email address has been removed from newsletter delivery.'],
-	'invalid_confirmation' => ['Confirmation failed', 'The confirmation link is invalid or has expired. Please request a new one.'],
-	'invalid_unsubscribe' => ['Unsubscribe failed', 'The unsubscribe link is invalid.'],
+	'requested' => ['COM_PUNGAMAIL_MESSAGE_REQUESTED_TITLE', 'COM_PUNGAMAIL_MESSAGE_REQUESTED_TEXT'],
+	'confirmed' => ['COM_PUNGAMAIL_MESSAGE_CONFIRMED_TITLE', 'COM_PUNGAMAIL_MESSAGE_CONFIRMED_TEXT'],
+	'unsubscribed' => ['COM_PUNGAMAIL_MESSAGE_UNSUBSCRIBED_TITLE', 'COM_PUNGAMAIL_MESSAGE_UNSUBSCRIBED_TEXT'],
+	'invalid_confirmation' => ['COM_PUNGAMAIL_MESSAGE_INVALID_CONFIRMATION_TITLE', 'COM_PUNGAMAIL_MESSAGE_INVALID_CONFIRMATION_TEXT'],
+	'invalid_unsubscribe' => ['COM_PUNGAMAIL_MESSAGE_INVALID_UNSUBSCRIBE_TITLE', 'COM_PUNGAMAIL_MESSAGE_INVALID_UNSUBSCRIBE_TEXT'],
 ];
 $message = $messages[$this->type] ?? $messages['requested'];
 ?>
 <div class="pungamail-message">
-	<h1><?php echo htmlspecialchars($message[0], ENT_QUOTES, 'UTF-8'); ?></h1>
-	<p><?php echo htmlspecialchars($message[1], ENT_QUOTES, 'UTF-8'); ?></p>
+	<h1><?php echo Text::_($message[0]); ?></h1>
+	<p><?php echo Text::_($message[1]); ?></p>
 </div>

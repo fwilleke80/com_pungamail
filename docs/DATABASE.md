@@ -1,10 +1,10 @@
-# Database architecture
+# Punga Mail database architecture
 
-Punga Mail owns seven tables. All timestamps are stored in UTC using Joomla's SQL date format.
+Punga Mail 0.1.1 owns seven tables. All application timestamps are stored in UTC using Joomla's SQL date representation.
 
 ## `#__pungamail_subscribers`
 
-Canonical identity/subscription record. An address may be linked to a Joomla user, but external subscribers do not require a Joomla account.
+Canonical subscriber identity and subscription state. `user_id` may link the record to a Joomla user; external subscribers have no Joomla account.
 
 Important constraints:
 
@@ -12,7 +12,7 @@ Important constraints:
 - `user_id` is unique when non-null.
 - confirmation tokens are stored as SHA-256 hashes, never plaintext.
 
-Subscription states:
+Subscription status values:
 
 - `0` — pending confirmation
 - `1` — subscribed
@@ -20,62 +20,84 @@ Subscription states:
 
 ## `#__pungamail_suppressions`
 
-Permanent “do not send” barrier keyed by normalized email. Recipient assembly checks this table last, so importing a user or reconstructing a subscriber cannot accidentally undo an unsubscribe.
+Persistent do-not-send barrier keyed by normalized email address. Recipient assembly checks suppressions independently of subscriber status, so discovering an address later through a Joomla user group cannot silently undo an opt-out.
 
-A successful explicit double-opt-in may remove an earlier unsubscribe suppression for the same address.
+An explicit new double opt-in may deliberately remove an unsubscribe suppression.
 
 ## `#__pungamail_newsletters`
 
-Draft and immutable send-snapshot metadata.
+Stores draft content and immutable send-snapshot metadata.
 
-States:
+Two independent state concepts are intentionally kept separate:
+
+### Joomla record `state`
+
+- `1` — active
+- `-2` — trashed
+
+This drives Joomla-standard list/trash/restore behavior.
+
+### Delivery `status`
 
 - `0` — draft
 - `1` — queued
 - `2` — sending
 - `3` — sent
-- `4` — send completed with failures
+- `4` — sent with failures
 
-`content_cutoff_start` records the preceding newsletter cutoff used for “new since last newsletter”. `content_cutoff_end` is fixed when the send is queued. The next newsletter therefore has a deterministic lower bound even if publication or queue processing takes time.
+A newsletter can therefore retain its historical delivery status while being moved to Joomla's Trash.
+
+`content_cutoff_start` stores the editor-selected lower bound used to discover candidate `com_content` articles. `content_cutoff_end` is frozen when the newsletter is queued and provides the default lower bound for the next newsletter.
 
 ## `#__pungamail_newsletter_items`
 
-Many-to-many mapping from newsletters to Joomla content items. Draft-time override fields are separate from immutable snapshot fields populated when the newsletter is queued.
+Mapping of newsletters to Joomla `com_content` articles. Draft-time title/excerpt overrides are separate from immutable title/excerpt/URL snapshots captured on queueing.
 
 ## `#__pungamail_newsletter_groups`
 
-Selected Joomla user groups for a newsletter.
+Joomla user groups explicitly selected as additional recipients for a newsletter.
 
 ## `#__pungamail_send_queue`
 
-Frozen recipient snapshot (including source) and delivery state. The unique key `(newsletter_id, email_normalized)` prevents duplicate queue rows. A worker atomically claims a pending row by changing it to `processing`, preventing concurrent workers from sending the same pending row.
+Frozen per-recipient delivery snapshot. The unique key `(newsletter_id, email_normalized)` is a database-level idempotency barrier against duplicate queue rows.
 
-After a successful SMTP handoff the row is marked `sent`; failures return it to `pending` for retry or mark it `failed` after maximum attempts. SMTP handoff and the database commit cannot be one atomic transaction, so a process crash in the narrow interval between them can result in one duplicate message after stale-claim recovery. This tradeoff deliberately prefers a rare duplicate over silently dropping a message.
+Workers atomically claim eligible rows by moving them from `pending` to `processing`. Successful handoff changes the row to `sent`; recoverable failures return it to `pending` with retry metadata; exhausted failures become `failed`. Stale `processing` claims are recoverable after the configured timeout.
+
+SMTP handoff and the database update cannot be one distributed transaction. A process crash in the narrow interval after SMTP acceptance but before the `sent` update can therefore produce one duplicate after stale-claim recovery. Punga Mail intentionally prefers that rare duplicate to silently dropping a message.
 
 ## `#__pungamail_events`
 
-Small append-only subscriber audit trail: signup requested, confirmation sent, confirmed, unsubscribed, profile change, resubscribed, etc.
+Small append-only subscription audit trail, including signup request, confirmation send/completion, unsubscribe and profile-preference changes.
 
 ## Migration policy
 
-The component manifest declares Joomla's normal schema update directory:
+The component manifest declares Joomla's schema-update directory:
 
 `administrator/components/com_pungamail/sql/updates/mysql`
 
-`0.1.0.sql` is an explicit baseline corresponding to the fresh-install schema. Future releases must:
+The migration history is append-only:
 
-1. update `install.mysql.sql` so a fresh install always lands on the current schema;
-2. add a new version-numbered update file containing only the transition from the prior schema;
-3. never rewrite an already-released migration;
-4. avoid runtime `ALTER TABLE` statements;
-5. keep migrations deterministic and safe when multiple intermediate releases are skipped.
+- `0.1.0.sql` — immutable original baseline schema.
+- `0.1.1.sql` — adds the independent Joomla newsletter `state` column and index used for Trash/Restore.
+
+For every future schema-changing release:
+
+1. update `install.mysql.sql` so a fresh installation lands directly on the newest schema;
+2. add a new version-numbered SQL file containing only the transition from the prior released schema;
+3. never rewrite a released migration;
+4. never hide `ALTER TABLE`, `CREATE TABLE` or `DROP TABLE` operations in runtime PHP;
+5. keep migrations deterministic and compatible with Joomla applying multiple skipped updates in order.
+
+The release checker pins the released 0.1.0 migration by SHA-256 and verifies that the current fresh-install schema contains the 0.1.1 additions while `0.1.1.sql` remains the expected transition rather than a copied baseline.
 
 ## Uninstall policy
 
-Punga Mail does **not** attach `uninstall.mysql.sql` to the manifest. Joomla therefore removes extension files but leaves subscriber, suppression, newsletter and audit data intact. This avoids turning a temporary uninstall/reinstall into an irreversible mailing-list deletion.
+In 0.1.1 the component has no automatic uninstall SQL. Removing the extension therefore leaves subscribers, suppressions, newsletter history, queue data and audit events intact.
 
-For an intentional permanent purge, `sql/purge.mysql.sql` is supplied in the source tree. It must be run manually by an administrator who explicitly wants to delete all Punga Mail data.
+For deliberate destruction, `sql/purge.mysql.sql` is supplied in the source tree.
+
+A configurable **Uninstall: Remove database tables** option is planned for a later release and will default to disabled; it is deliberately not part of 0.1.1.
 
 ## Referential-integrity policy
 
-The 0.1 schema deliberately avoids SQL foreign keys. Joomla extensions are installed, upgraded and sometimes removed independently, and Punga Mail also references Joomla-owned tables such as `#__users`, `#__usergroups` and `#__content`. Referential relationships are therefore maintained by application transactions and indexed IDs rather than cross-extension foreign-key constraints. This keeps upgrades and deliberate data-preserving uninstalls predictable.
+Punga Mail deliberately avoids cross-extension SQL foreign keys. It references Joomla-owned `#__users`, `#__usergroups` and `#__content` data, whose extensions/lifecycle are controlled independently. Relationships are maintained by application transactions, explicit cleanup and indexed identifiers so upgrades and data-preserving uninstalls remain predictable.

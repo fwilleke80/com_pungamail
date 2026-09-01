@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <extension type="module" client="site" method="upgrade">
 	<name>MOD_PUNGAMAIL_SIGNUP</name>
-	<version>0.1.0</version>
+	<version>0.1.1</version>
 	<creationDate>2026-09-01</creationDate>
 	<author>Punga</author>
 	<license>MIT License</license>
@@ -16,8 +16,8 @@
 	<config>
 		<fields name="params">
 			<fieldset name="basic">
-				<field name="intro" type="textarea" label="MOD_PUNGAMAIL_SIGNUP_INTRO" default="Get occasional updates by email." />
-				<field name="button_label" type="text" label="MOD_PUNGAMAIL_SIGNUP_BUTTON_LABEL" default="Subscribe" />
+				<field name="intro" type="textarea" label="MOD_PUNGAMAIL_SIGNUP_INTRO" description="MOD_PUNGAMAIL_SIGNUP_INTRO_DESC" />
+				<field name="button_label" type="text" label="MOD_PUNGAMAIL_SIGNUP_BUTTON_LABEL" description="MOD_PUNGAMAIL_SIGNUP_BUTTON_LABEL_DESC" />
 			</fieldset>
 		</fields>
 	</config>

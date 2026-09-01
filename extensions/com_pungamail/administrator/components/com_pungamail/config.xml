@@ -1,21 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <config>
 	<fieldset name="mail" label="COM_PUNGAMAIL_CONFIG_MAIL">
-		<field name="from_name" type="text" label="COM_PUNGAMAIL_CONFIG_FROM_NAME" />
-		<field name="from_email" type="email" label="COM_PUNGAMAIL_CONFIG_FROM_EMAIL" />
-		<field name="default_user_subscribed" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_DEFAULT_USER_SUBSCRIBED">
+		<field name="from_name" type="text" label="COM_PUNGAMAIL_CONFIG_FROM_NAME" description="COM_PUNGAMAIL_CONFIG_FROM_NAME_DESC" />
+		<field name="from_email" type="email" label="COM_PUNGAMAIL_CONFIG_FROM_EMAIL" description="COM_PUNGAMAIL_CONFIG_FROM_EMAIL_DESC" />
+		<field name="default_user_subscribed" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_DEFAULT_USER_SUBSCRIBED" description="COM_PUNGAMAIL_CONFIG_DEFAULT_USER_SUBSCRIBED_DESC">
 			<option value="0">JNO</option>
 			<option value="1">JYES</option>
 		</field>
 	</fieldset>
 	<fieldset name="subscription" label="COM_PUNGAMAIL_CONFIG_SUBSCRIPTION">
-		<field name="confirmation_hours" type="number" default="48" min="1" max="168" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_HOURS" />
-		<field name="signup_ip_hourly_limit" type="number" default="12" min="1" max="500" label="COM_PUNGAMAIL_CONFIG_SIGNUP_IP_LIMIT" />
-		<field name="resend_minutes" type="number" default="10" min="1" max="1440" label="COM_PUNGAMAIL_CONFIG_RESEND_MINUTES" />
+		<field name="confirmation_hours" type="number" default="48" min="1" max="168" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_HOURS" description="COM_PUNGAMAIL_CONFIG_CONFIRMATION_HOURS_DESC" />
+		<field name="signup_ip_hourly_limit" type="number" default="12" min="1" max="500" label="COM_PUNGAMAIL_CONFIG_SIGNUP_IP_LIMIT" description="COM_PUNGAMAIL_CONFIG_SIGNUP_IP_LIMIT_DESC" />
+		<field name="resend_minutes" type="number" default="10" min="1" max="1440" label="COM_PUNGAMAIL_CONFIG_RESEND_MINUTES" description="COM_PUNGAMAIL_CONFIG_RESEND_MINUTES_DESC" />
+		<field name="confirmation_subject" type="text" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_SUBJECT" description="COM_PUNGAMAIL_CONFIG_CONFIRMATION_SUBJECT_DESC" />
+		<field name="confirmation_markdown" type="textarea" filter="raw" rows="12" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_MARKDOWN" description="COM_PUNGAMAIL_CONFIG_CONFIRMATION_MARKDOWN_DESC" />
 	</fieldset>
 	<fieldset name="queue" label="COM_PUNGAMAIL_CONFIG_QUEUE">
-		<field name="batch_size" type="number" default="25" min="1" max="250" label="COM_PUNGAMAIL_CONFIG_BATCH_SIZE" />
-		<field name="max_attempts" type="number" default="3" min="1" max="10" label="COM_PUNGAMAIL_CONFIG_MAX_ATTEMPTS" />
-		<field name="retry_minutes" type="number" default="15" min="1" max="1440" label="COM_PUNGAMAIL_CONFIG_RETRY_MINUTES" />
+		<field name="batch_size" type="number" default="25" min="1" max="250" label="COM_PUNGAMAIL_CONFIG_BATCH_SIZE" description="COM_PUNGAMAIL_CONFIG_BATCH_SIZE_DESC" />
+		<field name="max_attempts" type="number" default="3" min="1" max="10" label="COM_PUNGAMAIL_CONFIG_MAX_ATTEMPTS" description="COM_PUNGAMAIL_CONFIG_MAX_ATTEMPTS_DESC" />
+		<field name="retry_minutes" type="number" default="15" min="1" max="1440" label="COM_PUNGAMAIL_CONFIG_RETRY_MINUTES" description="COM_PUNGAMAIL_CONFIG_RETRY_MINUTES_DESC" />
 	</fieldset>
 </config>

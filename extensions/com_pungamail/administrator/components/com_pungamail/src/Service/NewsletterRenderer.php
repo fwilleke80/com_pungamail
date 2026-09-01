@@ -9,6 +9,8 @@
 namespace Punga\Component\PungaMail\Administrator\Service;
 
 use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
+use Joomla\CMS\Uri\Uri;
 
 /**
  * Renders newsletter snapshots from Markdown and selected Joomla articles.
@@ -16,9 +18,12 @@ use Joomla\CMS\Factory;
 final class NewsletterRenderer
 {
 	public const UNSUBSCRIBE_PLACEHOLDER = '{{PUNGAMAIL_UNSUBSCRIBE_URL}}';
+	public const NEW_CONTENT_PLACEHOLDER = '{new_content}';
+	public const SITE_NAME_PLACEHOLDER = '{site_name}';
+	private const NEW_CONTENT_MARKER = 'PUNGAMAIL_NEW_CONTENT_9F15DDF4';
 
 	/**
-	 * @param MarkdownRenderer     $markdown    Markdown renderer.
+	 * @param MarkdownRenderer      $markdown    Markdown renderer.
 	 * @param NewsletterRepository $newsletters Newsletter repository.
 	 */
 	public function __construct(
@@ -31,6 +36,10 @@ final class NewsletterRenderer
 	/**
 	 * Renders one newsletter and item snapshots.
 	 *
+	 * `{new_content}` is intentionally recognized only on a line by itself.
+	 * This keeps the generated block structurally valid and leaves all headings
+	 * and surrounding prose under editor control.
+	 *
 	 * @param object            $newsletter Newsletter row.
 	 * @param array<int,object> $items      Selected content rows.
 	 *
@@ -38,18 +47,11 @@ final class NewsletterRenderer
 	 */
 	public function render(object $newsletter, array $items): array
 	{
-		$siteName = htmlspecialchars((string) Factory::getApplication()->get('sitename'), ENT_QUOTES, 'UTF-8');
-		$bodyHtml = $this->markdown->toHtml((string) $newsletter->body_markdown);
-		$bodyText = $this->markdown->toText((string) $newsletter->body_markdown);
+		$siteNameRaw = (string) Factory::getApplication()->get('sitename');
+		$siteNameHtml = htmlspecialchars($siteNameRaw, ENT_QUOTES, 'UTF-8');
 		$itemHtml = '';
-		$itemText = '';
+		$itemTextParts = [];
 		$snapshots = [];
-
-		if ($items !== [])
-		{
-			$itemHtml .= '<h2>What&rsquo;s new</h2>';
-			$itemText .= "\n\nWHAT'S NEW\n==========\n";
-		}
 
 		foreach ($items as $item)
 		{
@@ -72,30 +74,45 @@ final class NewsletterRenderer
 				$itemHtml .= '<p style="margin:0 0 8px">' . nl2br(htmlspecialchars($excerpt, ENT_QUOTES, 'UTF-8')) . '</p>';
 			}
 
-			$itemHtml .= '<p style="margin:0"><a href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '">Read article &rarr;</a></p>';
+			$itemHtml .= '<p style="margin:0"><a href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars(Text::_('COM_PUNGAMAIL_MAIL_READ_ARTICLE'), ENT_QUOTES, 'UTF-8') . ' &rarr;</a></p>';
 			$itemHtml .= '</section>';
-			$itemText .= "\n" . $title . "\n";
+
+			$itemText = $title . "\n";
 
 			if ($excerpt !== '')
 			{
 				$itemText .= $excerpt . "\n";
 			}
 
-			$itemText .= $url . "\n";
+			$itemText .= $url;
+			$itemTextParts[] = $itemText;
 		}
+
+		$bodyMarkdown = str_replace(self::SITE_NAME_PLACEHOLDER, $siteNameRaw, (string) $newsletter->body_markdown);
+		$bodyMarkdown = preg_replace(
+			'/^\s*\{new_content\}\s*$/mi',
+			self::NEW_CONTENT_MARKER,
+			$bodyMarkdown
+		) ?? $bodyMarkdown;
+		$baseUrl = Uri::root();
+		$bodyHtml = $this->markdown->toHtml($bodyMarkdown, $baseUrl);
+		$bodyText = $this->markdown->toText($bodyMarkdown, $baseUrl);
+		$bodyHtml = str_replace('<p>' . self::NEW_CONTENT_MARKER . '</p>', $itemHtml, $bodyHtml);
+		$bodyHtml = str_replace(self::NEW_CONTENT_MARKER, $itemHtml, $bodyHtml);
+		$bodyText = str_replace(self::NEW_CONTENT_MARKER, implode("\n\n", $itemTextParts), $bodyText);
 
 		$html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>';
 		$html .= '<body style="margin:0;background:#f4f4f4;font-family:Arial,Helvetica,sans-serif;color:#222">';
 		$html .= '<div style="max-width:680px;margin:0 auto;padding:32px 20px;background:#fff">';
-		$html .= '<header style="margin-bottom:28px"><strong>' . $siteName . '</strong></header>';
-		$html .= '<main style="line-height:1.55">' . $bodyHtml . $itemHtml . '</main>';
+		$html .= '<header style="margin-bottom:28px"><strong>' . $siteNameHtml . '</strong></header>';
+		$html .= '<main style="line-height:1.55">' . $bodyHtml . '</main>';
 		$html .= '<footer style="margin-top:36px;padding-top:18px;border-top:1px solid #ddd;font-size:12px;color:#666">';
-		$html .= '<p>You are receiving this because you subscribed to this newsletter or your website account is subscribed.</p>';
-		$html .= '<p><a href="' . self::UNSUBSCRIBE_PLACEHOLDER . '">Unsubscribe</a></p>';
+		$html .= '<p>' . htmlspecialchars(Text::_('COM_PUNGAMAIL_MAIL_FOOTER_REASON'), ENT_QUOTES, 'UTF-8') . '</p>';
+		$html .= '<p><a href="' . self::UNSUBSCRIBE_PLACEHOLDER . '">' . htmlspecialchars(Text::_('COM_PUNGAMAIL_MAIL_UNSUBSCRIBE'), ENT_QUOTES, 'UTF-8') . '</a></p>';
 		$html .= '</footer></div></body></html>';
 
-		$text = trim($bodyText . $itemText);
-		$text .= "\n\n---\nUnsubscribe: " . self::UNSUBSCRIBE_PLACEHOLDER . "\n";
+		$text = trim($bodyText);
+		$text .= "\n\n---\n" . Text::_('COM_PUNGAMAIL_MAIL_UNSUBSCRIBE') . ': ' . self::UNSUBSCRIBE_PLACEHOLDER . "\n";
 
 		return [
 			'subject' => (string) $newsletter->subject,

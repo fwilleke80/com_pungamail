@@ -9,6 +9,7 @@
 namespace Punga\Component\PungaMail\Administrator\Service;
 
 use Joomla\CMS\Date\Date;
+use Joomla\CMS\Language\Text;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Database\ParameterType;
 
@@ -45,7 +46,7 @@ final class QueueService
 
 		if ($newsletter === null || (int) $newsletter->status !== NewsletterRepository::STATUS_DRAFT)
 		{
-			throw new \RuntimeException('Only a draft newsletter can be queued.');
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_QUEUE_DRAFT_ONLY'));
 		}
 
 		$items = $this->newsletters->getItems($newsletterId);
@@ -55,7 +56,7 @@ final class QueueService
 
 		if ($recipients === [])
 		{
-			throw new \RuntimeException('The newsletter has no eligible recipients.');
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_NO_RECIPIENTS'));
 		}
 
 		$now = (new Date('now', 'UTC'))->toSql();

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.1 — 2026-09-01
+
+- Converted Newsletters and Subscribers to Joomla-standard administrator list views with Search Tools, sorting, filtering and pagination.
+- Added independent Joomla newsletter record state with Trash, Restore and permanent-delete workflow.
+- Added versioned `0.1.1.sql` migration without modifying the released 0.1.0 baseline.
+- Added Punga Mail Dashboard with version, subscriber/newsletter/queue metrics and Scheduled Task status.
+- Added complete German translations for the component, signup module, user plugin and task plugin, including public subscription pages.
+- Added configurable double-opt-in confirmation subject and Markdown message with documented `{confirmation_url}`, `{site_name}` and `{email}` placeholders.
+- Added `{new_content}` newsletter placeholder; selected articles are inserted only at that position and no automatic heading is generated.
+- Added `{site_name}` newsletter placeholder documentation.
+- Added editable **Content published since** date for the candidate article list.
+- Added rendered HTML/plain-text newsletter preview using the same renderer as test and production sends.
+- Added Markdown image support for HTTP(S), root-relative and site-relative hosted images with responsive email-safe output and plain-text fallback.
+- Clarified suppression semantics directly in the Subscribers administration page.
+- Expanded release validation to protect the immutable migration chain.
+
 ## 0.1.0 — 2026-09-01
 
 Initial Punga Mail build.

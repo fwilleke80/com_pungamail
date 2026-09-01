@@ -11,6 +11,7 @@ namespace Punga\Component\PungaMail\Site\Controller;
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Date\Date;
 use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
@@ -163,7 +164,7 @@ final class SubscriptionController extends BaseController
 
 		if ($user->guest || (int) $user->id <= 0 || !filter_var((string) $user->email, FILTER_VALIDATE_EMAIL))
 		{
-			throw new \RuntimeException('Authentication required.', 403);
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_AUTHENTICATION_REQUIRED'), 403);
 		}
 
 		$subscribed = $app->getInput()->post->getInt('subscribed') === 1;
@@ -185,7 +186,7 @@ final class SubscriptionController extends BaseController
 			$return = Route::_('index.php', false);
 		}
 
-		$this->setRedirect($return, $subscribed ? 'Newsletter subscription enabled.' : 'Newsletter subscription disabled.');
+		$this->setRedirect($return, Text::_($subscribed ? 'COM_PUNGAMAIL_PREFERENCE_ENABLED' : 'COM_PUNGAMAIL_PREFERENCE_DISABLED'));
 	}
 
 	/**
@@ -206,7 +207,7 @@ final class SubscriptionController extends BaseController
 
 		if ($method !== 'POST' || $postMarker !== 'One-Click')
 		{
-			throw new \RuntimeException('Invalid one-click unsubscribe request.', 400);
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_ONE_CLICK_REQUEST'), 400);
 		}
 
 		$id = $input->getInt('id');
@@ -216,7 +217,7 @@ final class SubscriptionController extends BaseController
 
 		if ($subscriber === null || !ServiceFactory::tokens()->validateUnsubscribeToken($id, $token))
 		{
-			throw new \RuntimeException('Invalid unsubscribe token.', 403);
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_UNSUBSCRIBE_TOKEN'), 403);
 		}
 
 		$repo->unsubscribe($id, 'one-click');
@@ -230,7 +231,7 @@ final class SubscriptionController extends BaseController
 	{
 		if (!Session::checkToken())
 		{
-			throw new \RuntimeException('Invalid security token.', 403);
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_SECURITY_TOKEN'), 403);
 		}
 	}
 }

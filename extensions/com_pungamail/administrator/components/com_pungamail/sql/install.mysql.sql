@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS `#__pungamail_newsletters` (
   `title` VARCHAR(255) NOT NULL,
   `subject` VARCHAR(255) NOT NULL,
   `body_markdown` MEDIUMTEXT NOT NULL,
+  `state` TINYINT NOT NULL DEFAULT 1,
   `status` TINYINT UNSIGNED NOT NULL DEFAULT 0,
   `include_subscribers` TINYINT UNSIGNED NOT NULL DEFAULT 1,
   `content_cutoff_start` DATETIME NULL,
@@ -50,6 +51,7 @@ CREATE TABLE IF NOT EXISTS `#__pungamail_newsletters` (
   `created_by` INT UNSIGNED NOT NULL DEFAULT 0,
   `sent_at` DATETIME NULL,
   PRIMARY KEY (`id`),
+  KEY `idx_pungamail_newsletter_state` (`state`),
   KEY `idx_pungamail_newsletter_status` (`status`),
   KEY `idx_pungamail_newsletter_sent` (`sent_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;

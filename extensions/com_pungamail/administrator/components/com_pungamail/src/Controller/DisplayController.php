@@ -15,5 +15,5 @@ use Joomla\CMS\MVC\Controller\BaseController;
  */
 final class DisplayController extends BaseController
 {
-	protected $default_view = 'newsletters';
+	protected $default_view = 'dashboard';
 }

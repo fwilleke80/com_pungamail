@@ -10,7 +10,6 @@ namespace Punga\Component\PungaMail\Administrator\Model;
 
 use Joomla\CMS\Factory;
 use Joomla\CMS\MVC\Model\BaseDatabaseModel;
-use Punga\Component\PungaMail\Administrator\Service\NewsletterRepository;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 /**
@@ -34,13 +33,18 @@ final class NewsletterModel extends BaseDatabaseModel
 		return $item ? ServiceFactory::newsletters()->getItems((int) $item->id) : [];
 	}
 
+	/** @return string|null */
+	public function getContentCutoffStart(): ?string
+	{
+		$item = $this->getItem();
+
+		return $item?->content_cutoff_start ?: ServiceFactory::newsletters()->getLastContentCutoff();
+	}
+
 	/** @return array<int,object> */
 	public function getAvailableArticles(): array
 	{
-		$item = $this->getItem();
-		$cutoff = $item?->content_cutoff_start ?? ServiceFactory::newsletters()->getLastContentCutoff();
-
-		return ServiceFactory::newsletters()->getAvailableArticles($cutoff, 150);
+		return ServiceFactory::newsletters()->getAvailableArticles($this->getContentCutoffStart(), 150);
 	}
 
 	/** @return array<int,object> */

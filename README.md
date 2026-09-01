@@ -1,52 +1,95 @@
 # Punga Mail
 
-Punga Mail is a focused newsletter package for Joomla! 6. It combines Joomla users and external double-opt-in subscribers, lets editors compose newsletters in Markdown, and presents newly published Joomla content for inclusion in a curated “What’s new” section.
+Punga Mail is a focused newsletter package for Joomla! 6. It combines Joomla users and external double-opt-in subscribers, lets editors compose newsletters in Markdown, curates newly published Joomla articles, and sends through Joomla's configured mail transport using a persistent queue.
 
-Version: **0.1.0**
+Version: **0.1.1**
 
 ## Package contents
 
-- `com_pungamail` — administration, subscriber management, newsletter composition, confirmation/unsubscribe endpoints, rendering and send queue.
-- `mod_pungamail_signup` — frontend newsletter signup/status module.
+- `com_pungamail` — dashboard, subscriber management, newsletter composition, confirmation/unsubscribe endpoints, rendering and send queue.
+- `mod_pungamail_signup` — frontend double-opt-in signup and logged-in subscription-status module.
 - `plg_user_pungamail` — adds the newsletter preference to Joomla user profile forms.
 - `plg_task_pungamail` — Joomla Scheduled Tasks routine for processing the persistent send queue.
 
-## 0.1 scope
+## 0.1.1 feature set
 
-- External email subscriptions with double opt-in.
-- Joomla-user subscriptions/profile opt-out.
-- Permanent suppression records for unsubscribed addresses.
-- Newsletter drafts written in Markdown.
-- Selection and ordering of `com_content` articles published since the previous sent newsletter.
-- Newsletter-specific article title and excerpt overrides.
-- Joomla user-group targeting in addition to subscribers.
-- Recipient deduplication by normalized email address.
-- HTML + plain-text multipart email.
-- Test send and preview.
+- Joomla-standard administrator list views for Newsletters and Subscribers with Search Tools, sortable columns and pagination.
+- Newsletter Trash, Restore and permanent-delete workflow using a Joomla record `state` independent from delivery status.
+- Punga Mail Dashboard with installed version, subscriber/newsletter/queue counts and Scheduled Task status.
+- English and German (`en-GB`, `de-DE`) translations for component, module and plugins, including public subscription pages.
+- External subscriptions with double opt-in and throttled confirmation requests.
+- Joomla-user subscription/profile opt-out.
+- Persistent suppression records for explicit opt-outs.
+- Configurable double-opt-in confirmation subject and Markdown body.
+- Confirmation placeholders: `{confirmation_url}`, `{site_name}`, `{email}`.
+- Newsletter drafts written in safe Markdown.
+- Markdown images using HTTP(S), root-relative or site-relative URLs; images remain remotely hosted.
+- Newsletter placeholders: `{new_content}` and `{site_name}`.
+- `{new_content}` inserts selected Joomla article entries exactly at the placeholder position and never adds an automatic heading.
+- Editable **Content published since** date, initially derived from the preceding sent newsletter cutoff.
+- Selection/order of published `com_content` articles plus newsletter-specific title/excerpt overrides.
+- Joomla user-group targeting in addition to confirmed subscribers.
+- Exact recipient preflight and deduplication by normalized email address.
+- Rendered HTML and plain-text newsletter preview before sending.
+- Test send to the current administrator.
+- HTML + plain-text multipart mail through Joomla's configured mailer (SMTP when Joomla is configured for SMTP).
 - Immutable send snapshots.
-- Persistent, idempotent send queue with retry metadata.
-- RFC 8058 `List-Unsubscribe` / one-click unsubscribe headers.
-- Visible unsubscribe page requiring an explicit POST confirmation.
+- Persistent, idempotent queue with retry metadata and stale-worker recovery.
+- Joomla Scheduled Tasks integration plus manual queue processing.
+- RFC 8058 `List-Unsubscribe` / one-click unsubscribe support when the endpoint is HTTPS.
+- Human-facing unsubscribe page requiring explicit POST confirmation.
 - Subscriber audit events.
 
 ## Installation
 
-Install the generated `pkg_pungamail_v0-1-0.zip` through **System → Install → Extensions**.
+Install `pkg_pungamail_v0-1-1.zip` through **System → Install → Extensions**.
 
 The package enables the Punga Mail user and task plugins automatically. The signup module is installed but not published; publish it in the desired site module position.
 
-After installation, open **Components → Punga Mail → Options** and review sender identity, user-subscription default, confirmation lifetime and queue settings.
+Open **Components → Punga Mail → Options** and review sender identity, subscription defaults, confirmation mail and queue settings.
 
-For unattended delivery, create a Joomla Scheduled Task of type **Punga Mail — Process send queue**. The administrator UI also provides a manual queue-processing action.
+For unattended delivery, create and enable a Joomla Scheduled Task of type **Punga Mail — Process send queue**. Punga Mail does not require its own cron endpoint; it hooks into Joomla's scheduler. Your server still needs to execute Joomla Scheduled Tasks by whatever mechanism your Joomla installation uses.
+
+## Newsletter Markdown
+
+The editor intentionally supports a conservative, email-oriented subset:
+
+- headings
+- paragraphs
+- bold and italic text
+- links
+- ordered and unordered lists
+- images
+
+Raw HTML is escaped.
+
+Example:
+
+```markdown
+# September news
+
+Here is what changed this month.
+
+![Courtyard](https://example.com/images/courtyard.jpg)
+
+## New on the website
+
+{new_content}
+
+Best wishes,
+The team
+```
+
+`{new_content}` must be placed on its own line. Selected Joomla articles are not appended when the placeholder is absent.
 
 ## Development
 
-The source archive is the canonical Git tree. Generated installer archives are intentionally not committed.
+The source archive is the canonical Git-ready project tree. Generated installer archives are excluded from it.
 
-Requirements for building:
+Requirements:
 
 - Python 3.10+
-- standard `zipfile` module
+- PHP CLI for the full lint pass (optional for building, required by the release validation used for official builds)
 
 Build:
 
@@ -56,50 +99,20 @@ python3 build.py
 
 Outputs are written to `dist/`.
 
-## Project concept
-
-The product scope, implemented 0.1 feature set, planned directions, non-goals and user workflows are documented in [`docs/CONCEPT.md`](docs/CONCEPT.md).
-
 ## Database and migrations
 
-Database ownership and migration policy are documented in [`docs/DATABASE.md`](docs/DATABASE.md).
+See [`docs/DATABASE.md`](docs/DATABASE.md). Important rules:
 
-Important rules:
+1. Runtime PHP never mutates schema.
+2. `install.mysql.sql` always represents the newest fresh-install schema.
+3. Released migrations are immutable.
+4. Every schema-changing release adds a versioned transition under `sql/updates/mysql/`.
+5. Queue idempotency and suppression semantics are enforced at the database boundary where appropriate.
+6. Uninstall currently preserves Punga Mail data; `sql/purge.mysql.sql` is the explicit manual destructive path.
 
-1. Schema changes are never performed ad hoc in runtime PHP.
-2. Fresh installs use `administrator/components/com_pungamail/sql/install.mysql.sql`.
-3. Every release that changes the schema gets a monotonically versioned SQL file in `sql/updates/mysql/`.
-4. Upgrade scripts must tolerate skipped releases because Joomla applies all intermediate schema updates in order.
-5. Queue uniqueness and suppression semantics are enforced in the database, not only in application code.
-6. Punga Mail deliberately preserves its data tables when the extension is uninstalled. See `docs/DATABASE.md` for the explicit purge procedure.
+## Concept and roadmap
 
-Joomla records the installed component schema version in `#__schemas`, using the update files declared by the component manifest.
-
-## Security model
-
-- Signup and profile mutations use Joomla CSRF protection.
-- Confirmation tokens are random and stored only as SHA-256 hashes.
-- Confirmation requests expire and are throttled.
-- Unsubscribe links use a signed token derived from Joomla’s site secret and the subscriber identity; no reversible secret is stored.
-- GET requests never unsubscribe a recipient. The visible unsubscribe page requires POST. RFC 8058 one-click unsubscribe is accepted only as the standards-defined POST endpoint.
-- Email addresses are normalized for deduplication; the original address casing is retained for display/sending.
-- Queue rows have a unique `(newsletter_id, email_normalized)` key, providing an idempotency barrier against duplicate delivery.
-
-## Sending semantics
-
-When a newsletter is queued, Punga Mail freezes:
-
-- subject,
-- rendered HTML,
-- rendered plain text,
-- selected article title/excerpt/URL snapshots,
-- recipient email addresses.
-
-Editing the draft after queueing is not allowed. To make changes, duplicate the newsletter into a new draft.
-
-A queue row moves through `pending → processing → sent` or `failed`. Transient failures are retried up to the configured maximum. A sent row is never selected for delivery again.
-
-“Delivered” is intentionally not claimed: Punga Mail knows only whether Joomla’s configured mail transport accepted the message for sending.
+See [`docs/CONCEPT.md`](docs/CONCEPT.md) for implemented functionality, workflows, architectural decisions, next-update plans and non-goals.
 
 ## License
 

@@ -8,23 +8,27 @@
 
 namespace Punga\Component\PungaMail\Administrator\Controller;
 
+use DateTimeZone;
 use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
-use Punga\Component\PungaMail\Administrator\Service\NewsletterRepository;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 /**
- * Newsletter mutation controller.
+ * Newsletter editor and send-workflow controller.
  */
 final class NewsletterController extends BaseController
 {
-	/**
-	 * Saves a draft.
-	 *
-	 * @return void
-	 */
+	/** @return void */
+	public function add(): void
+	{
+		$this->requirePermission('core.create');
+		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletter', false));
+	}
+
+	/** @return void */
 	public function save(): void
 	{
 		$this->requireManage();
@@ -33,7 +37,49 @@ final class NewsletterController extends BaseController
 		try
 		{
 			$id = $this->saveFromInput();
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletter&id=' . $id, false), 'Newsletter saved.');
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletter&id=' . $id, false), Text::_('COM_PUNGAMAIL_NEWSLETTER_SAVED'));
+		}
+		catch (\Throwable $e)
+		{
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), $e->getMessage(), 'error');
+		}
+	}
+
+	/**
+	 * Saves the draft and reloads the editor with the selected content cutoff.
+	 *
+	 * @return void
+	 */
+	public function applyCutoff(): void
+	{
+		$this->requireManage();
+		$this->requireToken();
+
+		try
+		{
+			$id = $this->saveFromInput();
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletter&id=' . $id, false), Text::_('COM_PUNGAMAIL_CONTENT_DATE_APPLIED'));
+		}
+		catch (\Throwable $e)
+		{
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), $e->getMessage(), 'error');
+		}
+	}
+
+	/**
+	 * Saves a draft and opens a rendered preview without resolving recipients.
+	 *
+	 * @return void
+	 */
+	public function preview(): void
+	{
+		$this->requireManage();
+		$this->requireToken();
+
+		try
+		{
+			$id = $this->saveFromInput();
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=preview&id=' . $id, false));
 		}
 		catch (\Throwable $e)
 		{
@@ -82,11 +128,14 @@ final class NewsletterController extends BaseController
 
 			if (!filter_var($email, FILTER_VALIDATE_EMAIL))
 			{
-				throw new \RuntimeException('Your Joomla account does not contain a valid test email address.');
+				throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_TEST_EMAIL'));
 			}
 
 			ServiceFactory::mail()->sendTest($email, $rendered['subject'], $rendered['html'], $rendered['text']);
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletter&id=' . $id, false), 'Test newsletter sent to ' . $email . '.');
+			$this->setRedirect(
+				Route::_('index.php?option=com_pungamail&view=newsletter&id=' . $id, false),
+				Text::sprintf('COM_PUNGAMAIL_TEST_SENT', $email)
+			);
 		}
 		catch (\Throwable $e)
 		{
@@ -108,7 +157,10 @@ final class NewsletterController extends BaseController
 		try
 		{
 			$count = ServiceFactory::queue()->queue($id);
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), 'Newsletter frozen and queued for ' . $count . ' unique recipients.');
+			$this->setRedirect(
+				Route::_('index.php?option=com_pungamail&view=newsletters', false),
+				Text::plural('COM_PUNGAMAIL_NEWSLETTER_QUEUED', $count)
+			);
 		}
 		catch (\Throwable $e)
 		{
@@ -129,8 +181,8 @@ final class NewsletterController extends BaseController
 		try
 		{
 			$result = ServiceFactory::processor()->process();
-			$message = sprintf(
-				'Queue batch: %d processed, %d sent, %d scheduled for retry, %d terminal failures.',
+			$message = Text::sprintf(
+				'COM_PUNGAMAIL_QUEUE_RESULT',
 				$result['processed'],
 				$result['sent'],
 				$result['retried'],
@@ -160,7 +212,7 @@ final class NewsletterController extends BaseController
 
 		if ($newsletter === null)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), 'Newsletter not found.', 'error');
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), Text::_('COM_PUNGAMAIL_ERROR_NEWSLETTER_NOT_FOUND'), 'error');
 			return;
 		}
 
@@ -178,15 +230,16 @@ final class NewsletterController extends BaseController
 
 		$newId = $repo->saveDraft(
 			0,
-			(string) $newsletter->title . ' — copy',
+			Text::sprintf('COM_PUNGAMAIL_COPY_TITLE', (string) $newsletter->title),
 			(string) $newsletter->subject,
 			(string) $newsletter->body_markdown,
 			(bool) $newsletter->include_subscribers,
+			$repo->getLastContentCutoff(),
 			$items,
 			$repo->getGroupIds($id),
 			(int) Factory::getApplication()->getIdentity()->id
 		);
-		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletter&id=' . $newId, false), 'Newsletter duplicated as a new draft.');
+		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletter&id=' . $newId, false), Text::_('COM_PUNGAMAIL_NEWSLETTER_DUPLICATED'));
 	}
 
 	/**
@@ -202,6 +255,7 @@ final class NewsletterController extends BaseController
 		$subject = trim($input->post->getString('subject'));
 		$body = $input->post->get('body_markdown', '', 'raw');
 		$includeSubscribers = $input->post->getInt('include_subscribers', 0) === 1;
+		$contentCutoffStart = $this->parseCutoffDate($input->post->getString('content_cutoff_start'));
 		$selectedIds = array_map('intval', (array) $input->post->get('selected_articles', [], 'array'));
 		$titleOverrides = (array) $input->post->get('title_override', [], 'array');
 		$excerptOverrides = (array) $input->post->get('excerpt_override', [], 'array');
@@ -210,7 +264,7 @@ final class NewsletterController extends BaseController
 
 		if ($title === '' || $subject === '')
 		{
-			throw new \InvalidArgumentException('Internal title and email subject are required.');
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_ERROR_TITLE_SUBJECT_REQUIRED'));
 		}
 
 		$items = [];
@@ -233,18 +287,53 @@ final class NewsletterController extends BaseController
 			$subject,
 			(string) $body,
 			$includeSubscribers,
+			$contentCutoffStart,
 			$items,
 			$groupIds,
 			(int) Factory::getApplication()->getIdentity()->id
 		);
 	}
 
+	/**
+	 * Converts the administrator-local HTML date value to a UTC SQL timestamp.
+	 *
+	 * @param string $value YYYY-MM-DD date from the editor.
+	 *
+	 * @return string|null UTC SQL timestamp or null when no date was supplied.
+	 */
+	private function parseCutoffDate(string $value): ?string
+	{
+		$value = trim($value);
+
+		if ($value === '')
+		{
+			return null;
+		}
+
+		if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) !== 1)
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_ERROR_INVALID_CONTENT_DATE'));
+		}
+
+		$timezone = (string) Factory::getApplication()->get('offset', 'UTC');
+		$date = Factory::getDate($value . ' 00:00:00', $timezone);
+		$date->setTimezone(new DateTimeZone('UTC'));
+
+		return $date->toSql();
+	}
+
 	/** @return void */
 	private function requireManage(): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise('core.manage', 'com_pungamail'))
+		$this->requirePermission('core.manage');
+	}
+
+	/** @return void */
+	private function requirePermission(string $permission): void
+	{
+		if (!Factory::getApplication()->getIdentity()->authorise($permission, 'com_pungamail'))
 		{
-			throw new \RuntimeException('Not authorised.', 403);
+			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
 	}
 
@@ -253,7 +342,7 @@ final class NewsletterController extends BaseController
 	{
 		if (!Session::checkToken())
 		{
-			throw new \RuntimeException('Invalid security token.', 403);
+			throw new \RuntimeException(Text::_('JINVALID_TOKEN'), 403);
 		}
 	}
 }

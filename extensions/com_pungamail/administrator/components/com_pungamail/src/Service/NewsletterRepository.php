@@ -9,6 +9,7 @@
 namespace Punga\Component\PungaMail\Administrator\Service;
 
 use Joomla\CMS\Date\Date;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Database\ParameterType;
@@ -72,6 +73,7 @@ final class NewsletterRepository
 	 * @param string       $subject            Email subject.
 	 * @param string       $bodyMarkdown       Markdown body.
 	 * @param bool         $includeSubscribers Include opted-in subscribers.
+	 * @param string|null  $contentCutoffStart UTC lower bound for article discovery.
 	 * @param array<int,array<string,mixed>> $items Selected article data.
 	 * @param array<int,int> $groupIds          Joomla user-group IDs.
 	 * @param int          $userId              Editing user ID.
@@ -84,6 +86,7 @@ final class NewsletterRepository
 		string $subject,
 		string $bodyMarkdown,
 		bool $includeSubscribers,
+		?string $contentCutoffStart,
 		array $items,
 		array $groupIds,
 		int $userId
@@ -93,10 +96,11 @@ final class NewsletterRepository
 
 		if ($existing !== null && (int) $existing->status !== self::STATUS_DRAFT)
 		{
-			throw new \RuntimeException('A queued or sent newsletter is immutable. Duplicate it to make changes.');
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_IMMUTABLE'));
 		}
 
 		$now = (new Date('now', 'UTC'))->toSql();
+		$effectiveCutoff = $contentCutoffStart ?: ($existing?->content_cutoff_start ?: $this->getLastContentCutoff());
 		$this->db->transactionStart();
 
 		try
@@ -107,9 +111,10 @@ final class NewsletterRepository
 					'title' => $title,
 					'subject' => $subject,
 					'body_markdown' => $bodyMarkdown,
+					'state' => 1,
 					'status' => self::STATUS_DRAFT,
 					'include_subscribers' => $includeSubscribers ? 1 : 0,
-					'content_cutoff_start' => $this->getLastContentCutoff(),
+					'content_cutoff_start' => $effectiveCutoff,
 					'content_cutoff_end' => null,
 					'snapshot_subject' => null,
 					'snapshot_html' => null,
@@ -133,12 +138,14 @@ final class NewsletterRepository
 					->set($this->db->quoteName('subject') . ' = :subject')
 					->set($this->db->quoteName('body_markdown') . ' = :body')
 					->set($this->db->quoteName('include_subscribers') . ' = :includeSubscribers')
+					->set($this->db->quoteName('content_cutoff_start') . ' = :contentCutoffStart')
 					->set($this->db->quoteName('modified') . ' = :modified')
 					->where($this->db->quoteName('id') . ' = :id')
 					->bind(':title', $title)
 					->bind(':subject', $subject)
 					->bind(':body', $bodyMarkdown)
 					->bind(':includeSubscribers', $includeSubscribers, ParameterType::BOOLEAN)
+					->bind(':contentCutoffStart', $effectiveCutoff)
 					->bind(':modified', $now)
 					->bind(':id', $id, ParameterType::INTEGER);
 				$this->db->setQuery($query)->execute();
@@ -311,7 +318,7 @@ final class NewsletterRepository
 
 		if ($this->db->getAffectedRows() !== 1)
 		{
-			throw new \RuntimeException('Newsletter could not be frozen because it is no longer a draft.');
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_FREEZE_NOT_DRAFT'));
 		}
 
 		foreach ($itemSnapshots as $item)
@@ -416,6 +423,92 @@ final class NewsletterRepository
 			->bind(':id', $newsletterId, ParameterType::INTEGER);
 
 		return $this->db->setQuery($query)->loadObjectList();
+	}
+
+	/**
+	 * Applies a Joomla record state to newsletter rows.
+	 *
+	 * @param array<int,int> $ids   Newsletter IDs.
+	 * @param int            $state Joomla record state.
+	 *
+	 * @return void
+	 */
+	public function setState(array $ids, int $state): void
+	{
+		$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+		if ($ids === [])
+		{
+			return;
+		}
+
+		$query = $this->db->getQuery(true)
+			->update($this->db->quoteName('#__pungamail_newsletters'))
+			->set($this->db->quoteName('state') . ' = :state')
+			->whereIn($this->db->quoteName('id'), $ids)
+			->bind(':state', $state, ParameterType::INTEGER);
+		$this->db->setQuery($query)->execute();
+	}
+
+	/**
+	 * Permanently deletes selected newsletters that are already in the trash.
+	 *
+	 * Related queue, content-selection and group rows are removed in the same
+	 * transaction so no orphaned Punga Mail records remain.
+	 *
+	 * @param array<int,int> $ids Newsletter IDs.
+	 *
+	 * @return int Number of newsletter rows removed.
+	 */
+	public function deleteTrashed(array $ids): int
+	{
+		$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+		if ($ids === [])
+		{
+			return 0;
+		}
+
+		$trashedState = -2;
+		$select = $this->db->getQuery(true)
+			->select($this->db->quoteName('id'))
+			->from($this->db->quoteName('#__pungamail_newsletters'))
+			->whereIn($this->db->quoteName('id'), $ids)
+			->where($this->db->quoteName('state') . ' = :trashed')
+			->bind(':trashed', $trashedState, ParameterType::INTEGER);
+		$deleteIds = array_map('intval', $this->db->setQuery($select)->loadColumn());
+
+		if ($deleteIds === [])
+		{
+			return 0;
+		}
+
+		$this->db->transactionStart();
+
+		try
+		{
+			foreach (['#__pungamail_send_queue', '#__pungamail_newsletter_items', '#__pungamail_newsletter_groups'] as $table)
+			{
+				$deleteRelated = $this->db->getQuery(true)
+					->delete($this->db->quoteName($table))
+					->whereIn($this->db->quoteName('newsletter_id'), $deleteIds);
+				$this->db->setQuery($deleteRelated)->execute();
+			}
+
+			$deleteNewsletters = $this->db->getQuery(true)
+				->delete($this->db->quoteName('#__pungamail_newsletters'))
+				->whereIn($this->db->quoteName('id'), $deleteIds);
+			$this->db->setQuery($deleteNewsletters)->execute();
+			$count = $this->db->getAffectedRows();
+			$this->db->transactionCommit();
+
+			return $count;
+		}
+		catch (\Throwable $e)
+		{
+			$this->db->transactionRollback();
+			throw $e;
+		}
 	}
 
 	/**

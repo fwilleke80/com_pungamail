@@ -63,7 +63,7 @@ final class ServiceFactory
 	/** @return MailService */
 	public static function mail(): MailService
 	{
-		return new MailService(Factory::getContainer()->get(MailerFactoryInterface::class), self::tokens());
+		return new MailService(Factory::getContainer()->get(MailerFactoryInterface::class), self::tokens(), new MarkdownRenderer());
 	}
 
 	/** @return QueueService */

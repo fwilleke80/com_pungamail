@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<form>
+	<fields name="filter">
+		<field name="search" type="text" label="COM_PUNGAMAIL_FILTER_SEARCH_SUBSCRIBERS" hint="JSEARCH_FILTER" />
+		<field name="status" type="list" label="COM_PUNGAMAIL_SUBSCRIPTION_STATUS" onchange="this.form.submit();">
+			<option value="">COM_PUNGAMAIL_FILTER_SUBSCRIPTION_STATUS</option>
+			<option value="0">COM_PUNGAMAIL_SUBSCRIBER_PENDING</option>
+			<option value="1">COM_PUNGAMAIL_SUBSCRIBER_SUBSCRIBED</option>
+			<option value="2">COM_PUNGAMAIL_SUBSCRIBER_UNSUBSCRIBED</option>
+		</field>
+		<field name="suppressed" type="list" label="COM_PUNGAMAIL_SUPPRESSED" onchange="this.form.submit();">
+			<option value="">COM_PUNGAMAIL_FILTER_SUPPRESSION</option>
+			<option value="0">COM_PUNGAMAIL_NOT_SUPPRESSED</option>
+			<option value="1">COM_PUNGAMAIL_SUPPRESSED_ONLY</option>
+		</field>
+	</fields>
+	<fields name="list">
+		<field name="fullordering" type="list" label="JGLOBAL_SORT_BY" default="s.created DESC" onchange="this.form.submit();">
+			<option value="">JGLOBAL_SORT_BY</option>
+			<option value="s.email ASC">COM_PUNGAMAIL_EMAIL_ASC</option>
+			<option value="s.email DESC">COM_PUNGAMAIL_EMAIL_DESC</option>
+			<option value="s.source ASC">COM_PUNGAMAIL_SOURCE_ASC</option>
+			<option value="s.source DESC">COM_PUNGAMAIL_SOURCE_DESC</option>
+			<option value="s.status ASC">COM_PUNGAMAIL_SUBSCRIPTION_STATUS_ASC</option>
+			<option value="s.status DESC">COM_PUNGAMAIL_SUBSCRIPTION_STATUS_DESC</option>
+			<option value="s.confirmed_at ASC">COM_PUNGAMAIL_CONFIRMED_ASC</option>
+			<option value="s.confirmed_at DESC">COM_PUNGAMAIL_CONFIRMED_DESC</option>
+			<option value="x.reason ASC">COM_PUNGAMAIL_SUPPRESSION_ASC</option>
+			<option value="x.reason DESC">COM_PUNGAMAIL_SUPPRESSION_DESC</option>
+			<option value="s.created ASC">JDATE_ASC</option>
+			<option value="s.created DESC">JDATE_DESC</option>
+			<option value="s.id ASC">JGRID_HEADING_ID_ASC</option>
+			<option value="s.id DESC">JGRID_HEADING_ID_DESC</option>
+		</field>
+		<field name="limit" type="limitbox" label="JGLOBAL_LIST_LIMIT" default="25" onchange="this.form.submit();" />
+	</fields>
+</form>

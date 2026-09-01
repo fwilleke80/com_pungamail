@@ -10,6 +10,7 @@ namespace Punga\Component\PungaMail\Administrator\Model;
 
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Model\BaseDatabaseModel;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
@@ -31,7 +32,7 @@ final class PreflightModel extends BaseDatabaseModel
 
 		if ($newsletter === null)
 		{
-			throw new \RuntimeException('Newsletter not found.');
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_NEWSLETTER_NOT_FOUND'));
 		}
 
 		$items = $repo->getItems($id);

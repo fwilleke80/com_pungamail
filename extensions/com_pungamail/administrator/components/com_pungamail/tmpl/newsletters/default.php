@@ -4,68 +4,76 @@
 defined('_JEXEC') or die;
 
 use Joomla\CMS\HTML\HTMLHelper;
+use Joomla\CMS\Language\Text;
+use Joomla\CMS\Layout\LayoutHelper;
 use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Service\NewsletterRepository;
 
+$listOrder = (string) $this->state->get('list.ordering');
+$listDirn = (string) $this->state->get('list.direction');
 $statusLabels = [
-	NewsletterRepository::STATUS_DRAFT => 'Draft',
-	NewsletterRepository::STATUS_QUEUED => 'Queued',
-	NewsletterRepository::STATUS_SENDING => 'Sending',
-	NewsletterRepository::STATUS_SENT => 'Sent',
-	NewsletterRepository::STATUS_SENT_WITH_FAILURES => 'Sent with failures',
+	NewsletterRepository::STATUS_DRAFT => Text::_('COM_PUNGAMAIL_STATUS_DRAFT'),
+	NewsletterRepository::STATUS_QUEUED => Text::_('COM_PUNGAMAIL_STATUS_QUEUED'),
+	NewsletterRepository::STATUS_SENDING => Text::_('COM_PUNGAMAIL_STATUS_SENDING'),
+	NewsletterRepository::STATUS_SENT => Text::_('COM_PUNGAMAIL_STATUS_SENT'),
+	NewsletterRepository::STATUS_SENT_WITH_FAILURES => Text::_('COM_PUNGAMAIL_STATUS_SENT_WITH_FAILURES'),
 ];
 ?>
-<div class="container-fluid">
-	<div class="d-flex gap-2 mb-3">
-		<a class="btn btn-primary" href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletter'); ?>">New newsletter</a>
-		<form action="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.processQueue'); ?>" method="post">
-			<button class="btn btn-outline-secondary" type="submit">Process queue now</button>
-			<?php echo HTMLHelper::_('form.token'); ?>
-		</form>
+<form action="<?php echo Route::_('index.php?option=com_pungamail&view=newsletters'); ?>" method="post" name="adminForm" id="adminForm">
+	<?php echo LayoutHelper::render('joomla.searchtools.default', ['view' => $this]); ?>
+
+	<div class="table-responsive">
+		<table class="table itemList" id="newsletterList">
+			<thead>
+				<tr>
+					<td class="w-1 text-center"><?php echo HTMLHelper::_('grid.checkall'); ?></td>
+					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('JGLOBAL_TITLE'), 'a.title', $listDirn, $listOrder); ?></th>
+					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_SUBJECT'), 'a.subject', $listDirn, $listOrder); ?></th>
+					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('JSTATUS'), 'a.state', $listDirn, $listOrder); ?></th>
+					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_DELIVERY_STATUS'), 'a.status', $listDirn, $listOrder); ?></th>
+					<th scope="col" class="text-end"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_RECIPIENTS'), 'a.recipient_count', $listDirn, $listOrder); ?></th>
+					<th scope="col" class="text-end"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_SENT'), 'a.sent_count', $listDirn, $listOrder); ?></th>
+					<th scope="col" class="text-end"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_FAILED'), 'a.failed_count', $listDirn, $listOrder); ?></th>
+					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_SENT_AT'), 'a.sent_at', $listDirn, $listOrder); ?></th>
+					<th scope="col" class="w-3 text-center"><?php echo HTMLHelper::_('searchtools.sort', Text::_('JGRID_HEADING_ID'), 'a.id', $listDirn, $listOrder); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+			<?php foreach ($this->items as $i => $item) : ?>
+				<tr class="row<?php echo $i % 2; ?><?php echo (int) $item->state === -2 ? ' table-secondary' : ''; ?>">
+					<td class="text-center"><?php echo HTMLHelper::_('grid.id', $i, (int) $item->id); ?></td>
+					<th scope="row">
+						<a href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletter&id=' . (int) $item->id); ?>">
+							<?php echo htmlspecialchars((string) $item->title, ENT_QUOTES, 'UTF-8'); ?>
+						</a>
+					</th>
+					<td><?php echo htmlspecialchars((string) $item->subject, ENT_QUOTES, 'UTF-8'); ?></td>
+					<td>
+						<?php if ((int) $item->state === -2) : ?>
+							<span class="badge bg-secondary"><?php echo Text::_('JTRASHED'); ?></span>
+						<?php else : ?>
+							<span class="badge bg-success"><?php echo Text::_('COM_PUNGAMAIL_STATE_ACTIVE'); ?></span>
+						<?php endif; ?>
+					</td>
+					<td><?php echo htmlspecialchars($statusLabels[(int) $item->status] ?? Text::_('COM_PUNGAMAIL_STATUS_UNKNOWN'), ENT_QUOTES, 'UTF-8'); ?></td>
+					<td class="text-end"><?php echo (int) $item->recipient_count; ?></td>
+					<td class="text-end"><?php echo (int) $item->sent_count; ?></td>
+					<td class="text-end"><?php echo (int) $item->failed_count; ?></td>
+					<td><?php echo $item->sent_at ? HTMLHelper::_('date', $item->sent_at, Text::_('DATE_FORMAT_LC5'), 'UTC') : Text::_('COM_PUNGAMAIL_NOT_YET'); ?></td>
+					<td class="text-center"><?php echo (int) $item->id; ?></td>
+				</tr>
+			<?php endforeach; ?>
+			<?php if ($this->items === []) : ?>
+				<tr><td colspan="10" class="text-center text-muted py-4"><?php echo Text::_('COM_PUNGAMAIL_NO_NEWSLETTERS'); ?></td></tr>
+			<?php endif; ?>
+			</tbody>
+		</table>
 	</div>
 
-	<div class="card">
-		<div class="card-body p-0">
-			<table class="table table-striped mb-0">
-				<thead>
-					<tr>
-						<th>Newsletter</th>
-						<th>Status</th>
-						<th>Recipients</th>
-						<th>Sent</th>
-						<th>Failed</th>
-						<th>Sent at</th>
-						<th class="text-end">Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-				<?php if ($this->items === []) : ?>
-					<tr><td colspan="7" class="text-center text-muted py-4">No newsletters yet.</td></tr>
-				<?php endif; ?>
-				<?php foreach ($this->items as $item) : ?>
-					<tr>
-						<td>
-							<a href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletter&id=' . (int) $item->id); ?>">
-								<?php echo htmlspecialchars((string) $item->title, ENT_QUOTES, 'UTF-8'); ?>
-							</a>
-							<div class="small text-muted"><?php echo htmlspecialchars((string) $item->subject, ENT_QUOTES, 'UTF-8'); ?></div>
-						</td>
-						<td><?php echo htmlspecialchars($statusLabels[(int) $item->status] ?? 'Unknown', ENT_QUOTES, 'UTF-8'); ?></td>
-						<td><?php echo (int) $item->recipient_count; ?></td>
-						<td><?php echo (int) $item->sent_count; ?></td>
-						<td><?php echo (int) $item->failed_count; ?></td>
-						<td><?php echo $item->sent_at ? htmlspecialchars((string) $item->sent_at, ENT_QUOTES, 'UTF-8') . ' UTC' : '—'; ?></td>
-						<td class="text-end">
-							<form class="d-inline" action="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.duplicate'); ?>" method="post">
-								<input type="hidden" name="id" value="<?php echo (int) $item->id; ?>">
-								<button class="btn btn-sm btn-outline-secondary" type="submit">Duplicate</button>
-								<?php echo HTMLHelper::_('form.token'); ?>
-							</form>
-						</td>
-					</tr>
-				<?php endforeach; ?>
-				</tbody>
-			</table>
-		</div>
-	</div>
-</div>
+	<?php echo $this->pagination->getListFooter(); ?>
+	<input type="hidden" name="task" value="">
+	<input type="hidden" name="boxchecked" value="0">
+	<input type="hidden" name="filter_order" value="<?php echo htmlspecialchars($listOrder, ENT_QUOTES, 'UTF-8'); ?>">
+	<input type="hidden" name="filter_order_Dir" value="<?php echo htmlspecialchars($listDirn, ENT_QUOTES, 'UTF-8'); ?>">
+	<?php echo HTMLHelper::_('form.token'); ?>
+</form>
