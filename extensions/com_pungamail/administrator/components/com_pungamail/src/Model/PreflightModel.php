@@ -12,6 +12,7 @@ use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Model\BaseDatabaseModel;
+use Punga\Component\PungaMail\Administrator\Service\RecipientName;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 /**
@@ -38,7 +39,18 @@ final class PreflightModel extends BaseDatabaseModel
 		$items = $repo->getItems($id);
 		$groups = $repo->getGroupIds($id);
 		$recipients = ServiceFactory::recipients()->resolve($newsletter, $groups);
-		$rendered = ServiceFactory::renderer()->render($newsletter, $items);
+		$renderer = ServiceFactory::renderer();
+		$rendered = $renderer->render($newsletter, $items);
+		$identity = Factory::getApplication()->getIdentity();
+		$personalized = $renderer->personalize(
+			$rendered['subject'],
+			$rendered['html'],
+			$rendered['text'],
+			RecipientName::resolve((string) $identity->name, (string) $identity->email)
+		);
+		$rendered['subject'] = $personalized['subject'];
+		$rendered['html'] = $personalized['html'];
+		$rendered['text'] = $personalized['text'];
 		$params = ComponentHelper::getParams('com_pungamail');
 		$sourceCounts = [];
 

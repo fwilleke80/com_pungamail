@@ -36,6 +36,10 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 			'langConstPrefix' => 'PLG_TASK_PUNGAMAIL_PROCESS_QUEUE',
 			'method' => 'processQueue',
 		],
+		'pungamail.newsletter_reminder' => [
+			'langConstPrefix' => 'PLG_TASK_PUNGAMAIL_NEWSLETTER_REMINDER',
+			'method' => 'newsletterReminder',
+		],
 	];
 
 	/**
@@ -49,6 +53,37 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 			'onTaskOptionsList' => 'advertiseRoutines',
 			'onExecuteTask' => 'standardRoutineHandler',
 		];
+	}
+
+	/**
+	 * Checks whether the configured newsletter-age reminder is due.
+	 *
+	 * @param ExecuteTaskEvent $event Task execution event.
+	 *
+	 * @return int Joomla task status code.
+	 */
+	private function newsletterReminder(ExecuteTaskEvent $event): int
+	{
+		try
+		{
+			$this->getApplication()->bootComponent('com_pungamail');
+			$result = ServiceFactory::reminder()->process();
+			$sent = (bool) ($result['sent'] ?? false);
+
+			Log::add(
+				$sent ? 'Punga Mail newsletter reminder sent.' : 'Punga Mail newsletter reminder checked; no reminder was due.',
+				Log::INFO,
+				'plg_task_pungamail'
+			);
+
+			return Status::OK;
+		}
+		catch (\Throwable $e)
+		{
+			Log::add('Punga Mail reminder task failed: ' . $e->getMessage(), Log::ERROR, 'plg_task_pungamail');
+
+			return Status::KNOCKOUT;
+		}
 	}
 
 	/**

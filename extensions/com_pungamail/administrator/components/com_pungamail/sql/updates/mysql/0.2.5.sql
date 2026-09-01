@@ -1,0 +1,2 @@
+-- Punga Mail 0.2.5
+-- No schema changes. Version marker for mail-language/footer configuration update.

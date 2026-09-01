@@ -80,6 +80,7 @@ final class QueueService
 					'subscriber_id' => $recipient['subscriber_id'],
 					'user_id' => $recipient['user_id'],
 					'email' => $recipient['email'],
+					'recipient_name' => $recipient['recipient_name'],
 					'email_normalized' => $recipient['email_normalized'],
 					'source' => $recipient['source'],
 					'status' => 'pending',

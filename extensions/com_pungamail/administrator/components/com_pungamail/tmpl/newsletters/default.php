@@ -43,7 +43,7 @@ $statusLabels = [
 				<tr class="row<?php echo $i % 2; ?><?php echo (int) $item->state === -2 ? ' table-secondary' : ''; ?>">
 					<td class="text-center"><?php echo HTMLHelper::_('grid.id', $i, (int) $item->id); ?></td>
 					<th scope="row">
-						<a href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletter&id=' . (int) $item->id); ?>">
+						<a href="<?php echo Route::_(\Punga\Component\PungaMail\Administrator\Service\AdministratorRoute::newsletter((int) $item->id)); ?>">
 							<?php echo htmlspecialchars((string) $item->title, ENT_QUOTES, 'UTF-8'); ?>
 						</a>
 					</th>

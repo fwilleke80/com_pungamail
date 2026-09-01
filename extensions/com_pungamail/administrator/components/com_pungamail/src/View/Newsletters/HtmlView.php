@@ -57,7 +57,6 @@ final class HtmlView extends BaseHtmlView
 			ToolbarHelper::addNew('newsletter.add');
 		}
 
-		ToolbarHelper::custom('newsletter.processQueue', 'refresh', '', Text::_('COM_PUNGAMAIL_PROCESS_QUEUE'), false);
 
 		if ((string) $this->state->get('filter.state') === '-2')
 		{

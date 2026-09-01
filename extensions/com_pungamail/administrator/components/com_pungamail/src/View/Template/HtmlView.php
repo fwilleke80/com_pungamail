@@ -1,0 +1,42 @@
+<?php
+/**
+ * @package     Punga.Mail
+ * @subpackage  Administrator.View
+ * @copyright   Copyright (c) 2026 Punga
+ * @license     MIT
+ */
+
+namespace Punga\Component\PungaMail\Administrator\View\Template;
+
+use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
+use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
+use Joomla\CMS\Toolbar\ToolbarHelper;
+
+/** Template editor view. */
+final class HtmlView extends BaseHtmlView
+{
+	public ?object $item = null;
+	public array $styleOverrides = [];
+
+	/** @return void */
+	public function display($tpl = null): void
+	{
+		if (!Factory::getApplication()->getIdentity()->authorise('core.manage', 'com_pungamail'))
+		{
+			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+		}
+
+		$model = $this->getModel();
+		$this->item = $model->getItem();
+		$this->styleOverrides = $model->getStyleOverrides();
+
+		ToolbarHelper::title($this->item ? Text::_('COM_PUNGAMAIL_EDIT_TEMPLATE') : Text::_('COM_PUNGAMAIL_NEW_TEMPLATE'), 'copy');
+		ToolbarHelper::apply('template.save');
+		ToolbarHelper::save('template.save2close');
+		ToolbarHelper::custom('template.preview', 'eye', '', Text::_('COM_PUNGAMAIL_PREVIEW'), false);
+		ToolbarHelper::cancel('template.cancel');
+
+		parent::display($tpl);
+	}
+}

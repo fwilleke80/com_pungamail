@@ -10,12 +10,11 @@ namespace Punga\Component\PungaMail\Administrator\Service;
 
 use Joomla\CMS\Date\Date;
 use Joomla\CMS\Language\Text;
-use Joomla\CMS\Router\Route;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Database\ParameterType;
 
 /**
- * Persistence and content-query operations for newsletters.
+ * Persistence service for newsletter drafts, selections and send snapshots.
  */
 final class NewsletterRepository
 {
@@ -25,20 +24,12 @@ final class NewsletterRepository
 	public const STATUS_SENT = 3;
 	public const STATUS_SENT_WITH_FAILURES = 4;
 
-	/**
-	 * @param DatabaseInterface $db Database connection.
-	 */
+	/** @param DatabaseInterface $db Database connection. */
 	public function __construct(private readonly DatabaseInterface $db)
 	{
 	}
 
-	/**
-	 * Returns one newsletter.
-	 *
-	 * @param int $id Newsletter ID.
-	 *
-	 * @return object|null Newsletter or null.
-	 */
+	/** @return object|null */
 	public function find(int $id): ?object
 	{
 		$query = $this->db->getQuery(true)
@@ -50,11 +41,7 @@ final class NewsletterRepository
 		return $this->db->setQuery($query)->loadObject() ?: null;
 	}
 
-	/**
-	 * Lists newsletters newest first.
-	 *
-	 * @return array<int,object> Newsletter rows.
-	 */
+	/** @return array<int,object> */
 	public function all(): array
 	{
 		$query = $this->db->getQuery(true)
@@ -66,19 +53,23 @@ final class NewsletterRepository
 	}
 
 	/**
-	 * Saves a draft and replaces its article/group selections transactionally.
+	 * Saves a mutable draft and replaces its selected content sources/items/groups.
 	 *
-	 * @param int          $id                 Existing ID or zero for a new draft.
-	 * @param string       $title              Internal newsletter title.
-	 * @param string       $subject            Email subject.
-	 * @param string       $bodyMarkdown       Markdown body.
-	 * @param bool         $includeSubscribers Include opted-in subscribers.
-	 * @param string|null  $contentCutoffStart UTC lower bound for article discovery.
-	 * @param array<int,array<string,mixed>> $items Selected article data.
-	 * @param array<int,int> $groupIds          Joomla user-group IDs.
-	 * @param int          $userId              Editing user ID.
+	 * @param int                             $id                 Existing ID or zero.
+	 * @param string                          $title              Internal title.
+	 * @param string                          $subject            Mail subject.
+	 * @param string                          $bodyMarkdown       Markdown body.
+	 * @param bool                            $includeSubscribers Include confirmed subscribers.
+	 * @param string|null                     $contentCutoffStart UTC content lower bound.
+	 * @param array<int,array<string,mixed>>  $items              Selected content items.
+	 * @param array<int,int>                  $groupIds           Joomla user groups.
+	 * @param int                             $userId             Editing user.
+	 * @param array<int,string>               $sourceKeys         Selected registered content types.
+	 * @param int|null                        $templateId         Applied template ID.
+	 * @param string|null                     $styleOverrides     Newsletter style override JSON.
+	 * @param string                          $customCss          Newsletter custom CSS.
 	 *
-	 * @return int Saved newsletter ID.
+	 * @return int Newsletter ID.
 	 */
 	public function saveDraft(
 		int $id,
@@ -89,7 +80,11 @@ final class NewsletterRepository
 		?string $contentCutoffStart,
 		array $items,
 		array $groupIds,
-		int $userId
+		int $userId,
+		array $sourceKeys = ['com_content.article'],
+		?int $templateId = null,
+		?string $styleOverrides = null,
+		string $customCss = ''
 	): int
 	{
 		$existing = $id > 0 ? $this->find($id) : null;
@@ -101,6 +96,8 @@ final class NewsletterRepository
 
 		$now = (new Date('now', 'UTC'))->toSql();
 		$effectiveCutoff = $contentCutoffStart ?: ($existing?->content_cutoff_start ?: $this->getLastContentCutoff());
+		$styleValue = $styleOverrides;
+		$cssValue = $customCss !== '' ? $customCss : null;
 		$this->db->transactionStart();
 
 		try
@@ -113,6 +110,9 @@ final class NewsletterRepository
 					'body_markdown' => $bodyMarkdown,
 					'state' => 1,
 					'status' => self::STATUS_DRAFT,
+					'template_id' => $templateId,
+					'style_overrides' => $styleValue,
+					'custom_css' => $cssValue,
 					'include_subscribers' => $includeSubscribers ? 1 : 0,
 					'content_cutoff_start' => $effectiveCutoff,
 					'content_cutoff_end' => null,
@@ -126,6 +126,7 @@ final class NewsletterRepository
 					'modified' => $now,
 					'created_by' => $userId,
 					'sent_at' => null,
+					'reminder_sent_at' => null,
 				];
 				$this->db->insertObject('#__pungamail_newsletters', $row, 'id');
 				$id = (int) $row->id;
@@ -137,21 +138,45 @@ final class NewsletterRepository
 					->set($this->db->quoteName('title') . ' = :title')
 					->set($this->db->quoteName('subject') . ' = :subject')
 					->set($this->db->quoteName('body_markdown') . ' = :body')
+					->set($this->db->quoteName('template_id') . ($templateId === null ? ' = NULL' : ' = :templateId'))
+					->set($this->db->quoteName('style_overrides') . ($styleValue === null ? ' = NULL' : ' = :styleOverrides'))
+					->set($this->db->quoteName('custom_css') . ($cssValue === null ? ' = NULL' : ' = :customCss'))
 					->set($this->db->quoteName('include_subscribers') . ' = :includeSubscribers')
-					->set($this->db->quoteName('content_cutoff_start') . ' = :contentCutoffStart')
+					->set($this->db->quoteName('content_cutoff_start') . ($effectiveCutoff === null ? ' = NULL' : ' = :contentCutoffStart'))
 					->set($this->db->quoteName('modified') . ' = :modified')
 					->where($this->db->quoteName('id') . ' = :id')
 					->bind(':title', $title)
 					->bind(':subject', $subject)
 					->bind(':body', $bodyMarkdown)
 					->bind(':includeSubscribers', $includeSubscribers, ParameterType::BOOLEAN)
-					->bind(':contentCutoffStart', $effectiveCutoff)
 					->bind(':modified', $now)
 					->bind(':id', $id, ParameterType::INTEGER);
+
+				if ($templateId !== null)
+				{
+					$query->bind(':templateId', $templateId, ParameterType::INTEGER);
+				}
+
+				if ($styleValue !== null)
+				{
+					$query->bind(':styleOverrides', $styleValue);
+				}
+
+				if ($cssValue !== null)
+				{
+					$query->bind(':customCss', $cssValue);
+				}
+
+				if ($effectiveCutoff !== null)
+				{
+					$query->bind(':contentCutoffStart', $effectiveCutoff);
+				}
+
 				$this->db->setQuery($query)->execute();
 			}
 
 			$this->replaceItems($id, $items);
+			$this->replaceSources($id, $sourceKeys);
 			$this->replaceGroups($id, $groupIds);
 			$this->db->transactionCommit();
 		}
@@ -164,39 +189,34 @@ final class NewsletterRepository
 		return $id;
 	}
 
-	/**
-	 * Returns article selections stored for a newsletter.
-	 *
-	 * @param int $newsletterId Newsletter ID.
-	 *
-	 * @return array<int,object> Selected item rows joined to current content.
-	 */
+	/** @return array<int,object> */
 	public function getItems(int $newsletterId): array
 	{
 		$query = $this->db->getQuery(true)
-			->select([
-				'i.*',
-				'c.title AS article_title',
-				'c.introtext AS article_introtext',
-				'c.catid',
-				'c.alias',
-			])
-			->from($this->db->quoteName('#__pungamail_newsletter_items', 'i'))
-			->leftJoin($this->db->quoteName('#__content', 'c') . ' ON c.id = i.content_id')
-			->where('i.newsletter_id = :id')
-			->order('i.ordering ASC')
+			->select('*')
+			->from($this->db->quoteName('#__pungamail_newsletter_items'))
+			->where($this->db->quoteName('newsletter_id') . ' = :id')
+			->order($this->db->quoteName('ordering') . ' ASC')
 			->bind(':id', $newsletterId, ParameterType::INTEGER);
 
 		return $this->db->setQuery($query)->loadObjectList();
 	}
 
-	/**
-	 * Returns selected user groups.
-	 *
-	 * @param int $newsletterId Newsletter ID.
-	 *
-	 * @return array<int,int> Group IDs.
-	 */
+	/** @return array<int,string> */
+	public function getSourceKeys(int $newsletterId): array
+	{
+		$query = $this->db->getQuery(true)
+			->select($this->db->quoteName('source_key'))
+			->from($this->db->quoteName('#__pungamail_newsletter_sources'))
+			->where($this->db->quoteName('newsletter_id') . ' = :id')
+			->order($this->db->quoteName('source_key') . ' ASC')
+			->bind(':id', $newsletterId, ParameterType::INTEGER);
+		$keys = array_map('strval', $this->db->setQuery($query)->loadColumn());
+
+		return $keys !== [] ? $keys : ['com_content.article'];
+	}
+
+	/** @return array<int,int> */
 	public function getGroupIds(int $newsletterId): array
 	{
 		$query = $this->db->getQuery(true)
@@ -208,51 +228,7 @@ final class NewsletterRepository
 		return array_map('intval', $this->db->setQuery($query)->loadColumn());
 	}
 
-	/**
-	 * Returns published Joomla articles newer than a newsletter's cutoff.
-	 *
-	 * @param string|null $cutoff UTC SQL timestamp or null for all published content.
-	 * @param int         $limit  Maximum result count.
-	 *
-	 * @return array<int,object> Content rows.
-	 */
-	public function getAvailableArticles(?string $cutoff, int $limit = 100): array
-	{
-		$now = (new Date('now', 'UTC'))->toSql();
-		$publishedExpression = 'COALESCE(' . $this->db->quoteName('c.publish_up') . ', ' . $this->db->quoteName('c.created') . ')';
-		$query = $this->db->getQuery(true)
-			->select([
-				'c.id',
-				'c.title',
-				'c.introtext',
-				'c.catid',
-				'c.alias',
-				'c.publish_up',
-				'c.created',
-				'cat.title AS category_title',
-			])
-			->from($this->db->quoteName('#__content', 'c'))
-			->leftJoin($this->db->quoteName('#__categories', 'cat') . ' ON cat.id = c.catid')
-			->where('c.state = 1')
-			->where('(' . $this->db->quoteName('c.publish_up') . ' IS NULL OR c.publish_up <= :now)')
-			->where('(' . $this->db->quoteName('c.publish_down') . ' IS NULL OR c.publish_down >= :now2)')
-			->order($publishedExpression . ' DESC')
-			->bind(':now', $now)
-			->bind(':now2', $now);
-
-		if ($cutoff !== null && $cutoff !== '')
-		{
-			$query->where($publishedExpression . ' > :cutoff')->bind(':cutoff', $cutoff);
-		}
-
-		return $this->db->setQuery($query, 0, max(1, $limit))->loadObjectList();
-	}
-
-	/**
-	 * Returns Joomla user groups for recipient targeting.
-	 *
-	 * @return array<int,object> Group rows.
-	 */
+	/** @return array<int,object> */
 	public function getUserGroups(): array
 	{
 		$query = $this->db->getQuery(true)
@@ -263,11 +239,7 @@ final class NewsletterRepository
 		return $this->db->setQuery($query)->loadObjectList();
 	}
 
-	/**
-	 * Returns the latest cutoff of a completed newsletter.
-	 *
-	 * @return string|null UTC SQL timestamp.
-	 */
+	/** @return string|null */
 	public function getLastContentCutoff(): ?string
 	{
 		$query = $this->db->getQuery(true)
@@ -280,16 +252,9 @@ final class NewsletterRepository
 	}
 
 	/**
-	 * Stores immutable render snapshots and article snapshots.
+	 * Stores immutable message and content-item snapshots.
 	 *
-	 * @param int    $newsletterId Newsletter ID.
-	 * @param string $subject      Frozen subject.
-	 * @param string $html         Frozen HTML containing recipient placeholders.
-	 * @param string $text         Frozen plain text containing recipient placeholders.
-	 * @param array<int,array<string,mixed>> $itemSnapshots Item snapshots.
-	 * @param string $cutoffEnd    UTC content cutoff end.
-	 *
-	 * @return void
+	 * @param array<int,array<string,mixed>> $itemSnapshots Content snapshots.
 	 */
 	public function freeze(int $newsletterId, string $subject, string $html, string $text, array $itemSnapshots, string $cutoffEnd): void
 	{
@@ -326,30 +291,27 @@ final class NewsletterRepository
 			$snapshotTitle = (string) $item['title'];
 			$snapshotExcerpt = (string) $item['excerpt'];
 			$snapshotUrl = (string) $item['url'];
-			$contentId = (int) $item['content_id'];
+			$sourceKey = (string) $item['source_key'];
+			$sourceItemId = (string) $item['source_item_id'];
 			$update = $this->db->getQuery(true)
 				->update($this->db->quoteName('#__pungamail_newsletter_items'))
 				->set($this->db->quoteName('snapshot_title') . ' = :title')
 				->set($this->db->quoteName('snapshot_excerpt') . ' = :excerpt')
 				->set($this->db->quoteName('snapshot_url') . ' = :url')
 				->where($this->db->quoteName('newsletter_id') . ' = :newsletterId')
-				->where($this->db->quoteName('content_id') . ' = :contentId')
+				->where($this->db->quoteName('source_key') . ' = :sourceKey')
+				->where($this->db->quoteName('source_item_id') . ' = :sourceItemId')
 				->bind(':title', $snapshotTitle)
 				->bind(':excerpt', $snapshotExcerpt)
 				->bind(':url', $snapshotUrl)
 				->bind(':newsletterId', $newsletterId, ParameterType::INTEGER)
-				->bind(':contentId', $contentId, ParameterType::INTEGER);
+				->bind(':sourceKey', $sourceKey)
+				->bind(':sourceItemId', $sourceItemId);
 			$this->db->setQuery($update)->execute();
 		}
 	}
 
-	/**
-	 * Updates cached newsletter queue counters and terminal status.
-	 *
-	 * @param int $newsletterId Newsletter ID.
-	 *
-	 * @return void
-	 */
+	/** @return void */
 	public function refreshQueueCounters(int $newsletterId): void
 	{
 		$query = $this->db->getQuery(true)
@@ -373,9 +335,7 @@ final class NewsletterRepository
 		$sentCount = (int) $counts->sent_count;
 		$failedCount = (int) $counts->failed_count;
 		$openCount = (int) $counts->open_count;
-		$status = $openCount > 0
-			? self::STATUS_SENDING
-			: ($failedCount > 0 ? self::STATUS_SENT_WITH_FAILURES : self::STATUS_SENT);
+		$status = $openCount > 0 ? self::STATUS_SENDING : ($failedCount > 0 ? self::STATUS_SENT_WITH_FAILURES : self::STATUS_SENT);
 		$sentAt = $openCount === 0 ? (new Date('now', 'UTC'))->toSql() : null;
 		$update = $this->db->getQuery(true)
 			->update($this->db->quoteName('#__pungamail_newsletters'))
@@ -399,24 +359,11 @@ final class NewsletterRepository
 		$this->db->setQuery($update)->execute();
 	}
 
-	/**
-	 * Returns the frozen recipient queue for a newsletter.
-	 *
-	 * @param int $newsletterId Newsletter ID.
-	 *
-	 * @return array<int,object> Frozen queue recipients.
-	 */
+	/** @return array<int,object> */
 	public function getQueueRecipients(int $newsletterId): array
 	{
 		$query = $this->db->getQuery(true)
-			->select([
-				$this->db->quoteName('email'),
-				$this->db->quoteName('source'),
-				$this->db->quoteName('status'),
-				$this->db->quoteName('attempts'),
-				$this->db->quoteName('sent_at'),
-				$this->db->quoteName('last_error'),
-			])
+			->select(['email', 'source', 'status', 'attempts', 'sent_at', 'last_error'])
 			->from($this->db->quoteName('#__pungamail_send_queue'))
 			->where($this->db->quoteName('newsletter_id') . ' = :id')
 			->order($this->db->quoteName('email_normalized') . ' ASC')
@@ -425,14 +372,7 @@ final class NewsletterRepository
 		return $this->db->setQuery($query)->loadObjectList();
 	}
 
-	/**
-	 * Applies a Joomla record state to newsletter rows.
-	 *
-	 * @param array<int,int> $ids   Newsletter IDs.
-	 * @param int            $state Joomla record state.
-	 *
-	 * @return void
-	 */
+	/** @return void */
 	public function setState(array $ids, int $state): void
 	{
 		$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
@@ -450,16 +390,7 @@ final class NewsletterRepository
 		$this->db->setQuery($query)->execute();
 	}
 
-	/**
-	 * Permanently deletes selected newsletters that are already in the trash.
-	 *
-	 * Related queue, content-selection and group rows are removed in the same
-	 * transaction so no orphaned Punga Mail records remain.
-	 *
-	 * @param array<int,int> $ids Newsletter IDs.
-	 *
-	 * @return int Number of newsletter rows removed.
-	 */
+	/** @return int */
 	public function deleteTrashed(array $ids): int
 	{
 		$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
@@ -487,18 +418,14 @@ final class NewsletterRepository
 
 		try
 		{
-			foreach (['#__pungamail_send_queue', '#__pungamail_newsletter_items', '#__pungamail_newsletter_groups'] as $table)
+			foreach (['#__pungamail_send_queue', '#__pungamail_newsletter_items', '#__pungamail_newsletter_sources', '#__pungamail_newsletter_groups'] as $table)
 			{
-				$deleteRelated = $this->db->getQuery(true)
-					->delete($this->db->quoteName($table))
-					->whereIn($this->db->quoteName('newsletter_id'), $deleteIds);
+				$deleteRelated = $this->db->getQuery(true)->delete($this->db->quoteName($table))->whereIn($this->db->quoteName('newsletter_id'), $deleteIds);
 				$this->db->setQuery($deleteRelated)->execute();
 			}
 
-			$deleteNewsletters = $this->db->getQuery(true)
-				->delete($this->db->quoteName('#__pungamail_newsletters'))
-				->whereIn($this->db->quoteName('id'), $deleteIds);
-			$this->db->setQuery($deleteNewsletters)->execute();
+			$delete = $this->db->getQuery(true)->delete($this->db->quoteName('#__pungamail_newsletters'))->whereIn($this->db->quoteName('id'), $deleteIds);
+			$this->db->setQuery($delete)->execute();
 			$count = $this->db->getAffectedRows();
 			$this->db->transactionCommit();
 
@@ -511,29 +438,7 @@ final class NewsletterRepository
 		}
 	}
 
-	/**
-	 * Converts an article record into an absolute routed site URL.
-	 *
-	 * @param int $contentId Article ID.
-	 * @param int $categoryId Category ID.
-	 *
-	 * @return string Absolute site URL.
-	 */
-	public function articleUrl(int $contentId, int $categoryId): string
-	{
-		$link = 'index.php?option=com_content&view=article&id=' . $contentId . '&catid=' . $categoryId;
-
-		return Route::link('site', $link, false, Route::TLS_IGNORE, true);
-	}
-
-	/**
-	 * Replaces selected content rows.
-	 *
-	 * @param int $newsletterId Newsletter ID.
-	 * @param array<int,array<string,mixed>> $items Selected items.
-	 *
-	 * @return void
-	 */
+	/** @param array<int,array<string,mixed>> $items @return void */
 	private function replaceItems(int $newsletterId, array $items): void
 	{
 		$delete = $this->db->getQuery(true)
@@ -541,21 +446,22 @@ final class NewsletterRepository
 			->where($this->db->quoteName('newsletter_id') . ' = :id')
 			->bind(':id', $newsletterId, ParameterType::INTEGER);
 		$this->db->setQuery($delete)->execute();
-
 		$order = 0;
 
 		foreach ($items as $item)
 		{
-			$contentId = (int) ($item['content_id'] ?? 0);
+			$sourceKey = trim((string) ($item['source_key'] ?? ''));
+			$sourceItemId = trim((string) ($item['source_item_id'] ?? ''));
 
-			if ($contentId <= 0)
+			if ($sourceKey === '' || $sourceItemId === '')
 			{
 				continue;
 			}
 
 			$row = (object) [
 				'newsletter_id' => $newsletterId,
-				'content_id' => $contentId,
+				'source_key' => $sourceKey,
+				'source_item_id' => $sourceItemId,
 				'ordering' => $order++,
 				'title_override' => trim((string) ($item['title_override'] ?? '')) ?: null,
 				'excerpt_override' => trim((string) ($item['excerpt_override'] ?? '')) ?: null,
@@ -567,14 +473,23 @@ final class NewsletterRepository
 		}
 	}
 
-	/**
-	 * Replaces selected Joomla user groups.
-	 *
-	 * @param int $newsletterId Newsletter ID.
-	 * @param array<int,int> $groupIds Group IDs.
-	 *
-	 * @return void
-	 */
+	/** @return void */
+	private function replaceSources(int $newsletterId, array $sourceKeys): void
+	{
+		$delete = $this->db->getQuery(true)
+			->delete($this->db->quoteName('#__pungamail_newsletter_sources'))
+			->where($this->db->quoteName('newsletter_id') . ' = :id')
+			->bind(':id', $newsletterId, ParameterType::INTEGER);
+		$this->db->setQuery($delete)->execute();
+
+		foreach (array_values(array_unique(array_filter(array_map('strval', $sourceKeys)))) as $sourceKey)
+		{
+			$row = (object) ['newsletter_id' => $newsletterId, 'source_key' => $sourceKey];
+			$this->db->insertObject('#__pungamail_newsletter_sources', $row);
+		}
+	}
+
+	/** @return void */
 	private function replaceGroups(int $newsletterId, array $groupIds): void
 	{
 		$delete = $this->db->getQuery(true)
@@ -585,10 +500,7 @@ final class NewsletterRepository
 
 		foreach (array_values(array_unique(array_filter(array_map('intval', $groupIds)))) as $groupId)
 		{
-			$row = (object) [
-				'newsletter_id' => $newsletterId,
-				'group_id' => $groupId,
-			];
+			$row = (object) ['newsletter_id' => $newsletterId, 'group_id' => $groupId];
 			$this->db->insertObject('#__pungamail_newsletter_groups', $row);
 		}
 	}

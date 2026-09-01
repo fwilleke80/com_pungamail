@@ -15,6 +15,8 @@ use Joomla\CMS\Mail\Mail;
 use Joomla\CMS\Mail\MailerFactoryInterface;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Uri\Uri;
+use Joomla\Database\DatabaseInterface;
+use Joomla\Database\ParameterType;
 
 /**
  * Creates all outgoing Punga Mail messages through Joomla's configured mailer.
@@ -25,11 +27,14 @@ final class MailService
 	 * @param MailerFactoryInterface $mailerFactory Joomla mailer factory.
 	 * @param TokenService           $tokens        Token service.
 	 * @param MarkdownRenderer       $markdown      Safe Markdown renderer.
+	 * @param NewsletterRenderer     $renderer      Newsletter personalization service.
 	 */
 	public function __construct(
 		private readonly MailerFactoryInterface $mailerFactory,
 		private readonly TokenService $tokens,
-		private readonly MarkdownRenderer $markdown
+		private readonly MarkdownRenderer $markdown,
+		private readonly NewsletterRenderer $renderer,
+		private readonly DatabaseInterface $db
 	)
 	{
 	}
@@ -44,9 +49,22 @@ final class MailService
 	 */
 	public function sendNewsletter(object $newsletter, object $recipient): void
 	{
+		$recipientName = trim((string) ($recipient->recipient_name ?? ''));
+
+		if ($recipientName === '')
+		{
+			$recipientName = (string) $recipient->email;
+		}
+
+		$personalized = $this->renderer->personalize(
+			(string) $newsletter->snapshot_subject,
+			(string) $newsletter->snapshot_html,
+			(string) $newsletter->snapshot_text,
+			$recipientName
+		);
 		$unsubscribeUrl = $this->unsubscribeUrl((int) $recipient->subscriber_id);
-		$html = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, htmlspecialchars($unsubscribeUrl, ENT_QUOTES, 'UTF-8'), (string) $newsletter->snapshot_html);
-		$text = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, $unsubscribeUrl, (string) $newsletter->snapshot_text);
+		$html = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, htmlspecialchars($unsubscribeUrl, ENT_QUOTES, 'UTF-8'), $personalized['html']);
+		$text = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, $unsubscribeUrl, $personalized['text']);
 		$oneClickUrl = $this->oneClickUnsubscribeUrl((int) $recipient->subscriber_id);
 		$headers = ['List-Unsubscribe' => '<' . $oneClickUrl . '>'];
 
@@ -60,7 +78,7 @@ final class MailService
 
 		$this->sendMultipart(
 			(string) $recipient->email,
-			(string) $newsletter->snapshot_subject,
+			$personalized['subject'],
 			$html,
 			$text,
 			$headers
@@ -97,13 +115,7 @@ final class MailService
 	 */
 	public function sendConfirmation(string $email, string $token): void
 	{
-		$link = Route::link(
-			'site',
-			'index.php?option=com_pungamail&view=confirm&token=' . rawurlencode($token),
-			false,
-			Route::TLS_IGNORE,
-			true
-		);
+		$link = $this->siteLink('index.php?option=com_pungamail&view=confirm&token=' . rawurlencode($token));
 		$params = ComponentHelper::getParams('com_pungamail');
 		$siteName = (string) Factory::getApplication()->get('sitename');
 		$subjectTemplate = trim((string) $params->get('confirmation_subject', ''));
@@ -136,6 +148,24 @@ final class MailService
 	}
 
 	/**
+	 * Sends a Markdown reminder message.
+	 *
+	 * @param string $email    Recipient address.
+	 * @param string $subject  Subject.
+	 * @param string $markdown Markdown body.
+	 *
+	 * @return void
+	 */
+	public function sendReminder(string $email, string $subject, string $markdown): void
+	{
+		$htmlBody = $this->markdown->toHtml($markdown, Uri::root());
+		$textBody = $this->markdown->toText($markdown, Uri::root());
+		$html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>';
+		$html .= '<body style="font-family:Arial,Helvetica,sans-serif;color:#222;line-height:1.55">' . $htmlBody . '</body></html>';
+		$this->sendMultipart($email, $subject, $html, $textBody);
+	}
+
+	/**
 	 * Returns the visible unsubscribe page URL.
 	 *
 	 * @param int $subscriberId Subscriber ID.
@@ -147,7 +177,7 @@ final class MailService
 		$token = $this->tokens->createUnsubscribeToken($subscriberId);
 		$link = 'index.php?option=com_pungamail&view=unsubscribe&id=' . $subscriberId . '&token=' . rawurlencode($token);
 
-		return Route::link('site', $link, false, Route::TLS_IGNORE, true);
+		return $this->siteLink($link);
 	}
 
 	/**
@@ -161,6 +191,45 @@ final class MailService
 	{
 		$token = $this->tokens->createUnsubscribeToken($subscriberId);
 		$link = 'index.php?option=com_pungamail&task=subscription.oneClickUnsubscribe&id=' . $subscriberId . '&token=' . rawurlencode($token);
+
+		return $this->siteLink($link);
+	}
+
+	/**
+	 * Builds an absolute site URL anchored to the published Punga Mail
+	 * subscription menu item when one is available.
+	 *
+	 * A published hidden menu item is sufficient; this preserves Joomla's
+	 * normal SEF routing without requiring the menu item to be visible.
+	 *
+	 * @param string $link Non-SEF site route.
+	 *
+	 * @return string Absolute routed URL.
+	 */
+	private function siteLink(string $link): string
+	{
+		$clientId = 0;
+		$published = 1;
+		$componentPattern = '%option=com_pungamail%';
+		$viewPattern = '%view=subscription%';
+		$query = $this->db->getQuery(true)
+			->select($this->db->quoteName('id'))
+			->from($this->db->quoteName('#__menu'))
+			->where($this->db->quoteName('client_id') . ' = :clientId')
+			->where($this->db->quoteName('published') . ' = :published')
+			->where($this->db->quoteName('link') . ' LIKE :componentPattern')
+			->where($this->db->quoteName('link') . ' LIKE :viewPattern')
+			->order($this->db->quoteName('id') . ' ASC')
+			->bind(':clientId', $clientId, ParameterType::INTEGER)
+			->bind(':published', $published, ParameterType::INTEGER)
+			->bind(':componentPattern', $componentPattern)
+			->bind(':viewPattern', $viewPattern);
+		$itemId = (int) $this->db->setQuery($query, 0, 1)->loadResult();
+
+		if ($itemId > 0 && !str_contains($link, 'Itemid='))
+		{
+			$link .= '&Itemid=' . $itemId;
+		}
 
 		return Route::link('site', $link, false, Route::TLS_IGNORE, true);
 	}

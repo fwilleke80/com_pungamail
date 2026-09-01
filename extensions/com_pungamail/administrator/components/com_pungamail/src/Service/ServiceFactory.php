@@ -48,10 +48,28 @@ final class ServiceFactory
 		return new TokenService();
 	}
 
+	/** @return ContentTypeService */
+	public static function contentTypes(): ContentTypeService
+	{
+		return new ContentTypeService(self::database());
+	}
+
+	/** @return TemplateRepository */
+	public static function templates(): TemplateRepository
+	{
+		return new TemplateRepository(self::database());
+	}
+
+	/** @return MailStyleService */
+	public static function styles(): MailStyleService
+	{
+		return new MailStyleService();
+	}
+
 	/** @return NewsletterRenderer */
 	public static function renderer(): NewsletterRenderer
 	{
-		return new NewsletterRenderer(new MarkdownRenderer(), self::newsletters());
+		return new NewsletterRenderer(new MarkdownRenderer(), self::contentTypes(), self::styles(), self::templates(), new MailTextService());
 	}
 
 	/** @return RecipientResolver */
@@ -63,7 +81,7 @@ final class ServiceFactory
 	/** @return MailService */
 	public static function mail(): MailService
 	{
-		return new MailService(Factory::getContainer()->get(MailerFactoryInterface::class), self::tokens(), new MarkdownRenderer());
+		return new MailService(Factory::getContainer()->get(MailerFactoryInterface::class), self::tokens(), new MarkdownRenderer(), self::renderer(), self::database());
 	}
 
 	/** @return QueueService */
@@ -76,5 +94,11 @@ final class ServiceFactory
 	public static function processor(): QueueProcessor
 	{
 		return new QueueProcessor(self::database(), self::newsletters(), self::mail());
+	}
+
+	/** @return ReminderService */
+	public static function reminder(): ReminderService
+	{
+		return new ReminderService(self::database(), self::mail());
 	}
 }

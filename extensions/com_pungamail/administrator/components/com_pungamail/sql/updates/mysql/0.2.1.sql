@@ -1,0 +1,3 @@
+-- Punga Mail 0.2.1
+-- No schema changes. This migration intentionally exists so Joomla's stored
+-- database schema version advances with the component manifest version.

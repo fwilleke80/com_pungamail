@@ -40,6 +40,12 @@ $task = $data['task'];
 				<div class="text-muted small"><?php echo Text::_('COM_PUNGAMAIL_MAIL_QUEUE'); ?></div>
 				<div class="display-6"><?php echo (int) $queue['pending']; ?></div>
 				<div class="small text-muted"><?php echo Text::sprintf('COM_PUNGAMAIL_DASHBOARD_QUEUE_DETAIL', (int) $queue['processing'], (int) $queue['failed']); ?></div>
+				<form action="<?php echo Route::_('index.php?option=com_pungamail&view=dashboard'); ?>" method="post" class="mt-3">
+					<button type="submit" class="btn btn-outline-primary btn-sm"><?php echo Text::_('COM_PUNGAMAIL_PROCESS_QUEUE'); ?></button>
+					<input type="hidden" name="task" value="newsletter.processQueue">
+					<input type="hidden" name="return" value="dashboard">
+					<?php echo HTMLHelper::_('form.token'); ?>
+				</form>
 			</div></div>
 		</div>
 	</div>
@@ -49,8 +55,9 @@ $task = $data['task'];
 			<div class="card h-100">
 				<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_QUICK_ACTIONS'); ?></strong></div>
 				<div class="card-body d-flex flex-wrap gap-2 align-items-start">
-					<a class="btn btn-primary" href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletter'); ?>"><?php echo Text::_('COM_PUNGAMAIL_NEW_NEWSLETTER'); ?></a>
+					<a class="btn btn-primary" href="<?php echo Route::_(\Punga\Component\PungaMail\Administrator\Service\AdministratorRoute::newsletter()); ?>"><?php echo Text::_('COM_PUNGAMAIL_NEW_NEWSLETTER'); ?></a>
 					<a class="btn btn-outline-secondary" href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletters'); ?>"><?php echo Text::_('COM_PUNGAMAIL_NEWSLETTERS'); ?></a>
+					<a class="btn btn-outline-secondary" href="<?php echo Route::_('index.php?option=com_pungamail&view=templates'); ?>"><?php echo Text::_('COM_PUNGAMAIL_TEMPLATES'); ?></a>
 					<a class="btn btn-outline-secondary" href="<?php echo Route::_('index.php?option=com_pungamail&view=subscribers'); ?>"><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBERS'); ?></a>
 				</div>
 			</div>
@@ -60,7 +67,7 @@ $task = $data['task'];
 				<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_SCHEDULED_DELIVERY'); ?></strong></div>
 				<div class="card-body">
 				<?php if ($task === null) : ?>
-					<div class="alert alert-warning mb-0"><?php echo Text::_('COM_PUNGAMAIL_TASK_NOT_CONFIGURED'); ?></div>
+					<div class="alert alert-warning"><?php echo Text::_('COM_PUNGAMAIL_TASK_NOT_CONFIGURED'); ?></div>
 				<?php else : ?>
 					<dl class="row mb-0">
 						<dt class="col-5"><?php echo Text::_('JSTATUS'); ?></dt>
@@ -71,6 +78,7 @@ $task = $data['task'];
 						<dd class="col-7"><?php echo $task->next_execution ? HTMLHelper::_('date', $task->next_execution, Text::_('DATE_FORMAT_LC5'), 'UTC') : '—'; ?></dd>
 					</dl>
 				<?php endif; ?>
+					<div class="mt-3"><a class="btn btn-outline-primary btn-sm" href="<?php echo Route::_('index.php?option=com_scheduler&view=tasks'); ?>"><?php echo Text::_('COM_PUNGAMAIL_OPEN_SCHEDULED_TASKS'); ?></a></div>
 				</div>
 			</div>
 		</div>

@@ -4,9 +4,24 @@
 		<field name="from_name" type="text" label="COM_PUNGAMAIL_CONFIG_FROM_NAME" description="COM_PUNGAMAIL_CONFIG_FROM_NAME_DESC" />
 		<field name="from_email" type="email" label="COM_PUNGAMAIL_CONFIG_FROM_EMAIL" description="COM_PUNGAMAIL_CONFIG_FROM_EMAIL_DESC" />
 		<field name="default_user_subscribed" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_DEFAULT_USER_SUBSCRIBED" description="COM_PUNGAMAIL_CONFIG_DEFAULT_USER_SUBSCRIBED_DESC">
-			<option value="0">JNO</option>
-			<option value="1">JYES</option>
+			<option value="0">JNO</option><option value="1">JYES</option>
 		</field>
+	</fieldset>
+	<fieldset name="design" label="COM_PUNGAMAIL_CONFIG_DESIGN">
+		<field name="design_content_width" type="number" default="680" min="320" max="1200" label="COM_PUNGAMAIL_STYLE_CONTENT_WIDTH" />
+		<field name="design_outer_background" type="color" default="#f4f4f4" label="COM_PUNGAMAIL_STYLE_OUTER_BACKGROUND" />
+		<field name="design_content_background" type="color" default="#ffffff" label="COM_PUNGAMAIL_STYLE_CONTENT_BACKGROUND" />
+		<field name="design_text_color" type="color" default="#222222" label="COM_PUNGAMAIL_STYLE_TEXT_COLOR" />
+		<field name="design_heading_color" type="color" default="#111111" label="COM_PUNGAMAIL_STYLE_HEADING_COLOR" />
+		<field name="design_link_color" type="color" default="#2457a6" label="COM_PUNGAMAIL_STYLE_LINK_COLOR" />
+		<field name="design_font_family" type="text" default="Arial, Helvetica, sans-serif" label="COM_PUNGAMAIL_STYLE_FONT_FAMILY" />
+		<field name="design_font_size" type="number" default="16" min="10" max="28" label="COM_PUNGAMAIL_STYLE_FONT_SIZE" />
+		<field name="design_content_padding" type="number" default="32" min="0" max="96" label="COM_PUNGAMAIL_STYLE_CONTENT_PADDING" />
+		<field name="design_logo_url" type="text" label="COM_PUNGAMAIL_STYLE_LOGO_URL" description="COM_PUNGAMAIL_STYLE_LOGO_URL_DESC" />
+		<field name="design_logo_width" type="number" default="180" min="40" max="600" label="COM_PUNGAMAIL_STYLE_LOGO_WIDTH" />
+		<field name="design_footer_color" type="color" default="#666666" label="COM_PUNGAMAIL_STYLE_FOOTER_COLOR" />
+		<field name="mail_footer_reason" type="mailfooter" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" filter="raw" rows="6" label="COM_PUNGAMAIL_CONFIG_FOOTER_REASON" description="COM_PUNGAMAIL_CONFIG_FOOTER_REASON_DESC" />
+		<field name="design_custom_css" type="textarea" filter="raw" rows="8" label="COM_PUNGAMAIL_STYLE_CUSTOM_CSS" description="COM_PUNGAMAIL_STYLE_CUSTOM_CSS_DESC" />
 	</fieldset>
 	<fieldset name="subscription" label="COM_PUNGAMAIL_CONFIG_SUBSCRIPTION">
 		<field name="confirmation_hours" type="number" default="48" min="1" max="168" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_HOURS" description="COM_PUNGAMAIL_CONFIG_CONFIRMATION_HOURS_DESC" />
@@ -19,5 +34,15 @@
 		<field name="batch_size" type="number" default="25" min="1" max="250" label="COM_PUNGAMAIL_CONFIG_BATCH_SIZE" description="COM_PUNGAMAIL_CONFIG_BATCH_SIZE_DESC" />
 		<field name="max_attempts" type="number" default="3" min="1" max="10" label="COM_PUNGAMAIL_CONFIG_MAX_ATTEMPTS" description="COM_PUNGAMAIL_CONFIG_MAX_ATTEMPTS_DESC" />
 		<field name="retry_minutes" type="number" default="15" min="1" max="1440" label="COM_PUNGAMAIL_CONFIG_RETRY_MINUTES" description="COM_PUNGAMAIL_CONFIG_RETRY_MINUTES_DESC" />
+	</fieldset>
+	<fieldset name="reminder" label="COM_PUNGAMAIL_CONFIG_REMINDER">
+		<field name="reminder_enabled" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_REMINDER_ENABLED"><option value="0">JNO</option><option value="1">JYES</option></field>
+		<field name="reminder_days" type="number" default="30" min="1" max="3650" label="COM_PUNGAMAIL_CONFIG_REMINDER_DAYS" />
+		<field name="reminder_email" type="email" label="COM_PUNGAMAIL_CONFIG_REMINDER_EMAIL" description="COM_PUNGAMAIL_CONFIG_REMINDER_EMAIL_DESC" />
+		<field name="reminder_subject" type="text" label="COM_PUNGAMAIL_CONFIG_REMINDER_SUBJECT" />
+		<field name="reminder_markdown" type="textarea" filter="raw" rows="8" label="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN" description="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN_DESC" />
+	</fieldset>
+	<fieldset name="maintenance" label="COM_PUNGAMAIL_CONFIG_MAINTENANCE">
+		<field name="remove_tables_on_uninstall" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_REMOVE_TABLES" description="COM_PUNGAMAIL_CONFIG_REMOVE_TABLES_DESC"><option value="0">JNO</option><option value="1">JYES</option></field>
 	</fieldset>
 </config>

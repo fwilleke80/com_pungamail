@@ -14,6 +14,8 @@ namespace Punga\Component\PungaMail\Administrator\Service;
  * The renderer deliberately supports a conservative subset suitable for email
  * and escapes all raw HTML. Remote images are emitted only for HTTP(S) or
  * site-relative URLs and receive email-safe responsive inline styling.
+ * GitHub-style pipe tables are rendered with conservative inline CSS so they
+ * remain usable in common HTML mail clients.
  */
 final class MarkdownRenderer
 {
@@ -56,8 +58,9 @@ final class MarkdownRenderer
 			$listType = null;
 		};
 
-		foreach ($lines as $line)
+		for ($index = 0, $count = count($lines); $index < $count; ++$index)
 		{
+			$line = $lines[$index];
 			$trimmed = trim($line);
 
 			if ($trimmed === '')
@@ -65,6 +68,20 @@ final class MarkdownRenderer
 				$flushParagraph();
 				$closeList();
 				continue;
+			}
+
+			if ($index + 1 < $count && $this->isTableSeparator($lines[$index + 1]))
+			{
+				$headers = $this->parseTableRow($line);
+				$alignments = $this->parseTableAlignments($lines[$index + 1]);
+
+				if ($headers !== [] && count($headers) === count($alignments))
+				{
+					$flushParagraph();
+					$closeList();
+					$html[] = $this->renderTable($headers, $alignments, $lines, $index, $baseUrl);
+					continue;
+				}
 			}
 
 			if (preg_match('/^(#{1,4})\s+(.+)$/u', $trimmed, $match) === 1)
@@ -119,6 +136,9 @@ final class MarkdownRenderer
 	/**
 	 * Converts Markdown to a readable plain-text representation.
 	 *
+	 * Markdown tables remain readable tab-delimited tables, with the Markdown
+	 * separator row removed.
+	 *
 	 * @param string      $markdown Markdown source.
 	 * @param string|null $baseUrl  Site root used to expand relative URLs.
 	 *
@@ -127,6 +147,44 @@ final class MarkdownRenderer
 	public function toText(string $markdown, ?string $baseUrl = null): string
 	{
 		$text = str_replace(["\r\n", "\r"], "\n", trim($markdown));
+		$lines = explode("\n", $text);
+		$output = [];
+
+		for ($index = 0, $count = count($lines); $index < $count; ++$index)
+		{
+			$line = $lines[$index];
+
+			if ($index + 1 < $count && $this->isTableSeparator($lines[$index + 1]))
+			{
+				$headers = $this->parseTableRow($line);
+				$alignments = $this->parseTableAlignments($lines[$index + 1]);
+
+				if ($headers !== [] && count($headers) === count($alignments))
+				{
+					$output[] = implode("\t", $headers);
+					++$index;
+
+					while ($index + 1 < $count)
+					{
+						$cells = $this->parseTableRow($lines[$index + 1]);
+
+						if ($cells === [] || count($cells) !== count($headers))
+						{
+							break;
+						}
+
+						$output[] = implode("\t", $cells);
+						++$index;
+					}
+
+					continue;
+				}
+			}
+
+			$output[] = $line;
+		}
+
+		$text = implode("\n", $output);
 		$text = preg_replace('/^#{1,6}\s+/m', '', $text) ?? $text;
 		$text = preg_replace_callback(
 			'/!\[([^\]]*)\]\(([^\s)]+)\)/u',
@@ -160,6 +218,148 @@ final class MarkdownRenderer
 		) ?? $text;
 
 		return trim($text);
+	}
+
+	/**
+	 * Renders a Markdown pipe table and advances the caller index past its rows.
+	 *
+	 * @param array<int,string> $headers    Header cells.
+	 * @param array<int,string> $alignments CSS text-align values.
+	 * @param array<int,string> $lines      Full Markdown lines.
+	 * @param int               $index      Header-row index, advanced by reference.
+	 * @param string|null       $baseUrl    Site root used to expand relative URLs.
+	 *
+	 * @return string Safe HTML table.
+	 */
+	private function renderTable(array $headers, array $alignments, array $lines, int &$index, ?string $baseUrl): string
+	{
+		$border = '1px solid #d9d9d9';
+		$cellStyle = 'padding:8px 10px;border:' . $border . ';vertical-align:top;';
+		$html = '<table style="width:100%;border-collapse:collapse;border-spacing:0;margin:0 0 20px">';
+		$html .= '<thead><tr>';
+
+		foreach ($headers as $column => $header)
+		{
+			$html .= '<th scope="col" style="' . $cellStyle . 'text-align:' . $alignments[$column] . ';font-weight:bold">' . $this->inline($header, $baseUrl) . '</th>';
+		}
+
+		$html .= '</tr></thead><tbody>';
+		++$index;
+		$count = count($lines);
+
+		while ($index + 1 < $count)
+		{
+			$cells = $this->parseTableRow($lines[$index + 1]);
+
+			if ($cells === [] || count($cells) !== count($headers))
+			{
+				break;
+			}
+
+			++$index;
+			$html .= '<tr>';
+
+			foreach ($cells as $column => $cell)
+			{
+				$html .= '<td style="' . $cellStyle . 'text-align:' . $alignments[$column] . '">' . $this->inline($cell, $baseUrl) . '</td>';
+			}
+
+			$html .= '</tr>';
+		}
+
+		$html .= '</tbody></table>';
+
+		return $html;
+	}
+
+	/**
+	 * Detects a GitHub-style Markdown table separator row.
+	 *
+	 * @param string $line Candidate separator line.
+	 *
+	 * @return bool True when every cell is a valid separator cell.
+	 */
+	private function isTableSeparator(string $line): bool
+	{
+		$cells = $this->parseTableRow($line);
+
+		if ($cells === [])
+		{
+			return false;
+		}
+
+		foreach ($cells as $cell)
+		{
+			if (preg_match('/^:?-{3,}:?$/', trim($cell)) !== 1)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Parses table column alignments from the separator row.
+	 *
+	 * @param string $line Separator row.
+	 *
+	 * @return array<int,string> CSS text-align values.
+	 */
+	private function parseTableAlignments(string $line): array
+	{
+		$alignments = [];
+
+		foreach ($this->parseTableRow($line) as $cell)
+		{
+			$cell = trim($cell);
+			$left = str_starts_with($cell, ':');
+			$right = str_ends_with($cell, ':');
+			$alignments[] = $left && $right ? 'center' : ($right ? 'right' : 'left');
+		}
+
+		return $alignments;
+	}
+
+	/**
+	 * Parses one Markdown pipe-table row.
+	 *
+	 * Escaped pipes (\|) remain part of the cell instead of splitting columns.
+	 *
+	 * @param string $line Markdown table row.
+	 *
+	 * @return array<int,string> Cell values, or an empty array when no table row exists.
+	 */
+	private function parseTableRow(string $line): array
+	{
+		$line = trim($line);
+
+		if (!str_contains($line, '|'))
+		{
+			return [];
+		}
+
+		if (str_starts_with($line, '|'))
+		{
+			$line = substr($line, 1);
+		}
+
+		if (str_ends_with($line, '|') && !str_ends_with($line, '\\|'))
+		{
+			$line = substr($line, 0, -1);
+		}
+
+		$cells = preg_split('/(?<!\\\\)\|/', $line);
+
+		if (!is_array($cells) || $cells === [])
+		{
+			return [];
+		}
+
+		return array_map(
+			static fn (string $cell): string => trim(str_replace('\\|', '|', $cell)),
+			$cells
+		);
 	}
 
 	/**

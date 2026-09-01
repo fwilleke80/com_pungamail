@@ -1,118 +1,173 @@
 # Punga Mail
 
-Punga Mail is a focused newsletter package for Joomla! 6. It combines Joomla users and external double-opt-in subscribers, lets editors compose newsletters in Markdown, curates newly published Joomla articles, and sends through Joomla's configured mail transport using a persistent queue.
+Punga Mail is a focused, self-hosted newsletter extension for **Joomla! 6**.
 
-Version: **0.1.1**
+Version: **0.2.5**
 
-## Package contents
+Its core workflow is deliberately small:
 
-- `com_pungamail` — dashboard, subscriber management, newsletter composition, confirmation/unsubscribe endpoints, rendering and send queue.
-- `mod_pungamail_signup` — frontend double-opt-in signup and logged-in subscription-status module.
-- `plg_user_pungamail` — adds the newsletter preference to Joomla user profile forms.
-- `plg_task_pungamail` — Joomla Scheduled Tasks routine for processing the persistent send queue.
+**subscribe → confirm → compose → curate new Joomla content → preview → queue → send → unsubscribe**
 
-## 0.1.1 feature set
+Punga Mail uses Joomla's users, user groups, content-type registry, routing, mailer, Scheduled Tasks, administrator list conventions, language system, and extension update/migration infrastructure rather than recreating those subsystems.
 
-- Joomla-standard administrator list views for Newsletters and Subscribers with Search Tools, sortable columns and pagination.
-- Newsletter Trash, Restore and permanent-delete workflow using a Joomla record `state` independent from delivery status.
-- Punga Mail Dashboard with installed version, subscriber/newsletter/queue counts and Scheduled Task status.
-- English and German (`en-GB`, `de-DE`) translations for component, module and plugins, including public subscription pages.
-- External subscriptions with double opt-in and throttled confirmation requests.
-- Joomla-user subscription/profile opt-out.
-- Persistent suppression records for explicit opt-outs.
-- Configurable double-opt-in confirmation subject and Markdown body.
-- Confirmation placeholders: `{confirmation_url}`, `{site_name}`, `{email}`.
-- Newsletter drafts written in safe Markdown.
-- Markdown images using HTTP(S), root-relative or site-relative URLs; images remain remotely hosted.
-- Newsletter placeholders: `{new_content}` and `{site_name}`.
-- `{new_content}` inserts selected Joomla article entries exactly at the placeholder position and never adds an automatic heading.
-- Editable **Content published since** date, initially derived from the preceding sent newsletter cutoff.
-- Selection/order of published `com_content` articles plus newsletter-specific title/excerpt overrides.
-- Joomla user-group targeting in addition to confirmed subscribers.
-- Exact recipient preflight and deduplication by normalized email address.
-- Rendered HTML and plain-text newsletter preview before sending.
-- Test send to the current administrator.
-- HTML + plain-text multipart mail through Joomla's configured mailer (SMTP when Joomla is configured for SMTP).
-- Immutable send snapshots.
-- Persistent, idempotent queue with retry metadata and stale-worker recovery.
-- Joomla Scheduled Tasks integration plus manual queue processing.
-- RFC 8058 `List-Unsubscribe` / one-click unsubscribe support when the endpoint is HTTPS.
-- Human-facing unsubscribe page requiring explicit POST confirmation.
-- Subscriber audit events.
+## Highlights
 
-## Installation
+### Subscribers
 
-Install `pkg_pungamail_v0-1-1.zip` through **System → Install → Extensions**.
+- Joomla users and external email-only subscribers share one canonical subscription model.
+- Public signup module with double opt-in.
+- Configurable Markdown confirmation mail.
+- Logged-in users can manage the same subscription state from their profile.
+- Persistent suppressions prevent an unsubscribed address from silently re-entering a recipient set through Joomla user-group targeting.
+- Human unsubscribe page plus RFC 8058 one-click unsubscribe support where HTTPS permits it.
+- English and German UI.
 
-The package enables the Punga Mail user and task plugins automatically. The signup module is installed but not published; publish it in the desired site module position.
+### Newsletter authoring
 
-Open **Components → Punga Mail → Options** and review sender identity, subscription defaults, confirmation mail and queue settings.
+- Markdown body with headings, emphasis, lists, links, images and GitHub-style pipe tables.
+- HTML and plain-text alternatives are generated from the same source.
+- Markdown images can reference HTTP(S), root-relative or site-relative images hosted on the Joomla site.
+- `{new_content}` inserts the selected content items exactly where the author places it; Punga Mail does not append content automatically or generate a heading.
+- `{recipient}` inserts the recipient’s Joomla display name for registered users and falls back to the email address for external subscribers. Backend previews use the currently logged-in administrator.
+- Newsletter and template editors use Joomla's standard top administrator toolbar for Save, Save & Close, Preview, Cancel, and newsletter delivery actions.
+- Rendered HTML/text preview and immediate test mail before queueing.
+- Per-item title and excerpt overrides do not modify the original content item.
 
-For unattended delivery, create and enable a Joomla Scheduled Task of type **Punga Mail — Process send queue**. Punga Mail does not require its own cron endpoint; it hooks into Joomla's scheduler. Your server still needs to execute Joomla Scheduled Tasks by whatever mechanism your Joomla installation uses.
+### Joomla registered content types
 
-## Newsletter Markdown
+The **New content since …** picker is not limited to `com_content` articles. Punga Mail reads Joomla's registered content-type metadata and offers usable types as selectable sources.
 
-The editor intentionally supports a conservative, email-oriented subset:
+This keeps integrations Joomla-native: a correctly registered third-party content type normally requires **no Punga Mail-specific code**. Punga Mail reads the registered table/field mapping directly and does not depend on Joomla's deprecated UCM storage classes. If a future extension proves impossible to consume from its registered metadata, a narrowly scoped fallback integration can be considered then; it is not part of the normal 0.2.0 architecture.
 
-- headings
-- paragraphs
-- bold and italic text
-- links
-- ordered and unordered lists
-- images
+The newsletter editor provides:
 
-Raw HTML is escaped.
+- editable **Content published since** date;
+- selectable registered content types;
+- client-side search;
+- compact scrollable candidate list;
+- selection count and per-item metadata;
+- ordering and newsletter-local title/excerpt overrides.
 
-Example:
+### Templates
 
-```markdown
-# September news
+0.2.0 adds reusable newsletter templates:
 
-Here is what changed this month.
+- standard Joomla Templates list with Search Tools, sorting, pagination, Trash/Restore/Delete;
+- default subject and Markdown body;
+- the same placeholders/images/rendering model as newsletters;
+- template-specific mail-style overrides;
+- rendered preview;
+- applying a template **copies** its subject/body/style into the newsletter, so later template edits cannot change an existing draft or sent newsletter.
 
-![Courtyard](https://example.com/images/courtyard.jpg)
+### Administrator navigation
 
-## New on the website
+Secondary Punga Mail screens preserve their owning Joomla administrator submenu context. Opening a newsletter/template editor, preview or preflight page therefore keeps **Components → Punga Mail → Newsletters/Templates** expanded and selected instead of collapsing the sidebar.
 
-{new_content}
+### Mail design
 
-Best wishes,
-The team
-```
+Component Options define the base mail design, including dimensions, backgrounds, typography, links, logo, padding, footer and optional advanced CSS. The footer reason text is a configurable Markdown field; when no custom value is stored, it uses the frontend/Website language string `COM_PUNGAMAIL_MAIL_FOOTER_REASON`.
 
-`{new_content}` must be placed on its own line. Selected Joomla articles are not appended when the placeholder is absent.
+Templates can override individual design values, and newsletters can override them again. Blank override fields mean **inherit**. The inheritance order is:
 
-## Development
+**Component defaults → Template overrides → Newsletter overrides**
 
-The source archive is the canonical Git-ready project tree. Generated installer archives are excluded from it.
+Punga Mail emits conservative email-safe inline styles as the reliable baseline. Optional custom CSS is additive and should be considered an enhancement because CSS support varies between mail clients. Subscriber-facing reusable mail strings (`COM_PUNGAMAIL_MAIL_FOOTER_REASON`, `COM_PUNGAMAIL_MAIL_UNSUBSCRIBE`, `COM_PUNGAMAIL_MAIL_READ_MORE`) live in the Website language catalog and Website language overrides are honored even when rendering occurs in the administrator or Scheduled Tasks application.
 
-Requirements:
+### Queue and Scheduled Tasks
 
-- Python 3.10+
-- PHP CLI for the full lint pass (optional for building, required by the release validation used for official builds)
+Test messages are sent synchronously through Joomla's configured mailer. Real newsletters are frozen into an immutable recipient/message snapshot and placed into the persistent queue.
 
-Build:
+Punga Mail therefore uses whatever mail transport Joomla is configured to use, including Joomla SMTP settings; it does not maintain a second SMTP configuration or call PHP `mail()` directly.
+
+For unattended delivery create and enable the Joomla Scheduled Task:
+
+**Punga Mail — Process send queue**
+
+The Dashboard links directly to Joomla's Scheduled Tasks manager and provides a **Process queue now** diagnostic/maintenance action. The Newsletters list deliberately does not expose that button because normal delivery is handled by **Check recipients & send** plus the Scheduled Task. Queue processing is batch-based, retryable, stale-worker recoverable, and protected by database-level recipient uniqueness plus atomic worker claiming.
+
+### Optional newsletter reminder
+
+Component Options can enable a reminder when the last successfully sent newsletter is older than a configured number of days. Create a Joomla Scheduled Task of type:
+
+**Punga Mail — Newsletter reminder**
+
+Running it daily is appropriate. Punga Mail records one reminder per sent-newsletter cycle, so repeatedly executing the task after the threshold does not send a daily reminder flood.
+
+### SEF frontend URLs
+
+0.2.0 adds a public **Newsletter subscription** menu-item type and a component router.
+
+For clean confirmation/unsubscribe/status URLs:
+
+1. Create a Joomla menu item of type **Punga Mail → Newsletter subscription**.
+2. Keep the item **Published**.
+3. It may be hidden from the visible menu; Punga Mail can still use it as its SEF routing anchor.
+
+The subscription landing page is useful on its own and also anchors confirmation, unsubscribe and status routes. Mail link generation explicitly prefers a published Punga Mail subscription menu item when available.
+
+## Installation and update
+
+Install `pkg_pungamail_v0-2-5.zip` through **System → Install → Extensions**.
+
+The package contains:
+
+- `com_pungamail`
+- `mod_pungamail_signup`
+- `plg_user_pungamail`
+- `plg_task_pungamail`
+
+The user and task plugins are enabled automatically after installation/update.
+
+Updating from earlier releases uses Joomla's versioned SQL migration chain. Released migration files remain immutable. 0.2.1 contains a no-op version-marker migration; 0.2.2 adds the per-recipient display-name snapshot used by `{recipient}`; 0.2.4 contains the administrator-UI bugfix version marker; 0.2.5 adds a no-op version marker for the mail-language/footer configuration update.
+
+## Uninstall/data policy
+
+By default, uninstalling Punga Mail **preserves its database tables and data**.
+
+Component Options → **Maintenance / Data** contains:
+
+**Uninstall: Remove database tables**
+
+The default is **No**. Set it to **Yes** only when you explicitly want uninstalling the package to destroy Punga Mail subscribers, suppressions, templates, newsletters, queue/history and audit data.
+
+The source tree also contains `sql/purge.mysql.sql` for deliberate manual cleanup.
+
+## Database and engineering policy
+
+Punga Mail 0.2.5 retains the same nine-table model introduced in 0.2.0 and the `recipient_name` send-queue snapshot added in 0.2.2. Important design rules include:
+
+- explicit indexes and uniqueness constraints;
+- UTC application timestamps;
+- separate Joomla record state and newsletter delivery status;
+- `(newsletter_id, source_key, source_item_id)` identity for selected content;
+- `(newsletter_id, email_normalized)` database-level queue idempotency barrier;
+- no hidden runtime schema migrations;
+- append-only versioned SQL migration history;
+- immutable send snapshots after queueing, including the resolved recipient display name;
+- no cross-extension SQL foreign keys.
+
+See [`docs/DATABASE.md`](docs/DATABASE.md) for details and [`docs/CONCEPT.md`](docs/CONCEPT.md) for the product architecture/roadmap.
+
+## Building
+
+The canonical source tree contains the complete project. Generated release files live in `dist/` and are not part of the Git-oriented source archive.
+
+Requirements for local validation/build:
+
+- Python 3
+- PHP CLI for PHP syntax linting
+
+Run:
 
 ```bash
+python3 tools/check.py
 python3 build.py
 ```
 
-Outputs are written to `dist/`.
+`build.py` runs the release checks first and produces:
 
-## Database and migrations
-
-See [`docs/DATABASE.md`](docs/DATABASE.md). Important rules:
-
-1. Runtime PHP never mutates schema.
-2. `install.mysql.sql` always represents the newest fresh-install schema.
-3. Released migrations are immutable.
-4. Every schema-changing release adds a versioned transition under `sql/updates/mysql/`.
-5. Queue idempotency and suppression semantics are enforced at the database boundary where appropriate.
-6. Uninstall currently preserves Punga Mail data; `sql/purge.mysql.sql` is the explicit manual destructive path.
-
-## Concept and roadmap
-
-See [`docs/CONCEPT.md`](docs/CONCEPT.md) for implemented functionality, workflows, architectural decisions, next-update plans and non-goals.
+- `dist/pkg_pungamail_v0-2-5.zip` — Joomla installer package
+- `dist/pungamail_v0-2-5_source.zip` — complete Git-ready source tree
 
 ## License
 

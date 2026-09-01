@@ -1,7 +1,9 @@
 DROP TABLE IF EXISTS `#__pungamail_events`;
 DROP TABLE IF EXISTS `#__pungamail_send_queue`;
 DROP TABLE IF EXISTS `#__pungamail_newsletter_groups`;
+DROP TABLE IF EXISTS `#__pungamail_newsletter_sources`;
 DROP TABLE IF EXISTS `#__pungamail_newsletter_items`;
 DROP TABLE IF EXISTS `#__pungamail_newsletters`;
+DROP TABLE IF EXISTS `#__pungamail_templates`;
 DROP TABLE IF EXISTS `#__pungamail_suppressions`;
 DROP TABLE IF EXISTS `#__pungamail_subscribers`;

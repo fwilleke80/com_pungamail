@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+	<layout title="COM_PUNGAMAIL_SUBSCRIPTION_MENU_TITLE" option="COM_PUNGAMAIL_SUBSCRIPTION_MENU_TITLE">
+		<message><![CDATA[COM_PUNGAMAIL_SUBSCRIPTION_MENU_DESC]]></message>
+	</layout>
+</metadata>
