@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <extension type="module" client="site" method="upgrade">
 	<name>MOD_PUNGAMAIL_SIGNUP</name>
-	<version>0.2.5</version>
+	<version>0.3.2</version>
 	<creationDate>2026-09-02</creationDate>
 	<author>Punga</author>
 	<license>MIT License</license>
@@ -18,6 +18,7 @@
 			<fieldset name="basic">
 				<field name="intro" type="textarea" label="MOD_PUNGAMAIL_SIGNUP_INTRO" description="MOD_PUNGAMAIL_SIGNUP_INTRO_DESC" />
 				<field name="button_label" type="text" label="MOD_PUNGAMAIL_SIGNUP_BUTTON_LABEL" description="MOD_PUNGAMAIL_SIGNUP_BUTTON_LABEL_DESC" />
+				<field name="topic_ids" type="sql" multiple="true" layout="joomla.form.field.list-fancy-select" query="SELECT id AS value, title AS text FROM #__pungamail_topics WHERE state = 1 ORDER BY ordering, title" key_field="value" value_field="text" label="MOD_PUNGAMAIL_SIGNUP_TOPICS" description="MOD_PUNGAMAIL_SIGNUP_TOPICS_DESC" />
 			</fieldset>
 		</fields>
 	</config>

@@ -254,12 +254,16 @@ final class SubscriberRepository
 	 * @param int    $userId     Joomla user ID.
 	 * @param string $email      User email.
 	 * @param bool   $subscribed Requested state.
+	 * @param string $recipientName Joomla display name, when known.
+	 * @param string $eventSource Audit-event source prefix.
 	 *
 	 * @return int Subscriber ID.
 	 */
-	public function setUserPreference(int $userId, string $email, bool $subscribed): int
+	public function setUserPreference(int $userId, string $email, bool $subscribed, string $recipientName = '', string $eventSource = 'profile'): int
 	{
 		$normalized = Address::normalize($email);
+		$recipientName = trim($recipientName);
+		$eventSource = $eventSource === 'administrator' ? 'administrator' : 'profile';
 		$now = (new Date('now', 'UTC'))->toSql();
 		$subscriber = $this->reconcileUserSubscriber($userId, $email);
 		$status = $subscribed ? self::STATUS_SUBSCRIBED : self::STATUS_UNSUBSCRIBED;
@@ -269,6 +273,7 @@ final class SubscriberRepository
 			$row = (object) [
 				'user_id' => $userId,
 				'email' => trim($email),
+				'recipient_name' => $recipientName,
 				'email_normalized' => $normalized,
 				'status' => $status,
 				'source' => 'user',
@@ -291,6 +296,7 @@ final class SubscriberRepository
 				->set($this->db->quoteName('user_id') . ' = :userId')
 				->set($this->db->quoteName('email') . ' = :email')
 				->set($this->db->quoteName('email_normalized') . ' = :normalized')
+				->set($this->db->quoteName('recipient_name') . ' = :recipientName')
 				->set($this->db->quoteName('status') . ' = :status')
 				->set($this->db->quoteName('source') . ' = ' . $this->db->quote('user'))
 				->set($this->db->quoteName('confirmation_token_hash') . ' = NULL')
@@ -302,6 +308,7 @@ final class SubscriberRepository
 				->bind(':userId', $userId, ParameterType::INTEGER)
 				->bind(':email', $email)
 				->bind(':normalized', $normalized)
+				->bind(':recipientName', $recipientName)
 				->bind(':status', $status, ParameterType::INTEGER)
 				->bind(':modified', $now)
 				->bind(':id', $id, ParameterType::INTEGER);
@@ -321,13 +328,91 @@ final class SubscriberRepository
 		if ($subscribed)
 		{
 			$this->removeSuppression($normalized);
-			$this->recordEvent($id, 'profile_subscribed');
+			$this->recordEvent($id, $eventSource . '_subscribed');
 		}
 		else
 		{
 			$this->suppress($id, $normalized, 'unsubscribed');
-			$this->recordEvent($id, 'profile_unsubscribed');
+			$this->recordEvent($id, $eventSource . '_unsubscribed');
 		}
+
+		return $id;
+	}
+
+
+	/**
+	 * Adds or reactivates an external subscriber from the administrator UI.
+	 *
+	 * This is an explicit privileged action and therefore creates an active
+	 * subscription immediately instead of starting the public double-opt-in flow.
+	 * Any existing suppression for the address is removed deliberately.
+	 *
+	 * @param string $email Email address to subscribe.
+	 *
+	 * @return int Subscriber ID.
+	 */
+	public function addAdministratorExternal(string $email): int
+	{
+		$email = trim($email);
+
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+		{
+			throw new \InvalidArgumentException('Invalid email address.');
+		}
+
+		$normalized = Address::normalize($email);
+		$now = (new Date('now', 'UTC'))->toSql();
+		$subscriber = $this->findByEmail($email);
+
+		if ($subscriber === null)
+		{
+			$row = (object) [
+				'user_id' => null,
+				'email' => $email,
+				'recipient_name' => '',
+				'email_normalized' => $normalized,
+				'status' => self::STATUS_SUBSCRIBED,
+				'source' => 'administrator',
+				'language' => null,
+				'confirmation_token_hash' => null,
+				'confirmation_expires' => null,
+				'confirmed_at' => $now,
+				'unsubscribed_at' => null,
+				'created' => $now,
+				'modified' => $now,
+			];
+			$this->db->insertObject('#__pungamail_subscribers', $row, 'id');
+			$id = (int) $row->id;
+		}
+		else
+		{
+			$id = (int) $subscriber->id;
+			$status = self::STATUS_SUBSCRIBED;
+			$source = $subscriber->user_id !== null ? 'user' : 'administrator';
+			$query = $this->db->getQuery(true)
+				->update($this->db->quoteName('#__pungamail_subscribers'))
+				->set($this->db->quoteName('email') . ' = :email')
+				->set($this->db->quoteName('email_normalized') . ' = :normalized')
+				->set($this->db->quoteName('status') . ' = :status')
+				->set($this->db->quoteName('source') . ' = :source')
+				->set($this->db->quoteName('confirmation_token_hash') . ' = NULL')
+				->set($this->db->quoteName('confirmation_expires') . ' = NULL')
+				->set($this->db->quoteName('confirmed_at') . ' = :confirmedAt')
+				->set($this->db->quoteName('unsubscribed_at') . ' = NULL')
+				->set($this->db->quoteName('modified') . ' = :modified')
+				->where($this->db->quoteName('id') . ' = :id')
+				->bind(':email', $email)
+				->bind(':normalized', $normalized)
+				->bind(':status', $status, ParameterType::INTEGER)
+				->bind(':source', $source)
+				->bind(':confirmedAt', $now)
+				->bind(':modified', $now)
+				->bind(':id', $id, ParameterType::INTEGER);
+			$this->db->setQuery($query)->execute();
+		}
+
+		$this->removeSuppression($normalized);
+		$this->recordEvent($id, 'administrator_subscribed');
 
 		return $id;
 	}
@@ -605,6 +690,7 @@ final class SubscriberRepository
 		$row = (object) [
 			'subscriber_id' => $subscriberId,
 			'event_type' => $eventType,
+			'newsletter_id' => isset($metadata['newsletter_id']) ? (int) $metadata['newsletter_id'] : null,
 			'ip_address' => $ipAddress !== '' ? $ipAddress : null,
 			'user_agent' => $userAgent !== '' ? mb_substr((string) $userAgent, 0, 512) : null,
 			'metadata' => $metadata !== [] ? json_encode($metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null,
@@ -622,7 +708,7 @@ final class SubscriberRepository
 	 *
 	 * @return void
 	 */
-	private function suppress(?int $subscriberId, string $normalizedEmail, string $reason): void
+	public function suppress(?int $subscriberId, string $normalizedEmail, string $reason): void
 	{
 		$this->removeSuppression($normalizedEmail);
 		$row = (object) [
@@ -641,12 +727,71 @@ final class SubscriberRepository
 	 *
 	 * @return void
 	 */
-	private function removeSuppression(string $normalizedEmail): void
+	public function removeSuppression(string $normalizedEmail): void
 	{
 		$query = $this->db->getQuery(true)
 			->delete($this->db->quoteName('#__pungamail_suppressions'))
 			->where($this->db->quoteName('email_normalized') . ' = :email')
 			->bind(':email', $normalizedEmail);
+		$this->db->setQuery($query)->execute();
+	}
+
+	/**
+	 * Clears bounce-origin suppression without reactivating a global unsubscribe.
+	 * Bounce history is retained; only counters and the current bounce barrier reset.
+	 *
+	 * @return bool True when a bounce suppression was cleared.
+	 */
+	public function clearBounceSuppression(int $subscriberId): bool
+	{
+		$subscriber = $this->findById($subscriberId);
+
+		if ($subscriber === null)
+		{
+			return false;
+		}
+
+		$normalized = (string) $subscriber->email_normalized;
+		$query = $this->db->getQuery(true)
+			->select($this->db->quoteName('reason'))
+			->from($this->db->quoteName('#__pungamail_suppressions'))
+			->where($this->db->quoteName('email_normalized') . ' = :email')
+			->bind(':email', $normalized);
+		$reason = (string) $this->db->setQuery($query)->loadResult();
+
+		if (!in_array($reason, ['hard-bounce', 'soft-bounce-threshold'], true))
+		{
+			return false;
+		}
+
+		$this->removeSuppression($normalized);
+		$now = (new Date('now', 'UTC'))->toSql();
+		$update = $this->db->getQuery(true)
+			->update($this->db->quoteName('#__pungamail_subscribers'))
+			->set($this->db->quoteName('soft_bounce_count') . ' = 0')
+			->set($this->db->quoteName('modified') . ' = :modified')
+			->where($this->db->quoteName('id') . ' = :id')
+			->bind(':modified', $now)
+			->bind(':id', $subscriberId, ParameterType::INTEGER);
+		$this->db->setQuery($update)->execute();
+		$this->recordEvent($subscriberId, 'bounce_suppression_cleared');
+
+		return true;
+	}
+
+	/** Updates the optional recipient display name without changing consent state. */
+	public function updateRecipientName(int $subscriberId, string $name): void
+	{
+		$name = trim($name);
+		$now = (new Date('now', 'UTC'))->toSql();
+		$query = $this->db->getQuery(true)
+			->update($this->db->quoteName('#__pungamail_subscribers'))
+			->set($this->db->quoteName('recipient_name') . ' = :recipientName')
+			->set($this->db->quoteName('modified') . ' = :modified')
+			->where($this->db->quoteName('id') . ' = :id')
+			->bind(':recipientName', $name)
+			->bind(':modified', $now)
+			->bind(':id', $subscriberId, ParameterType::INTEGER);
 		$this->db->setQuery($query)->execute();
 	}
 }

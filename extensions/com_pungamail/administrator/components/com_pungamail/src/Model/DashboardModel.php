@@ -23,12 +23,21 @@ final class DashboardModel extends BaseDatabaseModel
 	 */
 	public function getData(): array
 	{
+		$tasks = [
+			'queue' => $this->getSchedulerTask('pungamail.process_queue'),
+			'scheduled' => $this->getSchedulerTask('pungamail.scheduled_sends'),
+			'digests' => $this->getSchedulerTask('pungamail.generate_digests'),
+			'bounces' => $this->getSchedulerTask('pungamail.process_bounces'),
+		];
+
 		return [
 			'version' => $this->getVersion(),
 			'subscribers' => $this->getSubscriberCounts(),
 			'queue' => $this->getQueueCounts(),
 			'newsletters' => $this->getNewsletterCounts(),
-			'task' => $this->getSchedulerTask(),
+			'task' => $tasks['queue'],
+			'tasks' => $tasks,
+			'automation' => $this->getAutomationNeeds(),
 		];
 	}
 
@@ -47,7 +56,7 @@ final class DashboardModel extends BaseDatabaseModel
 			->bind(':element', $element);
 		$manifest = json_decode((string) $db->setQuery($query)->loadResult(), true);
 
-		return is_array($manifest) && isset($manifest['version']) ? (string) $manifest['version'] : '0.2.5';
+		return is_array($manifest) && isset($manifest['version']) ? (string) $manifest['version'] : '0.3.2';
 	}
 
 	/** @return array<string,int> */
@@ -121,14 +130,15 @@ final class DashboardModel extends BaseDatabaseModel
 	}
 
 	/**
-	 * Returns the configured Joomla Scheduled Task for the Punga Mail worker.
+	 * Returns the configured Joomla Scheduled Task for a Punga Mail routine.
+	 *
+	 * @param string $type Joomla scheduler task type.
 	 *
 	 * @return object|null Task row, or null when no task has been configured.
 	 */
-	private function getSchedulerTask(): ?object
+	private function getSchedulerTask(string $type): ?object
 	{
 		$db = $this->getDatabase();
-		$type = 'pungamail.process_queue';
 
 		try
 		{
@@ -143,6 +153,7 @@ final class DashboardModel extends BaseDatabaseModel
 				])
 				->from($db->quoteName('#__scheduler_tasks'))
 				->where($db->quoteName('type') . ' = :type')
+				->order($db->quoteName('state') . ' DESC')
 				->order($db->quoteName('id') . ' ASC')
 				->bind(':type', $type)
 				->setLimit(1);
@@ -153,5 +164,73 @@ final class DashboardModel extends BaseDatabaseModel
 		{
 			return null;
 		}
+	}
+
+	/**
+	 * Returns counts that determine which optional task warnings are relevant.
+	 *
+	 * @return array{digests:int,scheduled:int,bounce_configured:bool}
+	 */
+	private function getAutomationNeeds(): array
+	{
+		$db = $this->getDatabase();
+		$digestState = 1;
+		$scheduledStatus = 5;
+		$digests = 0;
+		$scheduled = 0;
+		$mailboxHost = '';
+
+		try
+		{
+			$digests = (int) $db->setQuery(
+				$db->getQuery(true)
+					->select('COUNT(*)')
+					->from($db->quoteName('#__pungamail_digests'))
+					->where($db->quoteName('state') . ' = :digestState')
+					->bind(':digestState', $digestState, ParameterType::INTEGER)
+			)->loadResult();
+		}
+		catch (\Throwable)
+		{
+			// Keep the Dashboard usable if a site has not completed its schema update.
+		}
+
+		try
+		{
+			$scheduled = (int) $db->setQuery(
+				$db->getQuery(true)
+					->select('COUNT(*)')
+					->from($db->quoteName('#__pungamail_newsletters'))
+					->where($db->quoteName('state') . ' <> -2')
+					->where($db->quoteName('status') . ' = :scheduledStatus')
+					->bind(':scheduledStatus', $scheduledStatus, ParameterType::INTEGER)
+			)->loadResult();
+		}
+		catch (\Throwable)
+		{
+			// The primary Dashboard metrics remain more useful than a fatal page.
+		}
+
+		try
+		{
+			$mailboxId = 1;
+			$mailboxHost = (string) $db->setQuery(
+				$db->getQuery(true)
+					->select($db->quoteName('bounce_host'))
+					->from($db->quoteName('#__pungamail_mail_settings'))
+					->where($db->quoteName('id') . ' = :mailboxId')
+					->bind(':mailboxId', $mailboxId, ParameterType::INTEGER)
+			)->loadResult();
+		}
+		catch (\Throwable)
+		{
+			// Mailbox warnings are optional when the 0.3 schema is unavailable.
+		}
+
+		return [
+			'digests' => $digests,
+			'scheduled' => $scheduled,
+			'bounce_configured' => trim($mailboxHost) !== '',
+		];
 	}
 }

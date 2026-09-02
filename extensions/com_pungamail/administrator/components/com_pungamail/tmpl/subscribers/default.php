@@ -31,6 +31,7 @@ $statusLabels = [
 					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_SUBSCRIPTION_STATUS'), 's.status', $listDirn, $listOrder); ?></th>
 					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_CONFIRMED'), 's.confirmed_at', $listDirn, $listOrder); ?></th>
 					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_SUPPRESSED'), 'x.reason', $listDirn, $listOrder); ?></th>
+					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_BOUNCES'), 's.bounce_count', $listDirn, $listOrder); ?></th>
 					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('JDATE'), 's.created', $listDirn, $listOrder); ?></th>
 					<th scope="col" class="w-3 text-center"><?php echo HTMLHelper::_('searchtools.sort', Text::_('JGRID_HEADING_ID'), 's.id', $listDirn, $listOrder); ?></th>
 				</tr>
@@ -46,7 +47,7 @@ $statusLabels = [
 						<?php endif; ?>
 					</th>
 					<td><?php echo htmlspecialchars((string) $item->source, ENT_QUOTES, 'UTF-8'); ?></td>
-					<td><?php echo htmlspecialchars($statusLabels[(int) $item->status] ?? Text::_('COM_PUNGAMAIL_STATUS_UNKNOWN'), ENT_QUOTES, 'UTF-8'); ?></td>
+					<td><?php if ($item->suppression_reason) : ?><span class="badge bg-danger"><?php echo Text::_(in_array((string) $item->suppression_reason, ['hard-bounce', 'soft-bounce-threshold'], true) ? 'COM_PUNGAMAIL_STATUS_BOUNCED' : 'COM_PUNGAMAIL_STATUS_SUPPRESSED'); ?></span><?php elseif ((int) $item->status === SubscriberRepository::STATUS_UNSUBSCRIBED) : ?><span class="badge bg-secondary"><?php echo Text::_('COM_PUNGAMAIL_STATUS_UNSUBSCRIBED'); ?></span><?php elseif ((int) $item->status === SubscriberRepository::STATUS_SUBSCRIBED) : ?><span class="badge bg-success"><?php echo Text::_('COM_PUNGAMAIL_STATUS_ACTIVE'); ?></span><?php else : ?><?php echo htmlspecialchars($statusLabels[(int) $item->status] ?? Text::_('COM_PUNGAMAIL_STATUS_UNKNOWN'), ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></td>
 					<td><?php echo $item->confirmed_at ? HTMLHelper::_('date', $item->confirmed_at, Text::_('DATE_FORMAT_LC5'), 'UTC') : '—'; ?></td>
 					<td>
 						<?php if ($item->suppression_reason) : ?>
@@ -56,12 +57,13 @@ $statusLabels = [
 							<span class="badge bg-success"><?php echo Text::_('JNO'); ?></span>
 						<?php endif; ?>
 					</td>
+					<td><strong><?php echo (int) $item->bounce_count; ?></strong><?php if ($item->last_bounce_at) : ?><div class="small"><?php echo htmlspecialchars((string) $item->last_bounce_class, ENT_QUOTES, 'UTF-8'); ?> · <?php echo HTMLHelper::_('date', $item->last_bounce_at, Text::_('DATE_FORMAT_LC5'), 'UTC'); ?></div><div class="small text-muted"><?php echo htmlspecialchars((string) $item->last_bounce_reason, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?><?php if (in_array((string) $item->suppression_reason, ['hard-bounce', 'soft-bounce-threshold'], true)) : ?><button class="btn btn-sm btn-outline-warning mt-1" type="submit" name="id" value="<?php echo (int) $item->id; ?>" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=subscriber.clearBounceSuppression'); ?>" formmethod="post" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CLEAR_BOUNCE_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CLEAR_BOUNCE_SUPPRESSION'); ?></button><?php endif; ?></td>
 					<td><?php echo HTMLHelper::_('date', $item->created, Text::_('DATE_FORMAT_LC5'), 'UTC'); ?></td>
 					<td class="text-center"><?php echo (int) $item->id; ?></td>
 				</tr>
 			<?php endforeach; ?>
 			<?php if ($this->items === []) : ?>
-				<tr><td colspan="8" class="text-center text-muted py-4"><?php echo Text::_('COM_PUNGAMAIL_NO_SUBSCRIBERS'); ?></td></tr>
+				<tr><td colspan="9" class="text-center text-muted py-4"><?php echo Text::_('COM_PUNGAMAIL_NO_SUBSCRIBERS'); ?></td></tr>
 			<?php endif; ?>
 			</tbody>
 		</table>

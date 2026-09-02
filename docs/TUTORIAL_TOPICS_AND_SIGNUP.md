@@ -130,15 +130,24 @@ Then test the global action separately:
 - **Unsubscribe from topic** or unchecking one topic leaves other memberships and the global state intact.
 - **Unsubscribe completely** globally opts out the address and prevents all future newsletters, including Joomla-group targeting.
 
-## 8. Understand the Joomla profile field
+## 8. Test the Joomla profile fields
 
-The Punga Mail user plugin adds **Receive newsletter: Yes/No** to the Joomla profile where that fieldset is displayed.
+The Punga Mail user plugin adds a **Newsletter** fieldset to Joomla registration, frontend profile editing, administrator user editing, and the administrator's own profile.
 
-In 0.3.1 it controls the **global** preference only. It does not show topic choices. Direct registered-user topic selection in the profile editor is planned for a future update.
+It contains:
 
-For now, place the Punga Mail Signup module on an account/preferences page so registered users can manage topic memberships there.
+- **Receive newsletter: Yes/No** for the global preference;
+- **Newsletter topics** for all currently published topic choices.
 
-Do not present the profile field as though Yes automatically chooses every topic. A user can be globally subscribed and belong to zero topics; that user can still receive a newsletter deliberately sent to All confirmed subscribers or an eligible Joomla group.
+Sign in as a test user, open the Joomla profile, enable Receive newsletter, select one or more topics, and save. Reopen the profile and confirm that the choices remain selected. The same memberships should also appear selected in a Punga Mail Signup module that exposes those topics.
+
+Now set Receive newsletter to No and save. The topic choices remain stored, but the global unsubscribe prevents every delivery. Setting it to Yes later restores global eligibility without forcing the user to rebuild their topic choices.
+
+Clearing a topic marks only that published topic unsubscribed. Unpublished topic relationships are not shown or changed by the form.
+
+Do not present Receive newsletter as though Yes automatically chooses every topic. A user can be globally subscribed and belong to zero topics; that user can still receive a newsletter deliberately sent to All confirmed subscribers or an eligible Joomla group.
+
+The signup module is therefore optional for registered-user topic management, but remains necessary for convenient inline preferences and email-only public signup.
 
 ## 9. Target a topic newsletter correctly
 
@@ -182,4 +191,3 @@ If All confirmed subscribers stays selected, the mailing is not restricted to Ev
 - Use Preflight to verify real audience results before sending.
 
 For the complete reference, see [Punga Mail Administrator Guide](USER_GUIDE.md).
-

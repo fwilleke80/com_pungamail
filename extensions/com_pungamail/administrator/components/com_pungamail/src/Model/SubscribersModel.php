@@ -31,6 +31,8 @@ final class SubscribersModel extends ListModel
 				'confirmed_at', 's.confirmed_at',
 				'suppression_reason', 'x.reason',
 				'created', 's.created',
+				'bounce_count', 's.bounce_count',
+				'last_bounce_at', 's.last_bounce_at',
 			];
 		}
 

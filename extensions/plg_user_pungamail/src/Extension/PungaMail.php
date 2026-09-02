@@ -40,7 +40,7 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 	}
 
 	/**
-	 * Prefills the newsletter field from the canonical subscriber table.
+	 * Prefills the global preference and published topic memberships.
 	 *
 	 * @param PrepareDataEvent $event Joomla prepare-data event.
 	 *
@@ -66,12 +66,24 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 		$email = (string) ($data->email ?? '');
 		$subscribed = (int) ComponentHelper::getParams('com_pungamail')->get('default_user_subscribed', 0) === 1;
 
+		$topicIds = [];
+
 		if ($userId > 0 && $email !== '')
 		{
-			$subscribed = ServiceFactory::subscribers()->isUserSubscribed($userId, $email);
+			$subscribers = ServiceFactory::subscribers();
+			$subscribed = $subscribers->isUserSubscribed($userId, $email);
+			$subscriber = $subscribers->findByUserId($userId) ?? $subscribers->findByEmail($email);
+
+			if ($subscriber !== null)
+			{
+				$topicIds = ServiceFactory::topics()->getSubscriberTopicIds((int) $subscriber->id);
+			}
 		}
 
-		$data->pungamail = ['subscribed' => $subscribed ? 1 : 0];
+		$data->pungamail = [
+			'subscribed' => $subscribed ? 1 : 0,
+			'topic_ids' => $topicIds,
+		];
 		$event->updateData($data);
 	}
 
@@ -101,7 +113,7 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 	}
 
 	/**
-	 * Persists an explicitly submitted preference after Joomla saved the user.
+	 * Persists the submitted global preference and published topic choices.
 	 *
 	 * @param AfterSaveEvent $event Joomla user-after-save event.
 	 *
@@ -131,6 +143,40 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 			return;
 		}
 
-		ServiceFactory::subscribers()->setUserPreference($userId, $email, (int) $preference === 1);
+		$app = Factory::getApplication();
+		$eventSource = $app->isClient('administrator') ? 'administrator' : 'profile';
+		$subscribers = ServiceFactory::subscribers();
+		$topics = ServiceFactory::topics();
+		$subscriberId = $subscribers->setUserPreference(
+			$userId,
+			$email,
+			(int) $preference === 1,
+			(string) ($user['name'] ?? ''),
+			$eventSource
+		);
+		$visibleIds = array_map(
+			static fn (object $topic): int => (int) $topic->id,
+			$topics->active()
+		);
+		$selectedIds = array_values(array_unique(array_filter(array_map(
+			'intval',
+			(array) ($user['pungamail']['topic_ids'] ?? $formData['pungamail']['topic_ids'] ?? [])
+		))));
+		$previousIds = $topics->getSubscriberTopicIds($subscriberId);
+		$topics->updateVisibleTopics($subscriberId, $visibleIds, $selectedIds);
+		$currentIds = $topics->getSubscriberTopicIds($subscriberId);
+		sort($previousIds, SORT_NUMERIC);
+		sort($currentIds, SORT_NUMERIC);
+
+		if ($previousIds !== $currentIds)
+		{
+			$subscribers->recordEvent(
+				$subscriberId,
+				$eventSource . '_topics_updated',
+				null,
+				null,
+				['topic_ids' => $currentIds]
+			);
+		}
 	}
 }

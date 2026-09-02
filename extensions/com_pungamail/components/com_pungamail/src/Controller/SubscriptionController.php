@@ -15,6 +15,7 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
+use Joomla\Registry\Registry;
 use Punga\Component\PungaMail\Administrator\Service\Address;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 use Punga\Component\PungaMail\Administrator\Service\SubscriberRepository;
@@ -38,6 +39,9 @@ final class SubscriptionController extends BaseController
 		$app = Factory::getApplication();
 		$input = $app->getInput();
 		$email = trim($input->post->getString('email'));
+		$availableTopics = $this->moduleTopics($input->post->getInt('module_id'));
+		$visibleTopicIds = array_map(static fn (object $topic): int => (int) $topic->id, $availableTopics);
+		$selectedTopicIds = array_values(array_intersect($visibleTopicIds, array_map('intval', (array) $input->post->get('topic_ids', [], 'array'))));
 		$honeypot = trim($input->post->getString('website'));
 		$redirect = Route::_('index.php?option=com_pungamail&view=message&type=requested', false);
 
@@ -66,6 +70,32 @@ final class SubscriptionController extends BaseController
 			&& (int) $existing->status === SubscriberRepository::STATUS_SUBSCRIBED
 			&& !$repo->isSuppressed(Address::normalize($email)))
 		{
+			if ($visibleTopicIds !== [])
+			{
+				$resendMinutes = max(1, (int) $params->get('resend_minutes', 10));
+
+				if (!$repo->mayResendConfirmation($email, $resendMinutes))
+				{
+					$this->setRedirect($redirect);
+					return;
+				}
+
+				$tokenData = ServiceFactory::tokens()->createConfirmationToken();
+				$hours = max(1, (int) $params->get('confirmation_hours', 48));
+				$expires = (new Date('+' . $hours . ' hours', 'UTC'))->toSql();
+				ServiceFactory::topics()->createPreferenceRequest((int) $existing->id, $visibleTopicIds, $selectedTopicIds, $tokenData['hash'], $expires);
+
+				try
+				{
+					ServiceFactory::mail()->sendPreferenceConfirmation($email, $tokenData['token']);
+					$repo->recordEvent((int) $existing->id, 'topic_confirmation_sent', $ip, $userAgent);
+				}
+				catch (\Throwable $e)
+				{
+					$repo->recordEvent((int) $existing->id, 'topic_confirmation_send_failed', $ip, $userAgent, ['error' => mb_substr($e->getMessage(), 0, 500)]);
+				}
+			}
+
 			$this->setRedirect($redirect);
 			return;
 		}
@@ -83,6 +113,7 @@ final class SubscriptionController extends BaseController
 		$expires = (new Date('+' . $hours . ' hours', 'UTC'))->toSql();
 		$language = $app->getLanguage()->getTag();
 		$subscriberId = $repo->storePendingExternal($email, $tokenData['hash'], $expires, $language);
+		ServiceFactory::topics()->stageInitialTopics($subscriberId, $selectedTopicIds);
 
 		try
 		{
@@ -108,6 +139,19 @@ final class SubscriptionController extends BaseController
 		$app = Factory::getApplication();
 		$token = trim($app->getInput()->post->getString('token'));
 		$hash = ServiceFactory::tokens()->hashConfirmationToken($token);
+
+		if ($app->getInput()->post->getCmd('kind') === 'topics')
+		{
+			if (!ServiceFactory::topics()->confirmPreferenceRequest($hash))
+			{
+				$this->setRedirect(Route::_('index.php?option=com_pungamail&view=message&type=invalid_confirmation', false));
+				return;
+			}
+
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=message&type=preferences_updated', false));
+			return;
+		}
+
 		$subscriber = ServiceFactory::subscribers()->confirm($hash);
 
 		if ($subscriber === null)
@@ -115,6 +159,8 @@ final class SubscriptionController extends BaseController
 			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=message&type=invalid_confirmation', false));
 			return;
 		}
+
+		ServiceFactory::topics()->activatePendingTopics((int) $subscriber->id);
 
 		ServiceFactory::subscribers()->recordEvent(
 			(int) $subscriber->id,
@@ -147,7 +193,8 @@ final class SubscriptionController extends BaseController
 		}
 
 		$repo->unsubscribe($id, 'unsubscribed');
-		$repo->recordEvent($id, 'unsubscribe_completed', $input->server->getString('REMOTE_ADDR'), $input->server->getString('HTTP_USER_AGENT'));
+		$newsletterId = $input->post->getInt('mid');
+		$repo->recordEvent($id, 'unsubscribe_completed', $input->server->getString('REMOTE_ADDR'), $input->server->getString('HTTP_USER_AGENT'), ['newsletter_id' => $newsletterId]);
 		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=message&type=unsubscribed', false));
 	}
 
@@ -189,6 +236,44 @@ final class SubscriptionController extends BaseController
 		$this->setRedirect($return, Text::_($subscribed ? 'COM_PUNGAMAIL_PREFERENCE_ENABLED' : 'COM_PUNGAMAIL_PREFERENCE_DISABLED'));
 	}
 
+	/** Updates only the topics exposed by the current module. */
+	public function userTopics(): void
+	{
+		$this->requireFormToken();
+		$app = Factory::getApplication();
+		$user = $app->getIdentity();
+
+		if ($user->guest || (int) $user->id <= 0 || !filter_var((string) $user->email, FILTER_VALIDATE_EMAIL))
+		{
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_AUTHENTICATION_REQUIRED'), 403);
+		}
+
+		$topics = $this->moduleTopics($app->getInput()->post->getInt('module_id'));
+		$visibleIds = array_map(static fn (object $topic): int => (int) $topic->id, $topics);
+		$selectedIds = array_values(array_intersect($visibleIds, array_map('intval', (array) $app->getInput()->post->get('topic_ids', [], 'array'))));
+		$repo = ServiceFactory::subscribers();
+		$subscriber = $repo->findByUserId((int) $user->id) ?? $repo->findByEmail((string) $user->email);
+
+		if ($subscriber === null && $selectedIds === [])
+		{
+			$this->setRedirect($this->safeReturn(), Text::_('COM_PUNGAMAIL_TOPIC_PREFERENCES_SAVED'));
+			return;
+		}
+
+		if ($subscriber === null || ((int) $subscriber->status !== SubscriberRepository::STATUS_SUBSCRIBED && $selectedIds !== []))
+		{
+			$subscriberId = $repo->setUserPreference((int) $user->id, (string) $user->email, true, (string) $user->name);
+		}
+		else
+		{
+			$subscriberId = (int) $subscriber->id;
+		}
+
+		ServiceFactory::topics()->updateVisibleTopics($subscriberId, $visibleIds, $selectedIds);
+		$repo->recordEvent($subscriberId, 'topic_preferences_updated', $app->getInput()->server->getString('REMOTE_ADDR'), $app->getInput()->server->getString('HTTP_USER_AGENT'));
+		$this->setRedirect($this->safeReturn(), Text::_('COM_PUNGAMAIL_TOPIC_PREFERENCES_SAVED'));
+	}
+
 	/**
 	 * Implements the RFC 8058 one-click unsubscribe POST endpoint.
 	 *
@@ -221,7 +306,8 @@ final class SubscriptionController extends BaseController
 		}
 
 		$repo->unsubscribe($id, 'one-click');
-		$repo->recordEvent($id, 'one_click_unsubscribe', $input->server->getString('REMOTE_ADDR'), $input->server->getString('HTTP_USER_AGENT'));
+		$newsletterId = $input->getInt('mid');
+		$repo->recordEvent($id, 'one_click_unsubscribe', $input->server->getString('REMOTE_ADDR'), $input->server->getString('HTTP_USER_AGENT'), ['newsletter_id' => $newsletterId]);
 		$app->setHeader('Status', '204 No Content', true);
 		$app->close();
 	}
@@ -233,5 +319,49 @@ final class SubscriptionController extends BaseController
 		{
 			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_SECURITY_TOKEN'), 403);
 		}
+	}
+
+	/** @return array<int,object> */
+	private function moduleTopics(int $moduleId): array
+	{
+		if ($moduleId <= 0)
+		{
+			return [];
+		}
+
+		$db = ServiceFactory::database();
+		$published = 1;
+		$moduleName = 'mod_pungamail_signup';
+		$query = $db->getQuery(true)
+			->select($db->quoteName('params'))
+			->from($db->quoteName('#__modules'))
+			->where($db->quoteName('id') . ' = :id')
+			->where($db->quoteName('module') . ' = :module')
+			->where($db->quoteName('published') . ' = :published')
+			->bind(':id', $moduleId, \Joomla\Database\ParameterType::INTEGER)
+			->bind(':module', $moduleName)
+			->bind(':published', $published, \Joomla\Database\ParameterType::INTEGER);
+		$params = $db->setQuery($query)->loadResult();
+
+		if (!is_string($params))
+		{
+			return [];
+		}
+
+		$configured = array_map('intval', (array) (new Registry($params))->get('topic_ids', []));
+
+		return ServiceFactory::topics()->active($configured !== [] ? $configured : null);
+	}
+
+	/** @return string */
+	private function safeReturn(): string
+	{
+		$app = Factory::getApplication();
+		$return = base64_decode($app->getInput()->post->getBase64('return'), true);
+		$siteRoot = rtrim((string) \Joomla\CMS\Uri\Uri::root(), '/');
+
+		return is_string($return) && $return !== '' && str_starts_with($return, $siteRoot)
+			? $return
+			: Route::_('index.php', false);
 	}
 }

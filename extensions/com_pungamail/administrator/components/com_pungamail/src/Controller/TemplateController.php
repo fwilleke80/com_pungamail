@@ -49,7 +49,8 @@ final class TemplateController extends BaseController
 
 		try
 		{
-			$this->saveFromInput();
+			$id = $this->saveFromInput();
+			$this->checkin($id);
 			$this->setRedirect(Route::_(AdministratorRoute::templates(), false), Text::_('COM_PUNGAMAIL_TEMPLATE_SAVED'));
 		}
 		catch (\Throwable $e)
@@ -62,6 +63,8 @@ final class TemplateController extends BaseController
 	public function cancel(): void
 	{
 		$this->requirePermission('core.manage');
+		$this->requireToken();
+		$this->checkin(Factory::getApplication()->getInput()->getInt('id'));
 		$this->setRedirect(Route::_(AdministratorRoute::templates(), false));
 	}
 
@@ -88,15 +91,40 @@ final class TemplateController extends BaseController
 		$title = trim($input->post->getString('title'));
 		if ($title === '') { throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_ERROR_TEMPLATE_TITLE_REQUIRED')); }
 		$styleInput = (array) $input->post->get('style', [], 'array');
-		return ServiceFactory::templates()->save(
-			$input->getInt('id'),
+		$id = $input->getInt('id');
+		$userId = (int) Factory::getApplication()->getIdentity()->id;
+
+		if ($id > 0)
+		{
+			ServiceFactory::checkouts()->checkout('template', $id, $userId);
+		}
+
+		$id = ServiceFactory::templates()->save(
+			$id,
 			$title,
 			trim($input->post->getString('subject')),
 			(string) $input->post->get('body_markdown', '', 'raw'),
 			ServiceFactory::styles()->encodeOverrides($styleInput),
 			trim((string) $input->post->get('custom_css', '', 'raw')),
-			(int) Factory::getApplication()->getIdentity()->id
+			$userId,
+			[
+				'heading_mode' => $input->post->getCmd('heading_mode', 'inherit'),
+				'mail_heading' => trim($input->post->getString('mail_heading')),
+				'browser_view' => $input->post->getInt('browser_view', -1),
+				'reply_to_mode' => $input->post->getCmd('reply_to_mode', 'inherit'),
+				'reply_to_email' => trim($input->post->getString('reply_to_email')),
+				'reply_to_name' => trim($input->post->getString('reply_to_name')),
+			]
 		);
+		ServiceFactory::checkouts()->checkout('template', $id, $userId);
+
+		return $id;
+	}
+
+	/** @return void */
+	private function checkin(int $id): void
+	{
+		ServiceFactory::checkouts()->checkin('template', $id, (int) Factory::getApplication()->getIdentity()->id);
 	}
 
 	/** @return void */

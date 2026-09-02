@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.3.1. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.3.2. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -35,7 +35,7 @@ Punga Mail keeps two related choices separate:
 
 A subscriber can leave one topic and remain subscribed to other topics. **Unsubscribe completely** is different: it opts the address out globally and prevents that address from being reintroduced through Joomla user-group targeting.
 
-The Joomla user-profile field **Receive newsletter** controls only the global subscription. In 0.3.1, topic choices are made through the frontend Punga Mail signup module or subscription page, not in the Joomla profile editor.
+The Joomla user-profile field **Receive newsletter** controls the global subscription. The **Newsletter topics** selector beside it manages the same topic memberships as the frontend Punga Mail signup module.
 
 ### Recipient sources are combined
 
@@ -281,9 +281,7 @@ For a record suppressed by a hard bounce or soft-bounce threshold, **Clear bounc
 
 ### Topic membership
 
-In 0.3.1, an administrator manages bulk topic membership through CSV import. Subscribers manage their own topic preferences through the frontend signup module/subscription experience.
-
-The Joomla profile field **Receive newsletter** changes the global preference only. It does not show a topic selector in this release.
+An administrator can manage a registered user's topic memberships in Joomla's user editor. Bulk or email-only subscriber memberships can be managed through CSV import. Subscribers can manage their own published-topic choices in their Joomla profile or through the frontend signup module/subscription experience.
 
 ## Templates
 
@@ -643,12 +641,18 @@ The separate **Subscribe** / **Unsubscribe completely** control changes the glob
 
 ## Joomla user-profile integration
 
-The enabled Punga Mail user plugin adds **Receive newsletter: Yes/No** to Joomla user profile/registration forms where the profile fieldset is displayed.
+The enabled Punga Mail user plugin adds a **Newsletter** fieldset to Joomla registration, frontend profile editing, administrator user editing, and the administrator's own profile.
 
-- **Yes** enables the user's global Punga Mail subscription.
-- **No** globally unsubscribes the user's address.
+| Field | What it does |
+| --- | --- |
+| Receive newsletter | **Yes** enables the user's global Punga Mail subscription. **No** globally unsubscribes the address and overrides every topic/Joomla-group selection. |
+| Newsletter topics | Multi-select containing all currently published topics. Existing active memberships are preselected. Saving adds selected memberships and marks cleared published topics unsubscribed. |
 
-This field does not select topics in 0.3.1. Publish a Punga Mail Signup module or direct users to the frontend subscription experience so logged-in users can manage topic preferences.
+The two controls are deliberately independent. Topic choices are retained when **Receive newsletter** is No, but no newsletter is delivered until the global preference is Yes again. This lets a user temporarily opt out completely without losing their preferred topic set.
+
+Leaving all topics clear does not mean “receive nothing.” A globally subscribed user may still receive a newsletter targeted to **All confirmed subscribers** or an eligible Joomla user group. The selector controls only topic-targeted mailings.
+
+Unpublished topics are not shown or changed by the profile form. Their stored history/membership is retained. Registered users therefore no longer require a published signup module solely to choose topics, although the module remains useful for inline account preferences and email-only signup.
 
 ## Newsletter subscription menu item
 

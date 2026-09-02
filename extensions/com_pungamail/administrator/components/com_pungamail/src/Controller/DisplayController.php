@@ -39,6 +39,9 @@ final class DisplayController extends BaseController
 		$screenViews = [
 			'newsletters' => ['newsletter', 'preview', 'preflight'],
 			'templates' => ['template', 'templatepreview'],
+			'subscribers' => ['subscriber'],
+			'topics' => ['topic'],
+			'digests' => ['digest'],
 		];
 
 		if ($screen !== '' && in_array($screen, $screenViews[$contextView] ?? [], true))

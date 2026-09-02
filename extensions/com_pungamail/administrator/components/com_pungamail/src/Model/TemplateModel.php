@@ -9,11 +9,28 @@ use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 /** Template editor model. */
 final class TemplateModel extends BaseDatabaseModel
 {
+	private bool $itemLoaded = false;
+	private ?object $item = null;
+
 	/** @return object|null */
 	public function getItem(): ?object
 	{
+		if ($this->itemLoaded)
+		{
+			return $this->item;
+		}
+
+		$this->itemLoaded = true;
 		$id = Factory::getApplication()->getInput()->getInt('id');
-		return $id > 0 ? ServiceFactory::templates()->find($id) : null;
+		$this->item = $id > 0 ? ServiceFactory::templates()->find($id) : null;
+
+		if ($this->item !== null)
+		{
+			ServiceFactory::checkouts()->checkout('template', $id, (int) Factory::getApplication()->getIdentity()->id);
+			$this->item = ServiceFactory::templates()->find($id);
+		}
+
+		return $this->item;
 	}
 
 	/** @return array<string,string> */

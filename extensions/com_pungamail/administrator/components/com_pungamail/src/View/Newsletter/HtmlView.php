@@ -28,6 +28,9 @@ final class HtmlView extends BaseHtmlView
 	public array $queueRecipients = [];
 	public array $userGroups = [];
 	public array $selectedGroupIds = [];
+	public array $topics = [];
+	public array $selectedTopicIds = [];
+	public array $statistics = [];
 	public ?string $contentCutoffStart = null;
 
 	/** @var array{subject:string,html:string,text:string}|null */
@@ -52,6 +55,9 @@ final class HtmlView extends BaseHtmlView
 		$this->queueRecipients = $model->getQueueRecipients();
 		$this->userGroups = $model->getUserGroups();
 		$this->selectedGroupIds = $model->getSelectedGroupIds();
+		$this->topics = $model->getTopics();
+		$this->selectedTopicIds = $model->getSelectedTopicIds();
+		$this->statistics = $model->getStatistics();
 		$this->contentCutoffStart = $model->getContentCutoffStart();
 
 		if ($this->item !== null && !empty($this->item->snapshot_html))
@@ -66,16 +72,28 @@ final class HtmlView extends BaseHtmlView
 		}
 		ToolbarHelper::title($this->item ? Text::_('COM_PUNGAMAIL_EDIT_NEWSLETTER') : Text::_('COM_PUNGAMAIL_NEW_NEWSLETTER'), 'envelope');
 
-		$isDraft = $this->item === null || (int) $this->item->status === \Punga\Component\PungaMail\Administrator\Service\NewsletterRepository::STATUS_DRAFT;
+		$isDraft = $this->item === null || in_array((int) $this->item->status, [
+			\Punga\Component\PungaMail\Administrator\Service\NewsletterRepository::STATUS_DRAFT,
+			\Punga\Component\PungaMail\Administrator\Service\NewsletterRepository::STATUS_SCHEDULED,
+		], true);
 
 		if ($isDraft)
 		{
 			ToolbarHelper::apply('newsletter.save');
 			ToolbarHelper::save('newsletter.save2close');
+			ToolbarHelper::cancel('newsletter.cancel');
 			ToolbarHelper::custom('newsletter.preview', 'eye', '', Text::_('COM_PUNGAMAIL_PREVIEW'), false);
 			ToolbarHelper::custom('newsletter.sendTest', 'mail', '', Text::_('COM_PUNGAMAIL_SEND_TEST_MAIL'), false);
 			ToolbarHelper::custom('newsletter.preflight', 'check', '', Text::_('COM_PUNGAMAIL_REVIEW_AND_SEND'), false);
-			ToolbarHelper::cancel('newsletter.cancel');
+
+			Factory::getApplication()->getDocument()->getWebAssetManager()->addInlineStyle(
+				'#toolbar-eye { margin-inline-start: auto; }'
+			);
+
+			if ($this->item !== null && (int) $this->item->status === \Punga\Component\PungaMail\Administrator\Service\NewsletterRepository::STATUS_SCHEDULED)
+			{
+				ToolbarHelper::custom('newsletter.cancelScheduled', 'cancel', '', Text::_('COM_PUNGAMAIL_CANCEL_SCHEDULE'), false);
+			}
 		}
 
 		parent::display($tpl);

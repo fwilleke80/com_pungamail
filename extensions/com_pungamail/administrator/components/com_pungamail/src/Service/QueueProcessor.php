@@ -41,12 +41,17 @@ final class QueueProcessor
 	public function process(?int $batchSize = null): array
 	{
 		$params = ComponentHelper::getParams('com_pungamail');
+
+		if ((int) $params->get('queue_paused', 0) === 1)
+		{
+			return ['processed' => 0, 'sent' => 0, 'failed' => 0, 'retried' => 0, 'paused' => 1];
+		}
 		$batchSize ??= (int) $params->get('batch_size', 25);
 		$maxAttempts = max(1, (int) $params->get('max_attempts', 3));
 		$retryMinutes = max(1, (int) $params->get('retry_minutes', 15));
 		$this->recoverStaleClaims();
 		$candidates = $this->loadCandidates(max(1, $batchSize));
-		$result = ['processed' => 0, 'sent' => 0, 'failed' => 0, 'retried' => 0];
+		$result = ['processed' => 0, 'sent' => 0, 'failed' => 0, 'retried' => 0, 'paused' => 0];
 		$newsletterIds = [];
 
 		foreach ($candidates as $candidate)
@@ -108,11 +113,13 @@ final class QueueProcessor
 	{
 		$now = (new Date('now', 'UTC'))->toSql();
 		$query = $this->db->getQuery(true)
-			->select('*')
-			->from($this->db->quoteName('#__pungamail_send_queue'))
-			->where($this->db->quoteName('status') . ' = ' . $this->db->quote('pending'))
-			->where('(' . $this->db->quoteName('next_attempt_at') . ' IS NULL OR ' . $this->db->quoteName('next_attempt_at') . ' <= :now)')
-			->order($this->db->quoteName('id') . ' ASC')
+			->select('q.*')
+			->from($this->db->quoteName('#__pungamail_send_queue', 'q'))
+			->innerJoin($this->db->quoteName('#__pungamail_newsletters', 'n') . ' ON n.id = q.newsletter_id')
+			->where($this->db->quoteName('q.status') . ' = ' . $this->db->quote('pending'))
+			->where($this->db->quoteName('n.queue_paused') . ' = 0')
+			->where('(' . $this->db->quoteName('q.next_attempt_at') . ' IS NULL OR ' . $this->db->quoteName('q.next_attempt_at') . ' <= :now)')
+			->order($this->db->quoteName('q.id') . ' ASC')
 			->bind(':now', $now);
 
 		return $this->db->setQuery($query, 0, $limit)->loadObjectList();
@@ -156,6 +163,7 @@ final class QueueProcessor
 			->set($this->db->quoteName('status') . ' = ' . $this->db->quote('sent'))
 			->set($this->db->quoteName('attempts') . ' = ' . $this->db->quoteName('attempts') . ' + 1')
 			->set($this->db->quoteName('last_error') . ' = NULL')
+			->set($this->db->quoteName('failure_class') . ' = NULL')
 			->set($this->db->quoteName('sent_at') . ' = :sentAt')
 			->set($this->db->quoteName('modified') . ' = :modified')
 			->where($this->db->quoteName('id') . ' = :id')
@@ -182,6 +190,7 @@ final class QueueProcessor
 		$now = (new Date('now', 'UTC'))->toSql();
 		$next = $terminal ? null : (new Date('+' . $retryMinutes . ' minutes', 'UTC'))->toSql();
 		$status = $terminal ? 'failed' : 'pending';
+		$failureClass = $terminal ? 'permanent' : 'temporary';
 		$error = mb_substr($message, 0, 4000, 'UTF-8');
 		$rowId = (int) $row->id;
 		$query = $this->db->getQuery(true)
@@ -190,11 +199,13 @@ final class QueueProcessor
 			->set($this->db->quoteName('attempts') . ' = :attempts')
 			->set($this->db->quoteName('next_attempt_at') . ' = ' . ($next === null ? 'NULL' : ':next'))
 			->set($this->db->quoteName('last_error') . ' = :error')
+			->set($this->db->quoteName('failure_class') . ' = :failureClass')
 			->set($this->db->quoteName('modified') . ' = :modified')
 			->where($this->db->quoteName('id') . ' = :id')
 			->bind(':status', $status)
 			->bind(':attempts', $attempts, ParameterType::INTEGER)
 			->bind(':error', $error)
+			->bind(':failureClass', $failureClass)
 			->bind(':modified', $now)
 			->bind(':id', $rowId, ParameterType::INTEGER);
 

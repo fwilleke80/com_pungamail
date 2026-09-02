@@ -49,6 +49,11 @@ final class HtmlView extends BaseHtmlView
 		$this->activeFilters = $model->getActiveFilters();
 
 		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_SUBSCRIBERS'), 'users');
+
+		if (Factory::getApplication()->getIdentity()->authorise('core.create', 'com_pungamail'))
+		{
+			ToolbarHelper::addNew('subscriber.add');
+		}
 		ToolbarHelper::custom('subscribers.unsubscribe', 'ban-circle', '', Text::_('COM_PUNGAMAIL_UNSUBSCRIBE_SELECTED'), true);
 		ToolbarHelper::custom('subscribers.requestConfirmation', 'mail', '', Text::_('COM_PUNGAMAIL_SEND_CONFIRMATION_SELECTED'), true);
 		ToolbarHelper::preferences('com_pungamail');

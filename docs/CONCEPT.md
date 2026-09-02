@@ -8,14 +8,31 @@ Punga Mail is a focused, self-hosted Joomla! 6 newsletter extension. Its primary
 
 It is not intended to become a behavioural marketing/analytics platform.
 
-## Implemented through 0.2.5
+## Implemented through 0.3.2
+
+### Lists, automation and access safety
+
+- Subscribers can independently join or leave published mailing topics without changing their global subscription state.
+- Newsletters can target topics and Joomla user groups; recipient resolution deduplicates addresses and applies unsubscribe and suppression barriers.
+- Recurring digests discover content through Joomla registered content types and can create a safe draft or explicitly enabled automatic send.
+- Before a digest is created, each item is checked against the resolved recipients' Joomla authorized view levels and applicable category access. An item is included only in the common visible set, so email never broadens website access.
+- Digest runs retain newsletter IDs, outcomes, no-content skips and failure details.
+
+### Delivery health
+
+- Scheduled sending, queue pause/resume and unsent-remainder cancellation build on the existing task and retry infrastructure.
+- Delivery-status notifications are processed from a dedicated mailbox using PHP IMAP. Hard bounces suppress immediately; soft bounces suppress at the configured threshold; history is retained.
+- Preflight distinguishes blocking errors and warnings and explains included/excluded recipients without mutating subscriber state.
+- Sent browser views and statistics read immutable mailing snapshots.
+- CSV import never silently reactivates globally unsubscribed, suppressed or hard-bounced addresses.
 
 ### Subscribers
 
+- The administrator can add a standalone email recipient directly or select an existing Joomla user to explicitly enable their newsletter preference.
 - Joomla users and external email-only subscribers share one canonical subscriber model.
 - Frontend signup module with double opt-in, throttling/honeypot and generic anti-enumeration response.
 - Editable Markdown confirmation mail with `{confirmation_url}`, `{site_name}` and `{email}` placeholders.
-- User-profile subscription preference.
+- User-profile global subscription preference and published-topic selector, backed by the same normalized memberships as the frontend signup/subscription experience.
 - Signed visible unsubscribe flow requiring an explicit POST.
 - RFC 8058 one-click unsubscribe endpoint/header support on HTTPS.
 - Persistent suppression barrier so user-group discovery cannot undo an opt-out.
@@ -48,6 +65,14 @@ Newsletter/template editor, preview and preflight URLs preserve the correspondin
 - Template preview.
 - Applying a template copies it into a newsletter draft; subsequent template edits do not alter existing newsletters.
 
+### Administrator conventions
+
+- Newsletter and Template trash views retain Joomla/Atum native table colouring, including dark mode.
+- Editor toolbars keep save/cancel actions left and newsletter preview/test/send actions right.
+- Component Options use Joomla's native Toggle Inline Help mechanism.
+- Configuration-page titles and component-specific toolbar labels are translated through Punga Mail language keys.
+- Newsletter, template, topic and digest editors participate in Joomla checkout/check-in and Global Check-in recovery.
+
 ### Mail language and footer copy
 
 Subscriber-facing reusable mail strings belong to the Joomla **Website** language catalog, not the Administrator catalog. Punga Mail explicitly resolves the configured frontend language and Website override file when rendering newsletters, including rendering triggered from Administrator previews and Scheduled Tasks. This makes Joomla Website language overrides authoritative for the footer reason, unsubscribe label and “Read more” label.
@@ -69,7 +94,8 @@ Blank override values inherit. The base renderer uses conservative inline styles
 - Joomla `MailerFactoryInterface`; the transport is whatever Joomla is configured to use (SMTP, etc.).
 - Persistent send queue, database recipient uniqueness, atomic claims, retry/terminal-failure handling and stale-worker recovery.
 - Joomla Scheduled Task **Punga Mail — Process send queue** for normal unattended delivery.
-- Dashboard exposes scheduler state, links directly to Joomla Scheduled Tasks, and provides **Process queue now** only as a manual diagnostic/maintenance action. The Newsletters list intentionally has no manual queue button.
+- Separate Joomla task types queue due scheduled newsletters, generate due automatic digests, and process the configured bounce mailbox. Automatic-send digests still pass through the normal send queue.
+- Dashboard exposes all task states, warns contextually when a configured feature lacks its required enabled task, links directly to Joomla Scheduled Tasks, and provides **Process queue now** only as a manual diagnostic/maintenance action. The Newsletters list intentionally has no manual queue button.
 - Sent newsletters and recipient rows are immutable historical snapshots.
 
 ### Newsletter-age reminder
@@ -104,11 +130,10 @@ A future optional provider hook is acceptable only as an escape hatch for unusua
 
 ## Possible later additions
 
-- category/subcategory constraints per registered content type where the source exposes categories
-- subscriber CSV import/export with suppression-safe semantics
+- richer category/subcategory selectors per registered content type where the source exposes categories
 - richer subscriber audit-history UI
 - explicit retry controls/diagnostics for terminal queue failures
-- archive/browser view of immutable sent newsletters
+- a full public archive built on immutable sent-newsletter browser views
 - additional mail-design conveniences discovered through real-world use
 
 

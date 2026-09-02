@@ -8,9 +8,7 @@
 
 namespace Punga\Component\PungaMail\Administrator\Model;
 
-use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
-use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Model\BaseDatabaseModel;
 use Punga\Component\PungaMail\Administrator\Service\RecipientName;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
@@ -28,47 +26,26 @@ final class PreflightModel extends BaseDatabaseModel
 	public function getData(): array
 	{
 		$id = Factory::getApplication()->getInput()->getInt('id');
-		$repo = ServiceFactory::newsletters();
-		$newsletter = $repo->find($id);
-
-		if ($newsletter === null)
-		{
-			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_NEWSLETTER_NOT_FOUND'));
-		}
-
-		$items = $repo->getItems($id);
-		$groups = $repo->getGroupIds($id);
-		$recipients = ServiceFactory::recipients()->resolve($newsletter, $groups);
+		$data = ServiceFactory::preflight()->analyze($id);
 		$renderer = ServiceFactory::renderer();
-		$rendered = $renderer->render($newsletter, $items);
 		$identity = Factory::getApplication()->getIdentity();
 		$personalized = $renderer->personalize(
-			$rendered['subject'],
-			$rendered['html'],
-			$rendered['text'],
+			$data['rendered']['subject'],
+			$data['rendered']['html'],
+			$data['rendered']['text'],
 			RecipientName::resolve((string) $identity->name, (string) $identity->email)
 		);
-		$rendered['subject'] = $personalized['subject'];
-		$rendered['html'] = $personalized['html'];
-		$rendered['text'] = $personalized['text'];
-		$params = ComponentHelper::getParams('com_pungamail');
+		$data['rendered'] = $personalized;
 		$sourceCounts = [];
 
-		foreach ($recipients as $recipient)
+		foreach ($data['recipients'] as $recipient)
 		{
 			$source = (string) $recipient['source'];
 			$sourceCounts[$source] = ($sourceCounts[$source] ?? 0) + 1;
 		}
 
-		return [
-			'newsletter' => $newsletter,
-			'items' => $items,
-			'groups' => $groups,
-			'recipients' => $recipients,
-			'rendered' => $rendered,
-			'source_counts' => $sourceCounts,
-			'from_email' => (string) $params->get('from_email', ''),
-			'from_name' => (string) $params->get('from_name', ''),
-		];
+		$data['source_counts'] = $sourceCounts;
+
+		return $data;
 	}
 }

@@ -1,6 +1,8 @@
 # Punga Mail database architecture
 
-Punga Mail 0.2.5 uses the nine-table schema introduced in 0.2.0, with the `recipient_name` snapshot column added in 0.2.2. Versions 0.2.4 and 0.2.5 change no tables. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.3.2 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+
+Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
 ## `#__pungamail_subscribers`
 
@@ -15,6 +17,8 @@ Persistent do-not-send barrier keyed by normalized email. Recipient resolution c
 ## `#__pungamail_templates`
 
 Reusable newsletter templates. Stores title, default subject, Markdown body, Joomla record state, optional mail-style override JSON and optional custom CSS. Applying a template copies these values into a newsletter draft; newsletters are not live-linked to later template edits.
+
+Templates, newsletters, topics and digest definitions expose `checked_out` and `checked_out_time`. These fields prevent concurrent administrator edits and make abandoned editor sessions recoverable through Joomla Global Check-in.
 
 ## `#__pungamail_newsletters`
 
@@ -66,6 +70,10 @@ The migration chain is append-only:
 - `0.2.2.sql` — adds `recipient_name` to the frozen send queue snapshot.
 - `0.2.4.sql` — no-op version marker for the administrator-UI bugfix release.
 - `0.2.5.sql` — no-op version marker for the mail-language/footer configuration release.
+- `0.2.6.sql` — no-op version marker for administrator UI and subscriber-management improvements.
+- `0.3.0.sql` — adds bounce/delivery state, topic and preference relations, digest definitions/history, schedule/snapshot metadata, and secure mail-settings storage.
+- `0.3.1.sql` — adds Joomla-compatible checkout metadata to newsletters, templates, topics and digest definitions.
+- `0.3.2.sql` — no-op version marker; profile topic selection uses the existing normalized subscriber-topic relation.
 
 Every schema release updates `install.mysql.sql`, adds one forward migration, and never rewrites a released migration. Runtime component/plugin PHP must not execute ad-hoc schema DDL.
 
@@ -74,6 +82,6 @@ Every schema release updates `install.mysql.sql`, adds one forward migration, an
 Component Options → **Maintenance & Data → Uninstall: Remove database tables** controls destructive uninstall and defaults to **No**.
 
 - **No**: uninstall preserves all Punga Mail tables/data.
-- **Yes**: package uninstall drops all nine Punga Mail tables.
+- **Yes**: package uninstall drops all Punga Mail tables.
 
 `sql/purge.mysql.sql` remains available in the source tree for deliberate manual cleanup.

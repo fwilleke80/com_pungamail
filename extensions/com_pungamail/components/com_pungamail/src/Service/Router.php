@@ -28,6 +28,7 @@ final class Router extends RouterView
 		$this->registerView((new RouterViewConfiguration('confirm'))->setParent($subscription));
 		$this->registerView((new RouterViewConfiguration('unsubscribe'))->setParent($subscription));
 		$this->registerView((new RouterViewConfiguration('message'))->setParent($subscription));
+		$this->registerView((new RouterViewConfiguration('browser'))->setParent($subscription));
 		parent::__construct($app, $menu);
 		$this->attachRule(new MenuRules($this));
 		$this->attachRule(new StandardRules($this));

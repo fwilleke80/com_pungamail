@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.3.2 — 2026-09-02
+
+- Added a published-topic multi-select beside **Receive newsletter** in Joomla registration, frontend profile, administrator user, and administrator profile forms.
+- Profile topic choices use the same normalized memberships as the frontend signup module; current memberships are preselected and clearing the selector unsubscribes only from currently published topics.
+- Kept the global preference independent from topic membership: topic choices are retained while globally unsubscribed, but global opt-out and suppression still prevent all delivery.
+- Added administrator/profile topic-change audit events without storing subscriber security tokens.
+- Added the forward-only no-op `0.3.2.sql` version marker; the existing normalized topic schema requires no change.
+- Updated English/German plug-in strings, the administrator guide, topics/signup tutorial, README, and release checks.
+
+## 0.3.1 — 2026-09-02
+
+- Added a comprehensive non-technical administrator guide plus focused tutorials for newsletters, digests, topics/signup, templates, delivery health/bounces, and CSV import/export.
+- Documented the current distinction between the Joomla profile's global newsletter preference and topic choices; direct topic selection in the user profile is scheduled for the next feature update.
+- Fixed empty-digest handling so **Create draft** always stops at an editable Draft, even when the automation otherwise uses automatic sending.
+- Fixed the Dashboard fatal SQL error by using the digest definition's Joomla `state` field instead of querying a nonexistent `enabled` column.
+- Added Joomla-compatible checkout fields and editor locking for newsletters, templates, topics and digest automations. Save retains the lock; Save & Close and Cancel release it; abandoned editor sessions appear in Joomla Global Check-in.
+- Added the missing Save & Close toolbar action to Topic and Digest editors.
+- Fixed the Delivery and CSV Import action controllers, whose private `redirect()` helpers conflicted with Joomla's inherited public controller method and caused action requests to fail during PHP class loading.
+- Hardened the backend transport test with an explicit task field, Joomla's supported sender tuple API, recipient/sender validation, false-result detection, logged diagnostics and a normal backend error message instead of a generic error page.
+- Added the forward-only `0.3.1.sql` migration without changing the released `0.3.0.sql` migration.
+- Expanded release checks for schema/query alignment, controller inheritance collisions, editor checkout/check-in, toolbar completeness and test-mail dispatch.
+- Added the subscription menu-item title and description to the administrator system-language catalogs so Joomla's Menu Item Type chooser resolves them in English and German.
+
+## 0.3.0 — 2026-09-02
+
+- Added first-class mailing lists/topics, normalized subscriber and newsletter memberships, topic-aware double opt-in, and module behavior for zero, one, or multiple configured topics.
+- Added recurring digest definitions and run history through Joomla Scheduled Tasks. Digest content is filtered against every resolved recipient's Joomla view levels and category access; content that any recipient cannot view is excluded.
+- Added scheduled newsletter delivery, cancellation, per-mailing and global queue pause/resume, cancellation of an unsent remainder, and immutable operational delivery statistics.
+- Added DSN bounce-mailbox processing through PHP IMAP, retained hard/soft/unknown bounce history, configurable soft-bounce suppression, and administrator suppression recovery.
+- Added comprehensive preflight validation with blocking errors, warnings, resolved/excluded-recipient inspection, link/image checks, and message-size reporting.
+- Added immutable sent-newsletter browser views with Joomla SEF routing and configurable browser links.
+- Added suppression-safe UTF-8 CSV preview/mapping/import and filtered export.
+- Added Reply-To inheritance, stable List-ID headers, supported envelope-sender handling, Joomla transport test mail, and local mail diagnostics.
+- Added configurable body-heading inheritance: component default, template override, and newsletter override, including an intentional no-heading mode.
+- Added the forward-only `0.3.0.sql` migration; existing IDs, snapshots, send-rate/batch configuration, and retry configuration are preserved.
+- Moved bounce/return mailbox credentials into Component Options while keeping operational controls, diagnostics, and history on the Delivery page; stored passwords remain encrypted and are never rendered back.
+- Expanded the Dashboard Scheduled Tasks overview and added contextual warnings when enabled digests, scheduled newsletters, or configured bounce processing lack their required enabled Joomla task.
+
+## 0.2.6 — 2026-09-02
+
+- Fixed the untranslated Restore toolbar label in trashed Newsletter and Template views by using component-owned English/German language keys.
+- Removed forced `table-secondary` styling from trashed rows so Joomla/Atum provides the same light/dark-mode table colours as normal list rows.
+- Reordered Newsletter editor toolbar actions: Save, Save & Close and Cancel remain on the left; Preview, Test Mail and Check recipients & send are grouped on the right. Template Preview is likewise separated to the right.
+- Enabled Joomla's native **Toggle Inline Help** control in Component Options via `config.xml`.
+- Added **Subscribers → New**. Administrators can directly add an external email recipient or select an existing Joomla user, which explicitly enables that user's Punga Mail subscription preference.
+- Administrator-added subscriptions remove an existing suppression deliberately and write audit events.
+- Added `COM_PUNGAMAIL_CONFIGURATION` so Joomla's configuration page/browser title renders as **Punga Mail: Options** / **Punga Mail: Optionen** instead of the untranslated language key.
+- Added the no-op `0.2.6.sql` version marker; no database schema changes are required.
+
 ## 0.2.5 — 2026-09-02
 
 - Moved subscriber-facing newsletter strings for the footer reason, unsubscribe label and “Read more” label from the Administrator catalog to the Website language catalog so they are discoverable as Website language overrides.

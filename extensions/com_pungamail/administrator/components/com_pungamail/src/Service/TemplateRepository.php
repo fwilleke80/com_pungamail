@@ -53,9 +53,15 @@ final class TemplateRepository
 	 *
 	 * @return int Template ID.
 	 */
-	public function save(int $id, string $title, string $subject, string $body, ?string $styleOverrides, string $customCss, int $userId): int
+	public function save(int $id, string $title, string $subject, string $body, ?string $styleOverrides, string $customCss, int $userId, array $options = []): int
 	{
 		$now = (new Date('now', 'UTC'))->toSql();
+		$headingMode = in_array((string) ($options['heading_mode'] ?? 'inherit'), ['inherit', 'custom', 'site', 'none'], true) ? (string) ($options['heading_mode'] ?? 'inherit') : 'inherit';
+		$mailHeading = trim((string) ($options['mail_heading'] ?? ''));
+		$browserView = in_array((int) ($options['browser_view'] ?? -1), [-1, 0, 1], true) ? (int) ($options['browser_view'] ?? -1) : -1;
+		$replyToMode = in_array((string) ($options['reply_to_mode'] ?? 'inherit'), ['inherit', 'custom', 'none'], true) ? (string) ($options['reply_to_mode'] ?? 'inherit') : 'inherit';
+		$replyToEmail = trim((string) ($options['reply_to_email'] ?? ''));
+		$replyToName = trim((string) ($options['reply_to_name'] ?? ''));
 
 		if ($id <= 0)
 		{
@@ -66,6 +72,12 @@ final class TemplateRepository
 				'state' => 1,
 				'style_overrides' => $styleOverrides,
 				'custom_css' => $customCss !== '' ? $customCss : null,
+				'heading_mode' => $headingMode,
+				'mail_heading' => $mailHeading !== '' ? $mailHeading : null,
+				'browser_view' => $browserView,
+				'reply_to_mode' => $replyToMode,
+				'reply_to_email' => $replyToEmail !== '' ? $replyToEmail : null,
+				'reply_to_name' => $replyToName !== '' ? $replyToName : null,
 				'created' => $now,
 				'modified' => $now,
 				'created_by' => $userId,
@@ -83,11 +95,20 @@ final class TemplateRepository
 			->set($this->db->quoteName('body_markdown') . ' = :body')
 			->set($this->db->quoteName('style_overrides') . ($styleOverrides === null ? ' = NULL' : ' = :styleOverrides'))
 			->set($this->db->quoteName('custom_css') . ($cssValue === null ? ' = NULL' : ' = :customCss'))
+			->set($this->db->quoteName('heading_mode') . ' = :headingMode')
+			->set($this->db->quoteName('mail_heading') . ($mailHeading === '' ? ' = NULL' : ' = :mailHeading'))
+			->set($this->db->quoteName('browser_view') . ' = :browserView')
+			->set($this->db->quoteName('reply_to_mode') . ' = :replyToMode')
+			->set($this->db->quoteName('reply_to_email') . ($replyToEmail === '' ? ' = NULL' : ' = :replyToEmail'))
+			->set($this->db->quoteName('reply_to_name') . ($replyToName === '' ? ' = NULL' : ' = :replyToName'))
 			->set($this->db->quoteName('modified') . ' = :modified')
 			->where($this->db->quoteName('id') . ' = :id')
 			->bind(':title', $title)
 			->bind(':subject', $subject)
 			->bind(':body', $body)
+			->bind(':headingMode', $headingMode)
+			->bind(':browserView', $browserView, ParameterType::INTEGER)
+			->bind(':replyToMode', $replyToMode)
 			->bind(':modified', $now)
 			->bind(':id', $id, ParameterType::INTEGER);
 
@@ -99,6 +120,21 @@ final class TemplateRepository
 		if ($cssValue !== null)
 		{
 			$query->bind(':customCss', $cssValue);
+		}
+
+		if ($mailHeading !== '')
+		{
+			$query->bind(':mailHeading', $mailHeading);
+		}
+
+		if ($replyToEmail !== '')
+		{
+			$query->bind(':replyToEmail', $replyToEmail);
+		}
+
+		if ($replyToName !== '')
+		{
+			$query->bind(':replyToName', $replyToName);
 		}
 
 		$this->db->setQuery($query)->execute();

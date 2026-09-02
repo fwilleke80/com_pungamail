@@ -1,0 +1,155 @@
+<?php
+/**
+ * @package     Punga.Mail
+ * @subpackage  Administrator.Controller
+ * @copyright   Copyright (c) 2026 Punga
+ * @license     MIT
+ */
+
+namespace Punga\Component\PungaMail\Administrator\Controller;
+
+use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
+use Joomla\CMS\Log\Log;
+use Joomla\CMS\MVC\Controller\BaseController;
+use Joomla\CMS\Router\Route;
+use Joomla\CMS\Session\Session;
+use Joomla\Registry\Registry;
+use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
+
+/** Mail delivery, bounce and diagnostics actions. */
+final class DeliveryController extends BaseController
+{
+	/** @return void */
+	public function saveSettings(): void
+	{
+		$this->guard();
+		$input = Factory::getApplication()->getInput();
+		$data = (array) $input->post->get('bounce', [], 'array');
+
+		try
+		{
+			ServiceFactory::mailSettings()->save($data, (string) ($data['password'] ?? ''));
+			$this->redirectToDelivery(Text::_('COM_PUNGAMAIL_BOUNCE_SETTINGS_SAVED'));
+		}
+		catch (\Throwable $e)
+		{
+			$this->redirectToDelivery($e->getMessage(), 'error');
+		}
+	}
+
+	/** @return void */
+	public function testBounce(): void
+	{
+		$this->guard();
+		$data = (array) Factory::getApplication()->getInput()->post->get('bounce', [], 'array');
+
+		try
+		{
+			$result = ServiceFactory::bounces()->testConnection($data, (string) ($data['password'] ?? ''));
+			$this->redirectToDelivery($result['message'], $result['ok'] ? 'message' : 'error');
+		}
+		catch (\Throwable $e)
+		{
+			$this->redirectToDelivery($e->getMessage(), 'error');
+		}
+	}
+
+	/** @return void */
+	public function processBounces(): void
+	{
+		$this->guard();
+
+		try
+		{
+			$result = ServiceFactory::bounces()->process();
+			$this->redirectToDelivery(Text::sprintf('COM_PUNGAMAIL_BOUNCE_RESULT', $result['processed'], $result['hard'], $result['soft'], $result['unknown']));
+		}
+		catch (\Throwable $e)
+		{
+			$this->redirectToDelivery($e->getMessage(), 'error');
+		}
+	}
+
+	/** @return void */
+	public function sendTest(): void
+	{
+		try
+		{
+			$this->guard();
+			$email = trim(Factory::getApplication()->getInput()->post->getString('test_email'));
+			ServiceFactory::mail()->sendConfigurationTest($email);
+			$this->redirectToDelivery(Text::sprintf('COM_PUNGAMAIL_MAIL_TEST_SENT', $email));
+		}
+		catch (\Throwable $e)
+		{
+			Log::add(
+				'Punga Mail configuration test failed: ' . get_class($e) . ': ' . $e->getMessage(),
+				Log::ERROR,
+				'com_pungamail'
+			);
+			$detail = trim(preg_replace('/[\r\n]+/', ' ', $e->getMessage()) ?? '');
+
+			if ($detail === '')
+			{
+				$detail = Text::_('COM_PUNGAMAIL_UNKNOWN_MAIL_ERROR');
+			}
+
+			$this->redirectToDelivery(Text::sprintf('COM_PUNGAMAIL_MAIL_TEST_FAILED', $detail), 'error');
+		}
+	}
+
+	/** @return void */
+	public function toggleQueue(): void
+	{
+		$this->guard();
+		$db = ServiceFactory::database();
+		$type = 'component';
+		$element = 'com_pungamail';
+		$query = $db->getQuery(true)
+			->select($db->quoteName('params'))
+			->from($db->quoteName('#__extensions'))
+			->where($db->quoteName('type') . ' = :type')
+			->where($db->quoteName('element') . ' = :element')
+			->bind(':type', $type)
+			->bind(':element', $element);
+		$params = new Registry((string) $db->setQuery($query)->loadResult());
+		$paused = Factory::getApplication()->getInput()->post->getInt('paused', 0) === 1;
+		$params->set('queue_paused', $paused ? 1 : 0);
+		$json = $params->toString();
+		$update = $db->getQuery(true)
+			->update($db->quoteName('#__extensions'))
+			->set($db->quoteName('params') . ' = :params')
+			->where($db->quoteName('type') . ' = :type')
+			->where($db->quoteName('element') . ' = :element')
+			->bind(':params', $json)
+			->bind(':type', $type)
+			->bind(':element', $element);
+		$db->setQuery($update)->execute();
+		$this->redirectToDelivery(Text::_($paused ? 'COM_PUNGAMAIL_QUEUE_PAUSED_NOTICE' : 'COM_PUNGAMAIL_QUEUE_RESUMED'));
+	}
+
+	/** @return void */
+	private function guard(): void
+	{
+		if (!Factory::getApplication()->getIdentity()->authorise('core.manage', 'com_pungamail'))
+		{
+			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+		}
+
+		if (!Session::checkToken())
+		{
+			throw new \RuntimeException(Text::_('JINVALID_TOKEN'), 403);
+		}
+	}
+
+	/** @return void */
+	private function redirectToDelivery(string $message, string $type = 'message'): void
+	{
+		$return = Factory::getApplication()->getInput()->post->getCmd('pungamail_return');
+		$url = $return === 'options'
+			? 'index.php?option=com_config&view=component&component=com_pungamail'
+			: 'index.php?option=com_pungamail&view=delivery';
+		$this->setRedirect(Route::_($url, false), $message, $type);
+	}
+}

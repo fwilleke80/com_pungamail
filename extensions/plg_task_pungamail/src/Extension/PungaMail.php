@@ -40,6 +40,18 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 			'langConstPrefix' => 'PLG_TASK_PUNGAMAIL_NEWSLETTER_REMINDER',
 			'method' => 'newsletterReminder',
 		],
+		'pungamail.scheduled_sends' => [
+			'langConstPrefix' => 'PLG_TASK_PUNGAMAIL_SCHEDULED_SENDS',
+			'method' => 'scheduledSends',
+		],
+		'pungamail.generate_digests' => [
+			'langConstPrefix' => 'PLG_TASK_PUNGAMAIL_GENERATE_DIGESTS',
+			'method' => 'generateDigests',
+		],
+		'pungamail.process_bounces' => [
+			'langConstPrefix' => 'PLG_TASK_PUNGAMAIL_PROCESS_BOUNCES',
+			'method' => 'processBounces',
+		],
 	];
 
 	/**
@@ -116,6 +128,63 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 		catch (\Throwable $e)
 		{
 			Log::add('Punga Mail queue task failed: ' . $e->getMessage(), Log::ERROR, 'plg_task_pungamail');
+
+			return Status::KNOCKOUT;
+		}
+	}
+
+	/** @return int */
+	private function scheduledSends(ExecuteTaskEvent $event): int
+	{
+		try
+		{
+			$this->getApplication()->bootComponent('com_pungamail');
+			$result = ServiceFactory::scheduledSends()->process();
+			Log::add(sprintf('Punga Mail scheduled sends: %d queued, %d failed.', (int) $result['queued'], (int) $result['failed']), Log::INFO, 'plg_task_pungamail');
+
+			return Status::OK;
+		}
+		catch (\Throwable $e)
+		{
+			Log::add('Punga Mail scheduled-send task failed: ' . $e->getMessage(), Log::ERROR, 'plg_task_pungamail');
+
+			return Status::KNOCKOUT;
+		}
+	}
+
+	/** @return int */
+	private function generateDigests(ExecuteTaskEvent $event): int
+	{
+		try
+		{
+			$this->getApplication()->bootComponent('com_pungamail');
+			$result = ServiceFactory::digestProcessor()->process();
+			Log::add(sprintf('Punga Mail digests: %d processed, %d failed.', (int) $result['processed'], (int) $result['failed']), Log::INFO, 'plg_task_pungamail');
+
+			return Status::OK;
+		}
+		catch (\Throwable $e)
+		{
+			Log::add('Punga Mail digest task failed: ' . $e->getMessage(), Log::ERROR, 'plg_task_pungamail');
+
+			return Status::KNOCKOUT;
+		}
+	}
+
+	/** @return int */
+	private function processBounces(ExecuteTaskEvent $event): int
+	{
+		try
+		{
+			$this->getApplication()->bootComponent('com_pungamail');
+			$result = ServiceFactory::bounces()->process();
+			Log::add(sprintf('Punga Mail bounces: %d processed (%d hard, %d soft).', (int) $result['processed'], (int) $result['hard'], (int) $result['soft']), Log::INFO, 'plg_task_pungamail');
+
+			return Status::OK;
+		}
+		catch (\Throwable $e)
+		{
+			Log::add('Punga Mail bounce task failed: ' . $e->getMessage(), Log::ERROR, 'plg_task_pungamail');
 
 			return Status::KNOCKOUT;
 		}

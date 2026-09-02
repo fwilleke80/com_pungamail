@@ -22,7 +22,8 @@ final class Dispatcher extends AbstractModuleDispatcher
 	protected function getLayoutData(): array
 	{
 		$data = parent::getLayoutData();
-		$data['pungamail'] = PungaMailSignupHelper::getState();
+		$configured = array_map('intval', (array) $data['params']->get('topic_ids', []));
+		$data['pungamail'] = PungaMailSignupHelper::getState($configured);
 
 		return $data;
 	}

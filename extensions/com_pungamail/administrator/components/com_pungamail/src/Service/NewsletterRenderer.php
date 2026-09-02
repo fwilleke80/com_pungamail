@@ -20,6 +20,7 @@ final class NewsletterRenderer
 	public const UNSUBSCRIBE_PLACEHOLDER = '{{PUNGAMAIL_UNSUBSCRIBE_URL}}';
 	public const NEW_CONTENT_PLACEHOLDER = '{new_content}';
 	public const RECIPIENT_PLACEHOLDER = '{recipient}';
+	public const BROWSER_PLACEHOLDER = '{{PUNGAMAIL_BROWSER_URL}}';
 
 	/**
 	 * @param MarkdownRenderer   $markdown     Markdown renderer.
@@ -33,7 +34,8 @@ final class NewsletterRenderer
 		private readonly ContentTypeService $contentTypes,
 		private readonly MailStyleService $styles,
 		private readonly TemplateRepository $templates,
-		private readonly MailTextService $mailText
+		private readonly MailTextService $mailText,
+		private readonly MailConfigurationService $mailConfiguration
 	)
 	{
 	}
@@ -57,7 +59,8 @@ final class NewsletterRenderer
 			$template?->custom_css ?? null,
 			$newsletter->custom_css ?? null
 		);
-		$siteNameRaw = (string) Factory::getApplication()->get('sitename');
+		$heading = $this->mailConfiguration->heading($template, $newsletter);
+		$browserView = $this->mailConfiguration->browserView($template, $newsletter);
 		$itemHtml = '';
 		$itemTextParts = [];
 		$snapshots = [];
@@ -153,8 +156,10 @@ final class NewsletterRenderer
 		$footerMarkdown = $this->footerMarkdown();
 		$footerHtml = $this->styleFooterFragment($this->markdown->toHtml($footerMarkdown, Uri::root()), $style);
 		$footerText = trim($this->markdown->toText($footerMarkdown, Uri::root()));
-		$html = $this->wrapHtml($bodyHtml, $footerHtml, $siteNameRaw, $style);
-		$text = trim($bodyText) . "\n\n---\n";
+		$html = $this->wrapHtml($bodyHtml, $footerHtml, $heading, $browserView, $style);
+		$text = $browserView
+			? $this->mailText->text('COM_PUNGAMAIL_MAIL_VIEW_BROWSER') . ': ' . self::BROWSER_PLACEHOLDER . "\n\n" . trim($bodyText) . "\n\n---\n"
+			: trim($bodyText) . "\n\n---\n";
 
 		if ($footerText !== '')
 		{
@@ -220,7 +225,7 @@ final class NewsletterRenderer
 	}
 
 	/** @param array<string,string|int> $style @return string */
-	private function wrapHtml(string $bodyHtml, string $footerHtml, string $siteName, array $style): string
+	private function wrapHtml(string $bodyHtml, string $footerHtml, string $heading, bool $browserView, array $style): string
 	{
 		$width = (int) $style['content_width'];
 		$padding = (int) $style['content_padding'];
@@ -233,18 +238,35 @@ final class NewsletterRenderer
 		$font = htmlspecialchars((string) $style['font_family'], ENT_QUOTES, 'UTF-8');
 		$customCss = trim((string) ($style['custom_css'] ?? ''));
 		$headCss = $customCss !== '' ? '<style>' . $customCss . '</style>' : '';
-		$header = '<strong>' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '</strong>';
+		$siteName = (string) Factory::getApplication()->get('sitename');
+		$headerParts = [];
 		$logoUrl = (string) ($style['logo_url'] ?? '');
 
 		if ($logoUrl !== '')
 		{
-			$header = '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '" width="' . (int) $style['logo_width'] . '" style="display:block;max-width:100%;height:auto;border:0">';
+			$headerParts[] = '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '" width="' . (int) $style['logo_width'] . '" style="display:block;max-width:100%;height:auto;border:0">';
 		}
+
+		if ($heading !== '')
+		{
+			$headingMargin = $logoUrl !== '' ? '16px 0 0' : '0';
+			$headerParts[] = '<h1 style="margin:' . $headingMargin . ';color:' . htmlspecialchars((string) $style['heading_color'], ENT_QUOTES, 'UTF-8') . ';line-height:1.2">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h1>';
+		}
+
+		$header = implode('', $headerParts);
+		$browserLink = $browserView
+			? '<p style="margin:0 0 16px;text-align:center;font-size:12px"><a style="color:' . $link . ';text-decoration:underline" href="' . self::BROWSER_PLACEHOLDER . '">' . htmlspecialchars($this->mailText->text('COM_PUNGAMAIL_MAIL_VIEW_BROWSER'), ENT_QUOTES, 'UTF-8') . '</a></p>'
+			: '';
 
 		$html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' . $headCss . '</head>';
 		$html .= '<body style="margin:0;background:' . $outer . ';font-family:' . $font . ';font-size:' . $fontSize . 'px;color:' . $text . '">';
 		$html .= '<div style="max-width:' . $width . 'px;margin:0 auto;padding:' . $padding . 'px;background:' . $content . '">';
-		$html .= '<header style="margin-bottom:28px">' . $header . '</header>';
+		$html .= $browserLink;
+
+		if ($header !== '')
+		{
+			$html .= '<header style="margin-bottom:28px">' . $header . '</header>';
+		}
 		$html .= '<main style="line-height:1.55">' . $bodyHtml . '</main>';
 		$html .= '<footer style="margin-top:36px;padding-top:18px;border-top:1px solid #dddddd;font-size:12px;color:' . $footer . '">';
 		$html .= $footerHtml;

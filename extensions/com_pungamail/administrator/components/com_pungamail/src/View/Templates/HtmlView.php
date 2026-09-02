@@ -27,7 +27,7 @@ final class HtmlView extends BaseHtmlView
 		if ($user->authorise('core.create', 'com_pungamail')) { ToolbarHelper::addNew('template.add'); }
 		if ((string) $this->state->get('filter.state') === '-2')
 		{
-			if ($user->authorise('core.edit.state', 'com_pungamail')) { ToolbarHelper::publish('templates.restore', Text::_('JTOOLBAR_RESTORE'), true); }
+			if ($user->authorise('core.edit.state', 'com_pungamail')) { ToolbarHelper::publish('templates.restore', Text::_('COM_PUNGAMAIL_RESTORE'), true); }
 			if ($user->authorise('core.delete', 'com_pungamail')) { ToolbarHelper::deleteList(Text::_('COM_PUNGAMAIL_CONFIRM_DELETE_TEMPLATES'), 'templates.delete'); }
 		}
 		elseif ($user->authorise('core.edit.state', 'com_pungamail')) { ToolbarHelper::trash('templates.trash'); }

@@ -33,6 +33,7 @@ final class NewslettersModel extends ListModel
 				'sent_count', 'a.sent_count',
 				'failed_count', 'a.failed_count',
 				'sent_at', 'a.sent_at',
+				'scheduled_at', 'a.scheduled_at',
 				'created', 'a.created',
 			];
 		}

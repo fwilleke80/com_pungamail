@@ -30,10 +30,40 @@ final class ServiceFactory
 		return Factory::getContainer()->get(DatabaseInterface::class);
 	}
 
+	/** @return CheckoutService */
+	public static function checkouts(): CheckoutService
+	{
+		return new CheckoutService(self::database());
+	}
+
 	/** @return SubscriberRepository */
 	public static function subscribers(): SubscriberRepository
 	{
 		return new SubscriberRepository(self::database());
+	}
+
+	/** @return TopicRepository */
+	public static function topics(): TopicRepository
+	{
+		return new TopicRepository(self::database());
+	}
+
+	/** @return MailSettingsRepository */
+	public static function mailSettings(): MailSettingsRepository
+	{
+		return new MailSettingsRepository(self::database(), new SecretService());
+	}
+
+	/** @return MailConfigurationService */
+	public static function mailConfiguration(): MailConfigurationService
+	{
+		return new MailConfigurationService(self::mailSettings());
+	}
+
+	/** @return BounceService */
+	public static function bounces(): BounceService
+	{
+		return new BounceService(self::database(), self::mailSettings(), self::subscribers(), self::newsletters());
 	}
 
 	/** @return NewsletterRepository */
@@ -69,7 +99,7 @@ final class ServiceFactory
 	/** @return NewsletterRenderer */
 	public static function renderer(): NewsletterRenderer
 	{
-		return new NewsletterRenderer(new MarkdownRenderer(), self::contentTypes(), self::styles(), self::templates(), new MailTextService());
+		return new NewsletterRenderer(new MarkdownRenderer(), self::contentTypes(), self::styles(), self::templates(), new MailTextService(), self::mailConfiguration());
 	}
 
 	/** @return RecipientResolver */
@@ -81,19 +111,55 @@ final class ServiceFactory
 	/** @return MailService */
 	public static function mail(): MailService
 	{
-		return new MailService(Factory::getContainer()->get(MailerFactoryInterface::class), self::tokens(), new MarkdownRenderer(), self::renderer(), self::database());
+		return new MailService(Factory::getContainer()->get(MailerFactoryInterface::class), self::tokens(), new MarkdownRenderer(), self::renderer(), self::database(), self::mailConfiguration());
 	}
 
 	/** @return QueueService */
 	public static function queue(): QueueService
 	{
-		return new QueueService(self::database(), self::newsletters(), self::renderer(), self::recipients());
+		return new QueueService(self::database(), self::newsletters(), self::renderer(), self::recipients(), self::preflight(), self::mailConfiguration(), self::templates());
+	}
+
+	/** @return PreflightService */
+	public static function preflight(): PreflightService
+	{
+		return new PreflightService(self::newsletters(), self::recipients(), self::renderer(), self::contentTypes(), self::templates(), self::mailConfiguration());
 	}
 
 	/** @return QueueProcessor */
 	public static function processor(): QueueProcessor
 	{
 		return new QueueProcessor(self::database(), self::newsletters(), self::mail());
+	}
+
+	/** @return ScheduledSendService */
+	public static function scheduledSends(): ScheduledSendService
+	{
+		return new ScheduledSendService(self::newsletters(), self::queue());
+	}
+
+	/** @return DigestRepository */
+	public static function digests(): DigestRepository
+	{
+		return new DigestRepository(self::database());
+	}
+
+	/** @return DigestService */
+	public static function digestProcessor(): DigestService
+	{
+		return new DigestService(self::digests(), self::newsletters(), self::templates(), self::contentTypes(), self::recipients(), self::queue());
+	}
+
+	/** @return StatisticsService */
+	public static function statistics(): StatisticsService
+	{
+		return new StatisticsService(self::database());
+	}
+
+	/** @return CsvService */
+	public static function csv(): CsvService
+	{
+		return new CsvService(self::database(), self::subscribers(), self::topics());
 	}
 
 	/** @return ReminderService */

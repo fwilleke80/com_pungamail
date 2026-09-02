@@ -32,6 +32,12 @@ final class ConfirmModel extends BaseDatabaseModel
 
 		$hash = ServiceFactory::tokens()->hashConfirmationToken($token);
 		$now = (new Date('now', 'UTC'))->toSql();
+
+		if (Factory::getApplication()->getInput()->getCmd('kind') === 'topics')
+		{
+			$request = ServiceFactory::topics()->findPreferenceRequest($hash);
+			return $request !== null ? (object) ['id' => (int) $request->subscriber_id, 'email' => (string) $request->email] : null;
+		}
 		$db = $this->getDatabase();
 		$query = $db->getQuery(true)
 			->select(['id', 'email'])

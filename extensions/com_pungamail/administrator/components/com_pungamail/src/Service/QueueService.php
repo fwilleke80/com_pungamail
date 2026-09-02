@@ -28,7 +28,10 @@ final class QueueService
 		private readonly DatabaseInterface $db,
 		private readonly NewsletterRepository $newsletters,
 		private readonly NewsletterRenderer $renderer,
-		private readonly RecipientResolver $recipients
+		private readonly RecipientResolver $recipients,
+		private readonly PreflightService $preflight,
+		private readonly MailConfigurationService $mailConfiguration,
+		private readonly TemplateRepository $templates
 	)
 	{
 	}
@@ -44,15 +47,18 @@ final class QueueService
 	{
 		$newsletter = $this->newsletters->find($newsletterId);
 
-		if ($newsletter === null || (int) $newsletter->status !== NewsletterRepository::STATUS_DRAFT)
+		if ($newsletter === null || !in_array((int) $newsletter->status, [NewsletterRepository::STATUS_DRAFT, NewsletterRepository::STATUS_SCHEDULED], true))
 		{
 			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_QUEUE_DRAFT_ONLY'));
 		}
 
-		$items = $this->newsletters->getItems($newsletterId);
-		$rendered = $this->renderer->render($newsletter, $items);
+		$preflight = $this->preflight->assertSendable($newsletterId);
+		$items = $preflight['items'];
+		$rendered = $preflight['rendered'];
 		$groupIds = $this->newsletters->getGroupIds($newsletterId);
-		$recipients = $this->recipients->resolve($newsletter, $groupIds);
+		$topicIds = $this->newsletters->getTopicIds($newsletterId);
+		$recipientReport = $this->recipients->resolveWithReport($newsletter, $groupIds, $topicIds, true);
+		$recipients = $recipientReport['recipients'];
 
 		if ($recipients === [])
 		{
@@ -60,6 +66,11 @@ final class QueueService
 		}
 
 		$now = (new Date('now', 'UTC'))->toSql();
+		$template = isset($newsletter->template_id) && (int) $newsletter->template_id > 0
+			? $this->templates->find((int) $newsletter->template_id)
+			: null;
+		$replyTo = $this->mailConfiguration->replyTo($template, $newsletter);
+		$topics = $this->newsletters->getTopics($newsletterId);
 		$this->db->transactionStart();
 
 		try
@@ -70,8 +81,15 @@ final class QueueService
 				$rendered['html'],
 				$rendered['text'],
 				$rendered['items'],
-				$now
+				$now,
+				[
+					'reply_to_email' => $replyTo['email'],
+					'reply_to_name' => $replyTo['name'],
+					'list_id' => $this->mailConfiguration->listId($topics),
+					'browser_enabled' => $this->mailConfiguration->browserView($template, $newsletter) ? 1 : 0,
+				]
 			);
+			$this->newsletters->setResolutionCounts($newsletterId, $recipientReport['counts']);
 
 			foreach ($recipients as $recipient)
 			{
@@ -87,9 +105,12 @@ final class QueueService
 					'attempts' => 0,
 					'next_attempt_at' => $now,
 					'last_error' => null,
+					'failure_class' => null,
 					'created' => $now,
 					'modified' => $now,
 					'sent_at' => null,
+					'cancelled_at' => null,
+					'bounce_id' => null,
 				];
 				$this->db->insertObject('#__pungamail_send_queue', $row, 'id');
 			}

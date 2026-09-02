@@ -46,6 +46,18 @@ final class AdministratorRoute
 	}
 
 	/** @return string */
+	public static function subscribers(): string
+	{
+		return 'index.php?option=com_pungamail&view=subscribers';
+	}
+
+	/** @return string */
+	public static function subscriber(): string
+	{
+		return self::subscribers() . '&screen=subscriber';
+	}
+
+	/** @return string */
 	public static function templates(): string
 	{
 		return 'index.php?option=com_pungamail&view=templates';
@@ -64,5 +76,29 @@ final class AdministratorRoute
 	public static function templatePreview(int $id): string
 	{
 		return self::templates() . '&screen=templatepreview&id=' . $id;
+	}
+
+	/** @return string */
+	public static function topics(): string
+	{
+		return 'index.php?option=com_pungamail&view=topics';
+	}
+
+	/** @return string */
+	public static function topic(int $id = 0): string
+	{
+		return self::topics() . '&screen=topic' . ($id > 0 ? '&id=' . $id : '');
+	}
+
+	/** @return string */
+	public static function digests(): string
+	{
+		return 'index.php?option=com_pungamail&view=digests';
+	}
+
+	/** @return string */
+	public static function digest(int $id = 0): string
+	{
+		return self::digests() . '&screen=digest' . ($id > 0 ? '&id=' . $id : '');
 	}
 }

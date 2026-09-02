@@ -34,8 +34,12 @@ final class HtmlView extends BaseHtmlView
 		ToolbarHelper::title($this->item ? Text::_('COM_PUNGAMAIL_EDIT_TEMPLATE') : Text::_('COM_PUNGAMAIL_NEW_TEMPLATE'), 'copy');
 		ToolbarHelper::apply('template.save');
 		ToolbarHelper::save('template.save2close');
-		ToolbarHelper::custom('template.preview', 'eye', '', Text::_('COM_PUNGAMAIL_PREVIEW'), false);
 		ToolbarHelper::cancel('template.cancel');
+		ToolbarHelper::custom('template.preview', 'eye', '', Text::_('COM_PUNGAMAIL_PREVIEW'), false);
+
+		Factory::getApplication()->getDocument()->getWebAssetManager()->addInlineStyle(
+			'#toolbar-eye { margin-inline-start: auto; }'
+		);
 
 		parent::display($tpl);
 	}

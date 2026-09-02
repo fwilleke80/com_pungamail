@@ -8,6 +8,7 @@
 
 namespace Punga\Component\PungaMail\Administrator\Service;
 
+use Joomla\CMS\Access\Access;
 use Joomla\CMS\Date\Date;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
@@ -24,6 +25,9 @@ final class ContentTypeService
 {
 	/** @var array<string,object>|null */
 	private ?array $types = null;
+
+	/** @var array<string,int|null> */
+	private array $categoryAccess = [];
 
 	/**
 	 * @param DatabaseInterface $db Database connection.
@@ -134,6 +138,90 @@ final class ContentTypeService
 	}
 
 	/**
+	 * Keeps only items that every resolved recipient may view on the website.
+	 * External recipients use Joomla's guest view levels. Standard Joomla
+	 * category access is checked in addition to the registered item access field.
+	 *
+	 * @param array<int,object>              $items      Normalized content items.
+	 * @param array<int,array<string,mixed>> $recipients Resolved recipients.
+	 *
+	 * @return array{items:array<int,object>,violations:array<int,array<string,mixed>>}
+	 */
+	public function filterForRecipients(array $items, array $recipients): array
+	{
+		$userIds = $recipients === []
+			? [0]
+			: array_values(array_unique(array_map(static fn (array $recipient): int => (int) ($recipient['user_id'] ?? 0), $recipients)));
+		$levelsByUser = [];
+
+		foreach ($userIds as $userId)
+		{
+			$levelsByUser[$userId] = array_flip(array_map('intval', Access::getAuthorisedViewLevels($userId)));
+		}
+
+		$allowed = [];
+		$violations = [];
+
+		foreach ($items as $item)
+		{
+			$requiredLevels = [];
+			$itemAccess = isset($item->access) && $item->access !== null ? (int) $item->access : null;
+
+			if ($itemAccess !== null && $itemAccess > 0)
+			{
+				$requiredLevels[] = $itemAccess;
+			}
+
+			$categoryAccess = $this->getCategoryAccess((string) ($item->source_key ?? ''), (int) ($item->catid ?? 0));
+
+			if ($categoryAccess === -1)
+			{
+				$violations[] = [
+					'source_key' => (string) ($item->source_key ?? ''),
+					'source_item_id' => (string) ($item->id ?? ''),
+					'title' => (string) ($item->title ?? ''),
+					'blocked_user_ids' => $userIds,
+				];
+				continue;
+			}
+
+			if ($categoryAccess !== null && $categoryAccess > 0)
+			{
+				$requiredLevels[] = $categoryAccess;
+			}
+
+			$blockedUsers = [];
+
+			foreach ($levelsByUser as $userId => $levels)
+			{
+				foreach ($requiredLevels as $requiredLevel)
+				{
+					if (!isset($levels[$requiredLevel]))
+					{
+						$blockedUsers[] = $userId;
+						break;
+					}
+				}
+			}
+
+			if ($blockedUsers === [])
+			{
+				$allowed[] = $item;
+				continue;
+			}
+
+			$violations[] = [
+				'source_key' => (string) ($item->source_key ?? ''),
+				'source_item_id' => (string) ($item->id ?? ''),
+				'title' => (string) ($item->title ?? ''),
+				'blocked_user_ids' => $blockedUsers,
+			];
+		}
+
+		return ['items' => $allowed, 'violations' => $violations];
+	}
+
+	/**
 	 * Builds an absolute site URL using the conventional component/view route
 	 * represented by a registered type alias.
 	 *
@@ -214,6 +302,7 @@ final class ContentTypeService
 			'created' => $this->column((string) ($common['core_created_time'] ?? '')),
 			'catid' => $this->column((string) ($common['core_catid'] ?? '')),
 			'alias' => $this->column((string) ($common['core_alias'] ?? '')),
+			'access' => $this->column((string) ($common['core_access'] ?? '')),
 		];
 	}
 
@@ -241,7 +330,7 @@ final class ContentTypeService
 			$publishedExpression . ' AS ' . $this->db->quoteName('published'),
 		];
 
-		foreach (['body', 'created', 'catid', 'alias'] as $optional)
+		foreach (['body', 'created', 'catid', 'alias', 'access'] as $optional)
 		{
 			$column = $type->{$optional} ?? null;
 			$select[] = $column !== null
@@ -291,11 +380,47 @@ final class ContentTypeService
 			$row->source_label = (string) $type->label;
 			$row->id = (string) $row->id;
 			$row->body = (string) ($row->body ?? '');
+			$row->access = $row->access !== null ? (int) $row->access : null;
 			$row->published = (string) ($row->published ?? ($row->created ?? ''));
 			$row->url = $this->itemUrl($type, $row);
 		}
 
 		return $rows;
+	}
+
+	/** @return int|null */
+	private function getCategoryAccess(string $sourceKey, int $categoryId): ?int
+	{
+		if ($categoryId <= 0)
+		{
+			return null;
+		}
+
+		$component = explode('.', $sourceKey, 2)[0] ?? '';
+
+		if (!preg_match('/^com_[a-z0-9_]+$/i', $component))
+		{
+			return null;
+		}
+
+		$cacheKey = $component . ':' . $categoryId;
+
+		if (array_key_exists($cacheKey, $this->categoryAccess))
+		{
+			return $this->categoryAccess[$cacheKey];
+		}
+
+		$query = $this->db->getQuery(true)
+			->select([$this->db->quoteName('access'), $this->db->quoteName('published')])
+			->from($this->db->quoteName('#__categories'))
+			->where($this->db->quoteName('id') . ' = :categoryId')
+			->where($this->db->quoteName('extension') . ' = :extension')
+			->bind(':categoryId', $categoryId, \Joomla\Database\ParameterType::INTEGER)
+			->bind(':extension', $component);
+		$row = $this->db->setQuery($query)->loadObject();
+		$this->categoryAccess[$cacheKey] = $row === null || (int) $row->published !== 1 ? -1 : (int) $row->access;
+
+		return $this->categoryAccess[$cacheKey];
 	}
 
 	/** @return bool */

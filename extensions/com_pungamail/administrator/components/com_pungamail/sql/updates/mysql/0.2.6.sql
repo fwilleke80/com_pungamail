@@ -1,0 +1,2 @@
+-- Punga Mail 0.2.6
+-- Administrator UI release; no database schema changes.

@@ -62,7 +62,7 @@ final class HtmlView extends BaseHtmlView
 		{
 			if ($user->authorise('core.edit.state', 'com_pungamail'))
 			{
-				ToolbarHelper::publish('newsletters.restore', Text::_('JTOOLBAR_RESTORE'), true);
+				ToolbarHelper::publish('newsletters.restore', Text::_('COM_PUNGAMAIL_RESTORE'), true);
 			}
 
 			if ($user->authorise('core.delete', 'com_pungamail'))

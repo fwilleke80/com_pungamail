@@ -1,13 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <config>
+	<inlinehelp button="show"/>
 	<fieldset name="mail" label="COM_PUNGAMAIL_CONFIG_MAIL">
 		<field name="from_name" type="text" label="COM_PUNGAMAIL_CONFIG_FROM_NAME" description="COM_PUNGAMAIL_CONFIG_FROM_NAME_DESC" />
 		<field name="from_email" type="email" label="COM_PUNGAMAIL_CONFIG_FROM_EMAIL" description="COM_PUNGAMAIL_CONFIG_FROM_EMAIL_DESC" />
+		<field name="reply_to_mode" type="list" default="none" label="COM_PUNGAMAIL_REPLY_TO_MODE" description="COM_PUNGAMAIL_REPLY_TO_MODE_DESC">
+			<option value="none">COM_PUNGAMAIL_REPLY_TO_NONE</option>
+			<option value="custom">COM_PUNGAMAIL_REPLY_TO_CUSTOM</option>
+		</field>
+		<field name="reply_to_email" type="email" label="COM_PUNGAMAIL_REPLY_TO_EMAIL" />
+		<field name="reply_to_name" type="text" label="COM_PUNGAMAIL_REPLY_TO_NAME" />
 		<field name="default_user_subscribed" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_DEFAULT_USER_SUBSCRIBED" description="COM_PUNGAMAIL_CONFIG_DEFAULT_USER_SUBSCRIBED_DESC">
 			<option value="0">JNO</option><option value="1">JYES</option>
 		</field>
 	</fieldset>
 	<fieldset name="design" label="COM_PUNGAMAIL_CONFIG_DESIGN">
+		<field name="mail_heading" type="text" default="{site_name}" label="COM_PUNGAMAIL_MAIL_BODY_HEADING" description="COM_PUNGAMAIL_MAIL_BODY_HEADING_GLOBAL_DESC" />
+		<field name="browser_view_enabled" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_BROWSER_VIEW_ENABLED" description="COM_PUNGAMAIL_BROWSER_VIEW_ENABLED_DESC"><option value="0">JNO</option><option value="1">JYES</option></field>
 		<field name="design_content_width" type="number" default="680" min="320" max="1200" label="COM_PUNGAMAIL_STYLE_CONTENT_WIDTH" />
 		<field name="design_outer_background" type="color" default="#f4f4f4" label="COM_PUNGAMAIL_STYLE_OUTER_BACKGROUND" />
 		<field name="design_content_background" type="color" default="#ffffff" label="COM_PUNGAMAIL_STYLE_CONTENT_BACKGROUND" />
@@ -31,9 +40,14 @@
 		<field name="confirmation_markdown" type="textarea" filter="raw" rows="12" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_MARKDOWN" description="COM_PUNGAMAIL_CONFIG_CONFIRMATION_MARKDOWN_DESC" />
 	</fieldset>
 	<fieldset name="queue" label="COM_PUNGAMAIL_CONFIG_QUEUE">
+		<field name="queue_paused" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_QUEUE_PAUSED" description="COM_PUNGAMAIL_QUEUE_PAUSED_DESC"><option value="0">JNO</option><option value="1">JYES</option></field>
 		<field name="batch_size" type="number" default="25" min="1" max="250" label="COM_PUNGAMAIL_CONFIG_BATCH_SIZE" description="COM_PUNGAMAIL_CONFIG_BATCH_SIZE_DESC" />
 		<field name="max_attempts" type="number" default="3" min="1" max="10" label="COM_PUNGAMAIL_CONFIG_MAX_ATTEMPTS" description="COM_PUNGAMAIL_CONFIG_MAX_ATTEMPTS_DESC" />
 		<field name="retry_minutes" type="number" default="15" min="1" max="1440" label="COM_PUNGAMAIL_CONFIG_RETRY_MINUTES" description="COM_PUNGAMAIL_CONFIG_RETRY_MINUTES_DESC" />
+	</fieldset>
+	<fieldset name="bounce" label="COM_PUNGAMAIL_CONFIG_BOUNCE">
+		<field name="bounce_mailbox_configuration" type="bouncemailbox" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" hiddenLabel="true" />
+		<field name="soft_bounce_threshold" type="number" default="3" min="1" max="20" label="COM_PUNGAMAIL_SOFT_BOUNCE_THRESHOLD" description="COM_PUNGAMAIL_SOFT_BOUNCE_THRESHOLD_DESC" />
 	</fieldset>
 	<fieldset name="reminder" label="COM_PUNGAMAIL_CONFIG_REMINDER">
 		<field name="reminder_enabled" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_REMINDER_ENABLED"><option value="0">JNO</option><option value="1">JYES</option></field>

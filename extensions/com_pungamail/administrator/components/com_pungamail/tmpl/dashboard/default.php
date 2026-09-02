@@ -11,7 +11,15 @@ $data = $this->data;
 $subscribers = $data['subscribers'];
 $queue = $data['queue'];
 $newsletters = $data['newsletters'];
-$task = $data['task'];
+$tasks = $data['tasks'];
+$automation = $data['automation'];
+$taskReady = static fn (?object $task): bool => $task !== null && (int) $task->state === 1;
+$taskLabels = [
+	'queue' => 'COM_PUNGAMAIL_TASK_QUEUE',
+	'scheduled' => 'COM_PUNGAMAIL_TASK_SCHEDULED_SENDS',
+	'digests' => 'COM_PUNGAMAIL_TASK_DIGESTS',
+	'bounces' => 'COM_PUNGAMAIL_TASK_BOUNCES',
+];
 ?>
 <div class="container-fluid">
 	<div class="row g-3 mb-3">
@@ -50,6 +58,19 @@ $task = $data['task'];
 		</div>
 	</div>
 
+	<?php if (!$taskReady($tasks['queue'])) : ?>
+		<div class="alert alert-warning"><?php echo Text::_('COM_PUNGAMAIL_TASK_NOT_CONFIGURED'); ?></div>
+	<?php endif; ?>
+	<?php if ((int) $automation['digests'] > 0 && !$taskReady($tasks['digests'])) : ?>
+		<div class="alert alert-warning"><?php echo Text::_('COM_PUNGAMAIL_DIGEST_TASK_NOT_CONFIGURED'); ?></div>
+	<?php endif; ?>
+	<?php if ((int) $automation['scheduled'] > 0 && !$taskReady($tasks['scheduled'])) : ?>
+		<div class="alert alert-warning"><?php echo Text::_('COM_PUNGAMAIL_SCHEDULED_SEND_TASK_NOT_CONFIGURED'); ?></div>
+	<?php endif; ?>
+	<?php if ($automation['bounce_configured'] && !$taskReady($tasks['bounces'])) : ?>
+		<div class="alert alert-warning"><?php echo Text::_('COM_PUNGAMAIL_BOUNCE_TASK_NOT_CONFIGURED'); ?></div>
+	<?php endif; ?>
+
 	<div class="row g-3">
 		<div class="col-12 col-xl-7">
 			<div class="card h-100">
@@ -64,21 +85,23 @@ $task = $data['task'];
 		</div>
 		<div class="col-12 col-xl-5">
 			<div class="card h-100">
-				<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_SCHEDULED_DELIVERY'); ?></strong></div>
-				<div class="card-body">
-				<?php if ($task === null) : ?>
-					<div class="alert alert-warning"><?php echo Text::_('COM_PUNGAMAIL_TASK_NOT_CONFIGURED'); ?></div>
-				<?php else : ?>
-					<dl class="row mb-0">
-						<dt class="col-5"><?php echo Text::_('JSTATUS'); ?></dt>
-						<dd class="col-7"><?php echo (int) $task->state === 1 ? Text::_('JENABLED') : Text::_('JDISABLED'); ?></dd>
-						<dt class="col-5"><?php echo Text::_('COM_PUNGAMAIL_LAST_RUN'); ?></dt>
-						<dd class="col-7"><?php echo $task->last_execution ? HTMLHelper::_('date', $task->last_execution, Text::_('DATE_FORMAT_LC5'), 'UTC') : Text::_('COM_PUNGAMAIL_NEVER'); ?></dd>
-						<dt class="col-5"><?php echo Text::_('COM_PUNGAMAIL_NEXT_RUN'); ?></dt>
-						<dd class="col-7"><?php echo $task->next_execution ? HTMLHelper::_('date', $task->next_execution, Text::_('DATE_FORMAT_LC5'), 'UTC') : '—'; ?></dd>
-					</dl>
-				<?php endif; ?>
-					<div class="mt-3"><a class="btn btn-outline-primary btn-sm" href="<?php echo Route::_('index.php?option=com_scheduler&view=tasks'); ?>"><?php echo Text::_('COM_PUNGAMAIL_OPEN_SCHEDULED_TASKS'); ?></a></div>
+				<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_SCHEDULED_TASKS'); ?></strong></div>
+				<div class="table-responsive">
+					<table class="table table-sm align-middle mb-0">
+						<thead><tr><th><?php echo Text::_('COM_PUNGAMAIL_TASK_TYPE'); ?></th><th><?php echo Text::_('JSTATUS'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_NEXT_RUN'); ?></th></tr></thead>
+						<tbody>
+						<?php foreach ($taskLabels as $key => $label) : ?>
+							<?php $schedulerTask = $tasks[$key]; ?>
+							<tr>
+								<td><?php echo Text::_($label); ?></td>
+								<td><?php echo $schedulerTask === null ? Text::_('COM_PUNGAMAIL_NOT_CONFIGURED') : ((int) $schedulerTask->state === 1 ? Text::_('JENABLED') : Text::_('JDISABLED')); ?></td>
+								<td><?php echo $schedulerTask !== null && $schedulerTask->next_execution ? HTMLHelper::_('date', $schedulerTask->next_execution, Text::_('DATE_FORMAT_LC5'), 'UTC') : '—'; ?></td>
+							</tr>
+						<?php endforeach; ?>
+						</tbody>
+					</table>
+				</div>
+				<div class="card-footer"><a class="btn btn-outline-primary btn-sm" href="<?php echo Route::_('index.php?option=com_scheduler&view=tasks'); ?>"><?php echo Text::_('COM_PUNGAMAIL_OPEN_SCHEDULED_TASKS'); ?></a></div>
 				</div>
 			</div>
 		</div>

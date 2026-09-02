@@ -34,7 +34,8 @@ final class MailService
 		private readonly TokenService $tokens,
 		private readonly MarkdownRenderer $markdown,
 		private readonly NewsletterRenderer $renderer,
-		private readonly DatabaseInterface $db
+		private readonly DatabaseInterface $db,
+		private readonly MailConfigurationService $mailConfiguration
 	)
 	{
 	}
@@ -62,11 +63,25 @@ final class MailService
 			(string) $newsletter->snapshot_text,
 			$recipientName
 		);
-		$unsubscribeUrl = $this->unsubscribeUrl((int) $recipient->subscriber_id);
+		$newsletterId = (int) $newsletter->id;
+		$unsubscribeUrl = $this->unsubscribeUrl((int) $recipient->subscriber_id, $newsletterId);
 		$html = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, htmlspecialchars($unsubscribeUrl, ENT_QUOTES, 'UTF-8'), $personalized['html']);
 		$text = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, $unsubscribeUrl, $personalized['text']);
-		$oneClickUrl = $this->oneClickUnsubscribeUrl((int) $recipient->subscriber_id);
+		$browserUrl = (int) ($newsletter->snapshot_browser_enabled ?? 0) === 1
+			? $this->browserUrl($newsletterId, (string) ($newsletter->snapshot_browser_token ?? ''))
+			: '#';
+		$html = str_replace(NewsletterRenderer::BROWSER_PLACEHOLDER, htmlspecialchars($browserUrl, ENT_QUOTES, 'UTF-8'), $html);
+		$text = str_replace(NewsletterRenderer::BROWSER_PLACEHOLDER, $browserUrl, $text);
+		$oneClickUrl = $this->oneClickUnsubscribeUrl((int) $recipient->subscriber_id, $newsletterId);
 		$headers = ['List-Unsubscribe' => '<' . $oneClickUrl . '>'];
+
+		if (trim((string) ($newsletter->snapshot_list_id ?? '')) !== '')
+		{
+			$headers['List-ID'] = (string) $newsletter->snapshot_list_id;
+		}
+
+		$headers['X-PungaMail-Newsletter-ID'] = (string) $newsletterId;
+		$headers['X-PungaMail-Queue-ID'] = (string) $recipient->id;
 
 		// RFC 8058 requires an HTTPS URI for one-click unsubscribe. Keep the
 		// ordinary List-Unsubscribe header on development HTTP sites, but do
@@ -81,7 +96,10 @@ final class MailService
 			$personalized['subject'],
 			$html,
 			$text,
-			$headers
+			$headers,
+			(string) ($newsletter->snapshot_reply_to_email ?? ''),
+			(string) ($newsletter->snapshot_reply_to_name ?? ''),
+			$this->mailConfiguration->envelopeSender((int) $recipient->id)
 		);
 	}
 
@@ -95,11 +113,28 @@ final class MailService
 	 *
 	 * @return void
 	 */
-	public function sendTest(string $email, string $subject, string $html, string $text): void
+	public function sendTest(string $email, string $subject, string $html, string $text, string $replyToEmail = '', string $replyToName = ''): void
 	{
 		$html = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, '#', $html);
 		$text = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, '[' . Text::_('COM_PUNGAMAIL_TEST_UNSUBSCRIBE_DISABLED') . ']', $text);
-		$this->sendMultipart($email, '[TEST] ' . $subject, $html, $text);
+		$html = str_replace(NewsletterRenderer::BROWSER_PLACEHOLDER, '#', $html);
+		$text = str_replace(NewsletterRenderer::BROWSER_PLACEHOLDER, '[' . Text::_('COM_PUNGAMAIL_TEST_BROWSER_DISABLED') . ']', $text);
+		$this->sendMultipart($email, '[TEST] ' . $subject, $html, $text, [], $replyToEmail, $replyToName);
+	}
+
+	/** Sends a small diagnostic through Joomla's configured transport. */
+	public function sendConfigurationTest(string $email): void
+	{
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_ERROR_TEST_EMAIL'));
+		}
+
+		$siteName = (string) Factory::getApplication()->get('sitename');
+		$subject = Text::sprintf('COM_PUNGAMAIL_MAIL_TEST_SUBJECT', $siteName);
+		$text = Text::sprintf('COM_PUNGAMAIL_MAIL_TEST_BODY', $siteName);
+		$html = '<!doctype html><html><body><p>' . htmlspecialchars($text, ENT_QUOTES, 'UTF-8') . '</p></body></html>';
+		$this->sendMultipart($email, $subject, $html, $text);
 	}
 
 	/**
@@ -116,6 +151,19 @@ final class MailService
 	public function sendConfirmation(string $email, string $token): void
 	{
 		$link = $this->siteLink('index.php?option=com_pungamail&view=confirm&token=' . rawurlencode($token));
+		$this->sendConfirmationLink($email, $link);
+	}
+
+	/** Sends a confirmation for an email-only subscriber's topic changes. */
+	public function sendPreferenceConfirmation(string $email, string $token): void
+	{
+		$link = $this->siteLink('index.php?option=com_pungamail&view=confirm&kind=topics&token=' . rawurlencode($token));
+		$this->sendConfirmationLink($email, $link);
+	}
+
+	/** Renders the configurable confirmation message for a supplied safe link. */
+	private function sendConfirmationLink(string $email, string $link): void
+	{
 		$params = ComponentHelper::getParams('com_pungamail');
 		$siteName = (string) Factory::getApplication()->get('sitename');
 		$subjectTemplate = trim((string) $params->get('confirmation_subject', ''));
@@ -172,10 +220,15 @@ final class MailService
 	 *
 	 * @return string Absolute URL.
 	 */
-	public function unsubscribeUrl(int $subscriberId): string
+	public function unsubscribeUrl(int $subscriberId, int $newsletterId = 0): string
 	{
 		$token = $this->tokens->createUnsubscribeToken($subscriberId);
 		$link = 'index.php?option=com_pungamail&view=unsubscribe&id=' . $subscriberId . '&token=' . rawurlencode($token);
+
+		if ($newsletterId > 0)
+		{
+			$link .= '&mid=' . $newsletterId;
+		}
 
 		return $this->siteLink($link);
 	}
@@ -187,12 +240,23 @@ final class MailService
 	 *
 	 * @return string Absolute URL.
 	 */
-	public function oneClickUnsubscribeUrl(int $subscriberId): string
+	public function oneClickUnsubscribeUrl(int $subscriberId, int $newsletterId = 0): string
 	{
 		$token = $this->tokens->createUnsubscribeToken($subscriberId);
 		$link = 'index.php?option=com_pungamail&task=subscription.oneClickUnsubscribe&id=' . $subscriberId . '&token=' . rawurlencode($token);
 
+		if ($newsletterId > 0)
+		{
+			$link .= '&mid=' . $newsletterId;
+		}
+
 		return $this->siteLink($link);
+	}
+
+	/** @return string */
+	public function browserUrl(int $newsletterId, string $token): string
+	{
+		return $this->siteLink('index.php?option=com_pungamail&view=browser&id=' . $newsletterId . '&key=' . rawurlencode($token));
 	}
 
 	/**
@@ -245,24 +309,60 @@ final class MailService
 	 *
 	 * @return void
 	 */
-	private function sendMultipart(string $recipient, string $subject, string $html, string $text, array $headers = []): void
+	private function sendMultipart(
+		string $recipient,
+		string $subject,
+		string $html,
+		string $text,
+		array $headers = [],
+		string $replyToEmail = '',
+		string $replyToName = '',
+		string $envelopeSender = ''
+	): void
 	{
 		$params = ComponentHelper::getParams('com_pungamail');
 		$mailer = $this->mailerFactory->createMailer();
 		$fromEmail = trim((string) $params->get('from_email'));
 		$fromName = trim((string) $params->get('from_name'));
 
-		if ($fromEmail !== '')
-		{
-			$mailer->setSender($fromEmail, $fromName);
-		}
-
 		if (!$mailer instanceof Mail)
 		{
 			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_MAILER_TYPE'));
 		}
 
+		if (!filter_var($recipient, FILTER_VALIDATE_EMAIL))
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_ERROR_TEST_EMAIL'));
+		}
+
+		if ($fromEmail !== '')
+		{
+			if (!filter_var($fromEmail, FILTER_VALIDATE_EMAIL))
+			{
+				throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_FROM_INVALID'));
+			}
+
+			// Joomla's Mail API accepts a [mail, name] sender tuple. This retains
+			// Joomla's configured transport rather than constructing another stack.
+			$mailer->setSender([$fromEmail, $fromName]);
+		}
+
 		$mailer->addRecipient($recipient);
+
+		if ($replyToEmail !== '')
+		{
+			if (!filter_var($replyToEmail, FILTER_VALIDATE_EMAIL))
+			{
+				throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_REPLY_TO_INVALID'));
+			}
+
+			$mailer->addReplyTo($replyToEmail, $replyToName);
+		}
+
+		if ($envelopeSender !== '' && property_exists($mailer, 'Sender'))
+		{
+			$mailer->Sender = $envelopeSender;
+		}
 		$mailer->setSubject($subject);
 		$mailer->isHtml(true);
 		$mailer->setBody($html);
@@ -279,6 +379,11 @@ final class MailService
 			}
 		}
 
-		$mailer->send();
+		$result = $mailer->send();
+
+		if ($result !== true)
+		{
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_MAIL_SEND_FAILED'));
+		}
 	}
 }

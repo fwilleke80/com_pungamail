@@ -17,11 +17,31 @@ use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
  */
 final class NewsletterModel extends BaseDatabaseModel
 {
+	private bool $itemLoaded = false;
+	private ?object $item = null;
+
 	/** @return object|null */
 	public function getItem(): ?object
 	{
+		if ($this->itemLoaded)
+		{
+			return $this->item;
+		}
+
+		$this->itemLoaded = true;
 		$id = Factory::getApplication()->getInput()->getInt('id');
-		return $id > 0 ? ServiceFactory::newsletters()->find($id) : null;
+		$this->item = $id > 0 ? ServiceFactory::newsletters()->find($id) : null;
+
+		if ($this->item !== null && in_array((int) $this->item->status, [
+			\Punga\Component\PungaMail\Administrator\Service\NewsletterRepository::STATUS_DRAFT,
+			\Punga\Component\PungaMail\Administrator\Service\NewsletterRepository::STATUS_SCHEDULED,
+		], true))
+		{
+			ServiceFactory::checkouts()->checkout('newsletter', $id, (int) Factory::getApplication()->getIdentity()->id);
+			$this->item = ServiceFactory::newsletters()->find($id);
+		}
+
+		return $this->item;
 	}
 
 	/** @return array<int,object> */
@@ -122,5 +142,27 @@ final class NewsletterModel extends BaseDatabaseModel
 	{
 		$item = $this->getItem();
 		return $item ? ServiceFactory::newsletters()->getGroupIds((int) $item->id) : [];
+	}
+
+	/** @return array<int,object> */
+	public function getTopics(): array
+	{
+		return ServiceFactory::topics()->active();
+	}
+
+	/** @return array<int,int> */
+	public function getSelectedTopicIds(): array
+	{
+		$item = $this->getItem();
+
+		return $item ? ServiceFactory::newsletters()->getTopicIds((int) $item->id) : [];
+	}
+
+	/** @return array<string,int> */
+	public function getStatistics(): array
+	{
+		$item = $this->getItem();
+
+		return $item ? ServiceFactory::statistics()->forNewsletter($item) : [];
 	}
 }

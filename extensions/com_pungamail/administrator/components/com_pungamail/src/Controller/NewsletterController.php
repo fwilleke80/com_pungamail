@@ -44,7 +44,8 @@ final class NewsletterController extends BaseController
 
 		try
 		{
-			$this->saveFromInput();
+			$id = $this->saveFromInput();
+			$this->checkin($id);
 			$this->setRedirect(Route::_(AdministratorRoute::newsletters(), false), Text::_('COM_PUNGAMAIL_NEWSLETTER_SAVED'));
 		}
 		catch (\Throwable $e)
@@ -57,6 +58,8 @@ final class NewsletterController extends BaseController
 	public function cancel(): void
 	{
 		$this->requireManage();
+		$this->requireToken();
+		$this->checkin(Factory::getApplication()->getInput()->getInt('id'));
 		$this->setRedirect(Route::_(AdministratorRoute::newsletters(), false));
 	}
 
@@ -93,6 +96,12 @@ final class NewsletterController extends BaseController
 			$data['template_id'] = (int) $template->id;
 			$data['style_overrides'] = $template->style_overrides !== null ? (string) $template->style_overrides : null;
 			$data['custom_css'] = (string) ($template->custom_css ?? '');
+			$data['heading_mode'] = (string) ($template->heading_mode ?? 'inherit');
+			$data['mail_heading'] = (string) ($template->mail_heading ?? '');
+			$data['browser_view'] = (int) ($template->browser_view ?? -1);
+			$data['reply_to_mode'] = (string) ($template->reply_to_mode ?? 'inherit');
+			$data['reply_to_email'] = (string) ($template->reply_to_email ?? '');
+			$data['reply_to_name'] = (string) ($template->reply_to_name ?? '');
 
 			if ($data['title'] === '')
 			{
@@ -169,7 +178,9 @@ final class NewsletterController extends BaseController
 				$rendered['text'],
 				RecipientName::resolve((string) $identity->name, $email)
 			);
-			ServiceFactory::mail()->sendTest($email, $personalized['subject'], $personalized['html'], $personalized['text']);
+			$template = $newsletter->template_id !== null ? ServiceFactory::templates()->find((int) $newsletter->template_id) : null;
+			$replyTo = ServiceFactory::mailConfiguration()->replyTo($template, $newsletter);
+			ServiceFactory::mail()->sendTest($email, $personalized['subject'], $personalized['html'], $personalized['text'], $replyTo['email'], $replyTo['name']);
 			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), Text::sprintf('COM_PUNGAMAIL_TEST_SENT', $email));
 		}
 		catch (\Throwable $e)
@@ -188,12 +199,68 @@ final class NewsletterController extends BaseController
 		try
 		{
 			$count = ServiceFactory::queue()->queue($id);
+			$this->checkin($id);
 			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), Text::plural('COM_PUNGAMAIL_NEWSLETTER_QUEUED', $count));
 		}
 		catch (\Throwable $e)
 		{
 			$this->setRedirect(Route::_(AdministratorRoute::preflight($id), false), $e->getMessage(), 'error');
 		}
+	}
+
+	/** @return void */
+	public function schedule(): void
+	{
+		$this->requireManage();
+		$this->requireToken();
+		$input = Factory::getApplication()->getInput();
+		$id = $input->post->getInt('id');
+
+		try
+		{
+			$scheduledAt = $this->parseScheduledDate($input->post->getString('scheduled_at'));
+			ServiceFactory::preflight()->assertSendable($id);
+			ServiceFactory::newsletters()->schedule($id, $scheduledAt);
+			$this->checkin($id);
+			$this->setRedirect(Route::_(AdministratorRoute::newsletters(), false), Text::_('COM_PUNGAMAIL_NEWSLETTER_SCHEDULED'));
+		}
+		catch (\Throwable $e)
+		{
+			$this->setRedirect(Route::_(AdministratorRoute::preflight($id), false), $e->getMessage(), 'error');
+		}
+	}
+
+	/** @return void */
+	public function cancelScheduled(): void
+	{
+		$this->requireManage();
+		$this->requireToken();
+		$id = Factory::getApplication()->getInput()->getInt('id');
+		ServiceFactory::newsletters()->cancelScheduled($id);
+		$this->checkin($id);
+		$this->setRedirect(Route::_(AdministratorRoute::newsletters(), false), Text::_('COM_PUNGAMAIL_SCHEDULE_CANCELLED'));
+	}
+
+	/** @return void */
+	public function toggleMailingPause(): void
+	{
+		$this->requireManage();
+		$this->requireToken();
+		$input = Factory::getApplication()->getInput();
+		$id = $input->getInt('id');
+		$paused = $input->post->getInt('paused', 0) === 1;
+		ServiceFactory::newsletters()->setQueuePaused($id, $paused);
+		$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), Text::_($paused ? 'COM_PUNGAMAIL_MAILING_PAUSED' : 'COM_PUNGAMAIL_MAILING_RESUMED'));
+	}
+
+	/** @return void */
+	public function cancelRemaining(): void
+	{
+		$this->requireManage();
+		$this->requireToken();
+		$id = Factory::getApplication()->getInput()->getInt('id');
+		$count = ServiceFactory::newsletters()->cancelRemaining($id);
+		$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), Text::plural('COM_PUNGAMAIL_REMAINING_CANCELLED', $count));
 	}
 
 	/** @return void */
@@ -257,7 +324,16 @@ final class NewsletterController extends BaseController
 			$repo->getSourceKeys($id),
 			$newsletter->template_id !== null ? (int) $newsletter->template_id : null,
 			$newsletter->style_overrides !== null ? (string) $newsletter->style_overrides : null,
-			(string) ($newsletter->custom_css ?? '')
+			(string) ($newsletter->custom_css ?? ''),
+			[
+				'topic_ids' => $repo->getTopicIds($id),
+				'heading_mode' => (string) ($newsletter->heading_mode ?? 'inherit'),
+				'mail_heading' => (string) ($newsletter->mail_heading ?? ''),
+				'browser_view' => (int) ($newsletter->browser_view ?? -1),
+				'reply_to_mode' => (string) ($newsletter->reply_to_mode ?? 'inherit'),
+				'reply_to_email' => (string) ($newsletter->reply_to_email ?? ''),
+				'reply_to_name' => (string) ($newsletter->reply_to_name ?? ''),
+			]
 		);
 		$this->setRedirect(Route::_(AdministratorRoute::newsletter($newId), false), Text::_('COM_PUNGAMAIL_NEWSLETTER_DUPLICATED'));
 	}
@@ -331,6 +407,13 @@ final class NewsletterController extends BaseController
 			'template_id' => $input->post->getInt('template_id') ?: null,
 			'style_overrides' => ServiceFactory::styles()->encodeOverrides($styleInput),
 			'custom_css' => trim((string) $input->post->get('custom_css', '', 'raw')),
+			'topics' => array_map('intval', (array) $input->post->get('topic_ids', [], 'array')),
+			'heading_mode' => $input->post->getCmd('heading_mode', 'inherit'),
+			'mail_heading' => trim($input->post->getString('mail_heading')),
+			'browser_view' => $input->post->getInt('browser_view', -1),
+			'reply_to_mode' => $input->post->getCmd('reply_to_mode', 'inherit'),
+			'reply_to_email' => trim($input->post->getString('reply_to_email')),
+			'reply_to_name' => trim($input->post->getString('reply_to_name')),
 		];
 	}
 
@@ -347,7 +430,14 @@ final class NewsletterController extends BaseController
 			$data['title'] = Text::_('COM_PUNGAMAIL_UNTITLED_NEWSLETTER');
 		}
 
-		return ServiceFactory::newsletters()->saveDraft(
+		$userId = (int) Factory::getApplication()->getIdentity()->id;
+
+		if ((int) $data['id'] > 0)
+		{
+			ServiceFactory::checkouts()->checkout('newsletter', (int) $data['id'], $userId);
+		}
+
+		$id = ServiceFactory::newsletters()->saveDraft(
 			(int) $data['id'],
 			(string) $data['title'],
 			(string) $data['subject'],
@@ -356,12 +446,52 @@ final class NewsletterController extends BaseController
 			$data['cutoff'],
 			$data['items'],
 			$data['groups'],
-			(int) Factory::getApplication()->getIdentity()->id,
+			$userId,
 			$data['sources'] !== [] ? $data['sources'] : ['com_content.article'],
 			$data['template_id'],
 			$data['style_overrides'],
-			(string) $data['custom_css']
+			(string) $data['custom_css'],
+			[
+				'topic_ids' => $data['topics'],
+				'heading_mode' => $data['heading_mode'],
+				'mail_heading' => $data['mail_heading'],
+				'browser_view' => $data['browser_view'],
+				'reply_to_mode' => $data['reply_to_mode'],
+				'reply_to_email' => $data['reply_to_email'],
+				'reply_to_name' => $data['reply_to_name'],
+			]
 		);
+		ServiceFactory::checkouts()->checkout('newsletter', $id, $userId);
+
+		return $id;
+	}
+
+	/** @return void */
+	private function checkin(int $id): void
+	{
+		ServiceFactory::checkouts()->checkin('newsletter', $id, (int) Factory::getApplication()->getIdentity()->id);
+	}
+
+	/** @return string */
+	private function parseScheduledDate(string $value): string
+	{
+		$value = trim($value);
+
+		if ($value === '')
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_SCHEDULE_DATE_REQUIRED'));
+		}
+
+		$timezone = (string) Factory::getApplication()->get('offset', 'UTC');
+		$date = Factory::getDate($value, $timezone);
+		$date->setTimezone(new DateTimeZone('UTC'));
+
+		if ($date->toUnix() <= Factory::getDate('now', 'UTC')->toUnix())
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_SCHEDULE_MUST_BE_FUTURE'));
+		}
+
+		return $date->toSql();
 	}
 
 	/** @return string|null */
