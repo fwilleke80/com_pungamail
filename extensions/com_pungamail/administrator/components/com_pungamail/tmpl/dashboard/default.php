@@ -22,6 +22,9 @@ $taskLabels = [
 ];
 ?>
 <div class="container-fluid">
+	<?php if ((bool) ($data['schema_incomplete'] ?? false)) : ?>
+		<div class="alert alert-danger"><?php echo Text::_('COM_PUNGAMAIL_DATABASE_UPDATE_REQUIRED'); ?></div>
+	<?php endif; ?>
 	<div class="row g-3 mb-3">
 		<div class="col-12 col-md-6 col-xl-3">
 			<div class="card h-100"><div class="card-body">

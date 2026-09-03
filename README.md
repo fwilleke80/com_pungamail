@@ -2,13 +2,13 @@
 
 Punga Mail is a focused, self-hosted newsletter extension for **Joomla! 6**.
 
-Version: **0.3.2**
+Version: **0.3.4**
 
 Its core workflow is deliberately small:
 
 **subscribe → choose topics → confirm → compose or automate → preflight → schedule/queue → send → process bounces**
 
-Version 0.3.2 contains the 0.3 feature set—mailing lists/topics, automatic digests, bounce suppression, scheduled sending, delivery statistics, immutable browser views, CSV transfer, and mail diagnostics—plus profile topic selection and the 0.3.1 dashboard, editor-lock, and backend-action reliability fixes. Existing Joomla-group targeting remains available as a separate audience source.
+Version 0.3.4 repairs the existing-installation migration for subscriber display names. It also retains the 0.3.3 stabilization work: stricter consent preservation, corrected signup-module topic modes, fail-closed digest access checks, safer CSV/mail/error handling, overlapping-task protection, and a dashboard warning for incomplete database updates. Existing Joomla-group targeting remains available as a separate audience source.
 
 Automatic digests enforce website visibility before generation. Punga Mail resolves the intended recipients and includes a content item only when every recipient would normally be authorized to view it through Joomla access levels and, where applicable, category access. This conservative shared-content rule prevents restricted website content from leaking through email.
 
@@ -17,6 +17,7 @@ Punga Mail uses Joomla's users, user groups, content-type registry, routing, mai
 ## Administrator documentation
 
 - [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) — complete non-technical administrator reference
+- [`docs/TEST_GUIDE.md`](docs/TEST_GUIDE.md) — comprehensive step-by-step live acceptance and regression testing
 - [`docs/TUTORIAL_NEWSLETTER.md`](docs/TUTORIAL_NEWSLETTER.md) — compose, preflight, send, schedule, and monitor a newsletter
 - [`docs/TUTORIAL_DIGEST.md`](docs/TUTORIAL_DIGEST.md) — create a recipient/access-safe recurring digest
 - [`docs/TUTORIAL_TOPICS_AND_SIGNUP.md`](docs/TUTORIAL_TOPICS_AND_SIGNUP.md) — topics, module modes, double opt-in, and preference management
@@ -136,7 +137,7 @@ The subscription landing page is useful on its own and also anchors confirmation
 
 ## Installation and update
 
-Install `pkg_pungamail_v0-3-2.zip` through **System → Install → Extensions**.
+Install `pkg_pungamail_v0-3-4.zip` through **System → Install → Extensions**.
 
 The package contains:
 
@@ -147,7 +148,7 @@ The package contains:
 
 The user and task plugins are enabled automatically after installation/update.
 
-Updating from earlier releases uses Joomla's versioned SQL migration chain. Released migration files remain immutable. The 0.3.1 migration adds Joomla checkout metadata to editable records. The 0.3.2 migration is a no-op version marker because profile topic selection uses the existing normalized topic-membership tables.
+Updating from earlier releases uses Joomla's versioned SQL migration chain. Released migration files remain immutable. The 0.3.1 migration adds Joomla checkout metadata to editable records. The 0.3.2 and 0.3.3 migrations are no-op version markers. During a 0.3.4 package update, the Joomla installer checks the actual subscriber table and repairs the missing display-name column only when required; its SQL file is a portable version marker.
 
 ## Uninstall/data policy
 
@@ -163,7 +164,7 @@ The source tree also contains `sql/purge.mysql.sql` for deliberate manual cleanu
 
 ## Database and engineering policy
 
-Punga Mail 0.3.2 uses the existing normalized topic, digest, bounce and preference-request relationships plus Joomla-compatible editor checkout metadata, while preserving existing identifiers and immutable snapshots. Important design rules include:
+Punga Mail 0.3.4 uses the existing normalized topic, digest, bounce and preference-request relationships plus Joomla-compatible editor checkout metadata, while preserving existing identifiers and immutable snapshots. Important design rules include:
 
 - explicit indexes and uniqueness constraints;
 - UTC application timestamps;
@@ -195,8 +196,8 @@ python3 build.py
 
 `build.py` runs the release checks first and produces:
 
-- `dist/pkg_pungamail_v0-3-2.zip` — Joomla installer package
-- `dist/pungamail_v0-3-2_source.zip` — complete Git-ready source tree
+- `dist/pkg_pungamail_v0-3-4.zip` — Joomla installer package
+- `dist/pungamail_v0-3-4_source.zip` — complete Git-ready source tree
 
 ## License
 

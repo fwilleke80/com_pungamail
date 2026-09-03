@@ -23,6 +23,7 @@ final class DashboardModel extends BaseDatabaseModel
 	 */
 	public function getData(): array
 	{
+		$schemaIncomplete = false;
 		$tasks = [
 			'queue' => $this->getSchedulerTask('pungamail.process_queue'),
 			'scheduled' => $this->getSchedulerTask('pungamail.scheduled_sends'),
@@ -30,14 +31,33 @@ final class DashboardModel extends BaseDatabaseModel
 			'bounces' => $this->getSchedulerTask('pungamail.process_bounces'),
 		];
 
+		$subscribers = $this->safeCounts(
+			fn (): array => $this->getSubscriberCounts(),
+			['total' => 0, 'pending' => 0, 'subscribed' => 0, 'unsubscribed' => 0, 'suppressed' => 0],
+			$schemaIncomplete
+		);
+		$queue = $this->safeCounts(
+			fn (): array => $this->getQueueCounts(),
+			['pending' => 0, 'processing' => 0, 'sent' => 0, 'failed' => 0],
+			$schemaIncomplete
+		);
+		$newsletters = $this->safeCounts(
+			fn (): array => $this->getNewsletterCounts(),
+			['active' => 0, 'trashed' => 0, 'drafts' => 0, 'sent' => 0],
+			$schemaIncomplete
+		);
+		$automation = $this->getAutomationNeeds();
+		$schemaIncomplete = $schemaIncomplete || (bool) ($automation['schema_incomplete'] ?? false);
+
 		return [
 			'version' => $this->getVersion(),
-			'subscribers' => $this->getSubscriberCounts(),
-			'queue' => $this->getQueueCounts(),
-			'newsletters' => $this->getNewsletterCounts(),
+			'subscribers' => $subscribers,
+			'queue' => $queue,
+			'newsletters' => $newsletters,
 			'task' => $tasks['queue'],
 			'tasks' => $tasks,
-			'automation' => $this->getAutomationNeeds(),
+			'automation' => $automation,
+			'schema_incomplete' => $schemaIncomplete,
 		];
 	}
 
@@ -56,7 +76,31 @@ final class DashboardModel extends BaseDatabaseModel
 			->bind(':element', $element);
 		$manifest = json_decode((string) $db->setQuery($query)->loadResult(), true);
 
-		return is_array($manifest) && isset($manifest['version']) ? (string) $manifest['version'] : '0.3.2';
+		return is_array($manifest) && isset($manifest['version']) ? (string) $manifest['version'] : '0.3.4';
+	}
+
+	/**
+	 * Runs one dashboard aggregate without allowing schema drift to make the
+	 * entire administrator landing page unavailable.
+	 *
+	 * @param callable():array<string,int> $loader           Aggregate loader.
+	 * @param array<string,int>            $fallback         Safe empty values.
+	 * @param bool                         $schemaIncomplete Set when loading fails.
+	 *
+	 * @return array<string,int> Aggregate or fallback.
+	 */
+	private function safeCounts(callable $loader, array $fallback, bool &$schemaIncomplete): array
+	{
+		try
+		{
+			return $loader();
+		}
+		catch (\Throwable)
+		{
+			$schemaIncomplete = true;
+
+			return $fallback;
+		}
 	}
 
 	/** @return array<string,int> */
@@ -169,7 +213,7 @@ final class DashboardModel extends BaseDatabaseModel
 	/**
 	 * Returns counts that determine which optional task warnings are relevant.
 	 *
-	 * @return array{digests:int,scheduled:int,bounce_configured:bool}
+	 * @return array{digests:int,scheduled:int,bounce_configured:bool,schema_incomplete:bool}
 	 */
 	private function getAutomationNeeds(): array
 	{
@@ -179,6 +223,7 @@ final class DashboardModel extends BaseDatabaseModel
 		$digests = 0;
 		$scheduled = 0;
 		$mailboxHost = '';
+		$schemaIncomplete = false;
 
 		try
 		{
@@ -193,6 +238,7 @@ final class DashboardModel extends BaseDatabaseModel
 		catch (\Throwable)
 		{
 			// Keep the Dashboard usable if a site has not completed its schema update.
+			$schemaIncomplete = true;
 		}
 
 		try
@@ -209,6 +255,7 @@ final class DashboardModel extends BaseDatabaseModel
 		catch (\Throwable)
 		{
 			// The primary Dashboard metrics remain more useful than a fatal page.
+			$schemaIncomplete = true;
 		}
 
 		try
@@ -225,12 +272,14 @@ final class DashboardModel extends BaseDatabaseModel
 		catch (\Throwable)
 		{
 			// Mailbox warnings are optional when the 0.3 schema is unavailable.
+			$schemaIncomplete = true;
 		}
 
 		return [
 			'digests' => $digests,
 			'scheduled' => $scheduled,
 			'bounce_configured' => trim($mailboxHost) !== '',
+			'schema_incomplete' => $schemaIncomplete,
 		];
 	}
 }

@@ -15,6 +15,7 @@ use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
+use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 use Punga\Component\PungaMail\Administrator\Service\RecipientName;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
@@ -50,7 +51,7 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_(AdministratorRoute::newsletters(), false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_(AdministratorRoute::newsletters(), false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -113,7 +114,7 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -130,7 +131,7 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -147,7 +148,7 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -185,7 +186,7 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -204,7 +205,7 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_(AdministratorRoute::preflight($id), false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_(AdministratorRoute::preflight($id), false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -226,7 +227,7 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_(AdministratorRoute::preflight($id), false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_(AdministratorRoute::preflight($id), false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -280,7 +281,7 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_($returnUrl, false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_($returnUrl, false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -351,7 +352,7 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 

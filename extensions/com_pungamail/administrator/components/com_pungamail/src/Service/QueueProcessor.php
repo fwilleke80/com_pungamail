@@ -81,7 +81,7 @@ final class QueueProcessor
 			catch (\Throwable $e)
 			{
 				$permanent = ((int) $candidate->attempts + 1) >= $maxAttempts;
-				$this->markFailure($candidate, $e->getMessage(), $maxAttempts, $retryMinutes);
+				$this->markFailure($candidate, ErrorMessage::sanitize($e), $maxAttempts, $retryMinutes);
 
 				if ($permanent)
 				{

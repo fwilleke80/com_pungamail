@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.3.2"
+VERSION = "0.3.4"
 
 REQUIRED_FILES: tuple[str, ...] = (
     "README.md",
@@ -21,6 +21,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "docs/DATABASE.md",
     "docs/CONCEPT.md",
     "docs/USER_GUIDE.md",
+    "docs/TEST_GUIDE.md",
     "docs/TUTORIAL_NEWSLETTER.md",
     "docs/TUTORIAL_DIGEST.md",
     "docs/TUTORIAL_TOPICS_AND_SIGNUP.md",
@@ -35,6 +36,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/ContentTypeService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/AdministratorRoute.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/RecipientName.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/ErrorMessage.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/MailStyleService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/MailTextService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MailfooterField.php",
@@ -47,12 +49,15 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.2.0.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.2.1.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.2.2.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.2.3.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.2.4.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.2.5.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.2.6.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.0.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.1.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.2.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.3.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.4.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/BounceService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/CheckoutService.php",
@@ -93,6 +98,7 @@ def check_administrator_documentation() -> None:
     """Ensure administrator documentation covers the release's public workflows."""
 
     guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
     required_guide_sections = (
         "## Dashboard",
         "## Component Options",
@@ -123,6 +129,44 @@ def check_administrator_documentation() -> None:
     ):
         if token not in guide:
             fail(f"Administrator guide is missing required safety guidance: {token!r}")
+
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    required_test_sections = (
+        "## A. Installation, update, navigation, and dashboard",
+        "## B. Component Options and diagnostics",
+        "## C. Topics / Lists",
+        "## D. Subscribers and consent state",
+        "## E. Frontend module, confirmation, unsubscribe, and Joomla profile",
+        "## F. Templates and rendering",
+        "## G. Newsletter composition and selected content",
+        "## H. Preview, test mail, preflight, and recipient inspection",
+        "## I. Queue, scheduled sending, snapshots, browser view, and statistics",
+        "## J. Automatic digests",
+        "## K. Delivery, bounce handling, and mail health",
+        "## L. Subscriber CSV import and export",
+        "## M. Joomla Scheduled Tasks and reminders",
+        "## N. ACL, CSRF, privacy, language, and regression sweep",
+    )
+
+    for section in required_test_sections:
+        if section not in test_guide:
+            fail(f"Test guide is missing required section: {section}")
+
+    for token in (
+        "PM-205 — Critical access-permission test: mixed recipients",
+        "every resolved recipient",
+        "PM-253 — Protected-state import safety",
+        "PM-291 — CSRF protection",
+        "PM-303 — Existing feature regression checklist",
+    ):
+        if token not in test_guide:
+            fail(f"Test guide is missing required coverage: {token!r}")
+
+    if "[`docs/TEST_GUIDE.md`](docs/TEST_GUIDE.md)" not in readme:
+        fail("README does not link the live acceptance test guide")
+
+    if "](TEST_GUIDE.md)" not in guide:
+        fail("Administrator guide does not link the live acceptance test guide")
 
     tutorial_names = (
         "TUTORIAL_NEWSLETTER.md",
@@ -195,6 +239,8 @@ def check_migration_chain() -> None:
         "0.2.6.sql": "67f3ec2dc8b049ed4516c3003257e3176944b2f77eb983efd344da46ba790bd1",
         "0.3.0.sql": "8d6ea80bbc67f37384ff6bdae6d2aa453d25e2cbd8edbaa3f84495a811a3f1e1",
         "0.3.1.sql": "f53cdbbd84cdfe3f243273f05dd89decb5c8f7333fa3310e4e30b71920ab7f41",
+        "0.3.2.sql": "5bc3e9c93bbc39a5797433dbcf8f616dfc3178f94a6db08c9c8b513ca7b0df74",
+        "0.3.3.sql": "656415b4627ee9831d38c7597146124090844bfcfa6d9fe85e44e3948f352f75",
     }
 
     for filename, expected_hash in hashes.items():
@@ -275,6 +321,107 @@ def check_migration_chain() -> None:
     marker_032 = (sql_root / "updates/mysql/0.3.2.sql").read_text(encoding="utf-8")
     if any(token in marker_032.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
         fail("0.3.2 uses existing topic relations; its version-marker migration must not change schema")
+
+    marker_033 = (sql_root / "updates/mysql/0.3.3.sql").read_text(encoding="utf-8")
+    if any(token in marker_033.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.3.3 is a stabilization release; its version-marker migration must not change schema")
+
+    marker_034 = (sql_root / "updates/mysql/0.3.4.sql").read_text(encoding="utf-8")
+    if any(token in marker_034.upper() for token in ("ALTER TABLE", "PREPARE ", "EXECUTE ")):
+        fail("0.3.4 SQL must remain a prepared-statement-free version marker")
+
+    package_script = (ROOT / "package/script.php").read_text(encoding="utf-8")
+    for fragment in (
+        "repairSubscriberRecipientName",
+        "getTableColumns($table, true)",
+        "isset($columns['recipient_name'])",
+        "ADD COLUMN ' . $db->quoteName('recipient_name')",
+    ):
+        if fragment not in package_script:
+            fail(f"0.3.4 conditional installer repair is missing {fragment!r}")
+
+
+def schema_columns_from_create(sql: str) -> dict[str, set[str]]:
+    """Extract table-column sets from MySQL CREATE TABLE statements.
+
+    @param sql SQL source text.
+    @return Columns keyed by Joomla table placeholder.
+    """
+
+    schema: dict[str, set[str]] = {}
+    pattern = re.compile(
+        r"CREATE TABLE(?: IF NOT EXISTS)?\s+`([^`]+)`\s*\((.*?)\)\s*ENGINE=",
+        re.IGNORECASE | re.DOTALL,
+    )
+
+    for match in pattern.finditer(sql):
+        columns = set(re.findall(r"(?:^|,)\s*`([^`]+)`\s+[A-Za-z]", match.group(2), re.MULTILINE))
+        schema[match.group(1)] = columns
+
+    return schema
+
+
+def apply_schema_update(schema: dict[str, set[str]], sql: str) -> None:
+    """Apply the column-level effect of one Punga Mail migration.
+
+    @param schema Accumulated mutable schema.
+    @param sql Migration SQL source text.
+    """
+
+    for table, columns in schema_columns_from_create(sql).items():
+        schema[table] = set(columns)
+
+    alter_pattern = re.compile(r"ALTER TABLE\s+`([^`]+)`\s+(.*?);", re.IGNORECASE | re.DOTALL)
+
+    for match in alter_pattern.finditer(sql):
+        columns = schema.setdefault(match.group(1), set())
+        body = match.group(2)
+
+        for column in re.findall(r"ADD COLUMN\s+`([^`]+)`", body, re.IGNORECASE):
+            columns.add(column)
+
+        for column in re.findall(r"DROP COLUMN\s+`([^`]+)`", body, re.IGNORECASE):
+            columns.discard(column)
+
+        for old_column, new_column in re.findall(
+            r"CHANGE COLUMN\s+`([^`]+)`\s+`([^`]+)`",
+            body,
+            re.IGNORECASE,
+        ):
+            columns.discard(old_column)
+            columns.add(new_column)
+
+
+def check_schema_path_parity() -> None:
+    """Require cumulative updates and fresh installation to expose equal columns."""
+
+    sql_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail/sql"
+    install_schema = schema_columns_from_create((sql_root / "install.mysql.sql").read_text(encoding="utf-8"))
+    update_schema: dict[str, set[str]] = {}
+    migrations = sorted(
+        (sql_root / "updates/mysql").glob("*.sql"),
+        key=lambda path: tuple(int(part) for part in path.stem.split(".")),
+    )
+
+    for migration in migrations:
+        apply_schema_update(update_schema, migration.read_text(encoding="utf-8"))
+
+    # 0.3.4 repairs this one historical omission conditionally in the package
+    # preflight, before Joomla applies the component's SQL version marker.
+    update_schema.setdefault("#__pungamail_subscribers", set()).add("recipient_name")
+
+    if install_schema.keys() != update_schema.keys():
+        missing_tables = sorted(install_schema.keys() - update_schema.keys())
+        extra_tables = sorted(update_schema.keys() - install_schema.keys())
+        fail(f"Fresh/update table mismatch: missing={missing_tables}, extra={extra_tables}")
+
+    for table, install_columns in install_schema.items():
+        update_columns = update_schema[table]
+
+        if install_columns != update_columns:
+            missing = sorted(install_columns - update_columns)
+            extra = sorted(update_columns - install_columns)
+            fail(f"Fresh/update column mismatch for {table}: missing={missing}, extra={extra}")
 
 
 def check_no_runtime_schema_mutation() -> None:
@@ -455,6 +602,26 @@ def check_language_parity() -> None:
             ROOT / "extensions/plg_task_pungamail/language/en-GB/plg_task_pungamail.ini",
             ROOT / "extensions/plg_task_pungamail/language/de-DE/plg_task_pungamail.ini",
         ),
+        (
+            ROOT / "extensions/com_pungamail/administrator/components/com_pungamail/language/en-GB/com_pungamail.sys.ini",
+            ROOT / "extensions/com_pungamail/administrator/components/com_pungamail/language/de-DE/com_pungamail.sys.ini",
+        ),
+        (
+            ROOT / "extensions/com_pungamail/components/com_pungamail/language/en-GB/com_pungamail.sys.ini",
+            ROOT / "extensions/com_pungamail/components/com_pungamail/language/de-DE/com_pungamail.sys.ini",
+        ),
+        (
+            ROOT / "extensions/mod_pungamail_signup/language/en-GB/mod_pungamail_signup.sys.ini",
+            ROOT / "extensions/mod_pungamail_signup/language/de-DE/mod_pungamail_signup.sys.ini",
+        ),
+        (
+            ROOT / "extensions/plg_user_pungamail/language/en-GB/plg_user_pungamail.sys.ini",
+            ROOT / "extensions/plg_user_pungamail/language/de-DE/plg_user_pungamail.sys.ini",
+        ),
+        (
+            ROOT / "extensions/plg_task_pungamail/language/en-GB/plg_task_pungamail.sys.ini",
+            ROOT / "extensions/plg_task_pungamail/language/de-DE/plg_task_pungamail.sys.ini",
+        ),
     )
     for english, german in pairs:
         en_keys = language_keys(english)
@@ -609,7 +776,7 @@ def check_regressions_031() -> None:
         fail("Delivery actions do not use the non-conflicting redirect helper")
     if 'name="task" value="delivery.sendTest"' not in delivery_template:
         fail("Delivery mail-test form lacks an explicit task field")
-    if "setSender([$fromEmail, $fromName])" not in mail:
+    if "setSender([$fromEmail, $this->headerValue($fromName)])" not in mail:
         fail("Mail service does not use Joomla's sender tuple API")
 
 
@@ -647,6 +814,78 @@ def check_profile_topics_032() -> None:
             for key in ("PLG_USER_PUNGAMAIL_TOPICS_LABEL=", "PLG_USER_PUNGAMAIL_TOPICS_DESC="):
                 if key not in language:
                     fail(f"Profile topic catalog {locale}{suffix} is missing {key}")
+
+
+def check_stabilization_033() -> None:
+    """Protect the 0.3.3 consent, concurrency and security repairs."""
+
+    module_root = ROOT / "extensions/mod_pungamail_signup"
+    helper = (module_root / "src/Helper/PungaMailSignupHelper.php").read_text(encoding="utf-8")
+    layout = (module_root / "tmpl/default.php").read_text(encoding="utf-8")
+    subscription = (
+        ROOT / "extensions/com_pungamail/components/com_pungamail/src/Controller/SubscriptionController.php"
+    ).read_text(encoding="utf-8")
+
+    for token in ("single_topic_mode", "count($configuredTopicIds) === 1", "array_unique"):
+        if token not in helper:
+            fail(f"Signup module configuration-mode contract is missing {token!r}")
+    if "if (count($topics) === 1)" in layout:
+        fail("Signup module still derives single-topic mode from the published result count")
+    if layout.count("$singleTopicMode && count($topics) === 1") != 2:
+        fail("Signup module does not apply explicit single-topic mode to both visitor states")
+    if "elseif ($topics !== [])" not in layout:
+        fail("An unconfigured module does not offer its single published topic as a choice")
+    for token in (
+        "Topic choices and the global newsletter preference are independent.",
+        "$repo->isUserSubscribed(",
+        "str_starts_with($return, $siteRoot . '/')",
+    ):
+        if token not in subscription:
+            fail(f"Topic-preference consent/redirect hardening is missing {token!r}")
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    display = (admin_root / "src/Controller/DisplayController.php").read_text(encoding="utf-8")
+    csv_controller = (admin_root / "src/Controller/ImportController.php").read_text(encoding="utf-8")
+    csv_service = (admin_root / "src/Service/CsvService.php").read_text(encoding="utf-8")
+    mail_settings = (admin_root / "src/Service/MailSettingsRepository.php").read_text(encoding="utf-8")
+    mail_service = (admin_root / "src/Service/MailService.php").read_text(encoding="utf-8")
+    errors = (admin_root / "src/Service/ErrorMessage.php").read_text(encoding="utf-8")
+    dashboard_model = (admin_root / "src/Model/DashboardModel.php").read_text(encoding="utf-8")
+    dashboard_layout = (admin_root / "tmpl/dashboard/default.php").read_text(encoding="utf-8")
+    content_types = (admin_root / "src/Service/ContentTypeService.php").read_text(encoding="utf-8")
+    digest_repository = (admin_root / "src/Service/DigestRepository.php").read_text(encoding="utf-8")
+    digest_service = (admin_root / "src/Service/DigestService.php").read_text(encoding="utf-8")
+    bounce_service = (admin_root / "src/Service/BounceService.php").read_text(encoding="utf-8")
+
+    required_security_tokens = (
+        (display, "authorise('core.manage', 'com_pungamail')", "administrator display ACL"),
+        (csv_controller, "MAX_CSV_BYTES", "bounded CSV upload"),
+        (csv_controller, "escapeSpreadsheetCell", "spreadsheet-formula-safe CSV export"),
+        (csv_controller, "clear('pungamail.csv.contents')", "stale CSV preview clearing"),
+        (csv_service, "COM_PUNGAMAIL_CSV_EMAIL_MAPPING_REQUIRED", "translated CSV validation"),
+        (csv_service, "$result['unchanged']++", "accurate unchanged CSV result accounting"),
+        (mail_settings, "isValidHost", "bounce mailbox host validation"),
+        (mail_service, "headerValue", "mail header control-character filtering"),
+        (errors, "[redacted]", "operational error redaction"),
+        (dashboard_model, "safeCounts", "schema-safe dashboard aggregates"),
+        (dashboard_layout, "COM_PUNGAMAIL_DATABASE_UPDATE_REQUIRED", "database repair notice"),
+        (content_types, "access_metadata_unavailable", "fail-closed digest access metadata"),
+        (digest_repository, "GET_LOCK(:lockName, 0)", "digest run lock"),
+        (digest_service, "acquireRunLock", "digest concurrency guard"),
+        (bounce_service, "acquireProcessLock", "bounce concurrency guard"),
+    )
+
+    for contents, token, label in required_security_tokens:
+        if token not in contents:
+            fail(f"0.3.3 is missing {label}: {token!r}")
+
+    task_plugin = (ROOT / "extensions/plg_task_pungamail/src/Extension/PungaMail.php").read_text(encoding="utf-8")
+    if "failed: ' . $e->getMessage()" in task_plugin:
+        fail("Scheduled Tasks still write unsanitized exception details to Joomla logs")
+
+    for controller in sorted((admin_root / "src/Controller").glob("*Controller.php")):
+        if "->getMessage()" in controller.read_text(encoding="utf-8"):
+            fail(f"Administrator controller exposes an unsanitized exception: {controller.name}")
 
 
 
@@ -705,6 +944,7 @@ def main() -> int:
         check_xml,
         check_php,
         check_migration_chain,
+        check_schema_path_parity,
         check_no_runtime_schema_mutation,
         check_bind_values_are_variables,
         check_renderer_regressions,
@@ -719,6 +959,7 @@ def main() -> int:
         check_admin_polish_026,
         check_regressions_031,
         check_profile_topics_032,
+        check_stabilization_033,
         check_package_members,
         check_feature_contracts,
     )

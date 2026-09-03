@@ -16,6 +16,7 @@ use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
 use Joomla\Registry\Registry;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
+use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 
 /** Mail delivery, bounce and diagnostics actions. */
 final class DeliveryController extends BaseController
@@ -34,7 +35,7 @@ final class DeliveryController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->redirectToDelivery($e->getMessage(), 'error');
+			$this->redirectToDelivery(ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -47,11 +48,11 @@ final class DeliveryController extends BaseController
 		try
 		{
 			$result = ServiceFactory::bounces()->testConnection($data, (string) ($data['password'] ?? ''));
-			$this->redirectToDelivery($result['message'], $result['ok'] ? 'message' : 'error');
+			$this->redirectToDelivery(ErrorMessage::sanitize($result['message']), $result['ok'] ? 'message' : 'error');
 		}
 		catch (\Throwable $e)
 		{
-			$this->redirectToDelivery($e->getMessage(), 'error');
+			$this->redirectToDelivery(ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -67,7 +68,7 @@ final class DeliveryController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->redirectToDelivery($e->getMessage(), 'error');
+			$this->redirectToDelivery(ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -84,11 +85,11 @@ final class DeliveryController extends BaseController
 		catch (\Throwable $e)
 		{
 			Log::add(
-				'Punga Mail configuration test failed: ' . get_class($e) . ': ' . $e->getMessage(),
+				'Punga Mail configuration test failed: ' . get_class($e) . ': ' . ErrorMessage::sanitize($e),
 				Log::ERROR,
 				'com_pungamail'
 			);
-			$detail = trim(preg_replace('/[\r\n]+/', ' ', $e->getMessage()) ?? '');
+			$detail = ErrorMessage::sanitize($e);
 
 			if ($detail === '')
 			{

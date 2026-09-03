@@ -164,6 +164,18 @@ final class ContentTypeService
 
 		foreach ($items as $item)
 		{
+			if (!(bool) ($item->access_mapped ?? false))
+			{
+				$violations[] = [
+					'source_key' => (string) ($item->source_key ?? ''),
+					'source_item_id' => (string) ($item->id ?? ''),
+					'title' => (string) ($item->title ?? ''),
+					'blocked_user_ids' => $userIds,
+					'reason' => 'access_metadata_unavailable',
+				];
+				continue;
+			}
+
 			$requiredLevels = [];
 			$itemAccess = isset($item->access) && $item->access !== null ? (int) $item->access : null;
 
@@ -381,6 +393,7 @@ final class ContentTypeService
 			$row->id = (string) $row->id;
 			$row->body = (string) ($row->body ?? '');
 			$row->access = $row->access !== null ? (int) $row->access : null;
+			$row->access_mapped = $type->access !== null;
 			$row->published = (string) ($row->published ?? ($row->created ?? ''));
 			$row->url = $this->itemUrl($type, $row);
 		}

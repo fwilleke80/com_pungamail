@@ -9,6 +9,7 @@
 namespace Punga\Component\PungaMail\Administrator\Controller;
 
 use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
 
 /**
@@ -33,7 +34,14 @@ final class DisplayController extends BaseController
 	 */
 	public function display($cachable = false, $urlparams = [])
 	{
-		$input = Factory::getApplication()->getInput();
+		$app = Factory::getApplication();
+
+		if (!$app->getIdentity()->authorise('core.manage', 'com_pungamail'))
+		{
+			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+		}
+
+		$input = $app->getInput();
 		$contextView = $input->getCmd('view', $this->default_view);
 		$screen = $input->getCmd('screen', '');
 		$screenViews = [

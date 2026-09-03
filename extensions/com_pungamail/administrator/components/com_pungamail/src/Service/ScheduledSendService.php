@@ -38,7 +38,7 @@ final class ScheduledSendService
 			}
 			catch (\Throwable $e)
 			{
-				$this->newsletters->markSchedulingFailed((int) $newsletter->id, $e->getMessage());
+				$this->newsletters->markSchedulingFailed((int) $newsletter->id, ErrorMessage::sanitize($e));
 				$result['failed']++;
 			}
 		}

@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.3.2 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.3.4 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -68,12 +68,15 @@ The migration chain is append-only:
 - `0.2.0.sql` — adds templates, per-newsletter content-source selection, style/reminder fields and migrates article selections to `(source_key, source_item_id)`.
 - `0.2.1.sql` — no-op version marker so Joomla’s stored database version stays aligned with the manifest.
 - `0.2.2.sql` — adds `recipient_name` to the frozen send queue snapshot.
+- `0.2.3.sql` — no-op version marker for the queue/dashboard administrator workflow fix.
 - `0.2.4.sql` — no-op version marker for the administrator-UI bugfix release.
 - `0.2.5.sql` — no-op version marker for the mail-language/footer configuration release.
 - `0.2.6.sql` — no-op version marker for administrator UI and subscriber-management improvements.
 - `0.3.0.sql` — adds bounce/delivery state, topic and preference relations, digest definitions/history, schedule/snapshot metadata, and secure mail-settings storage.
 - `0.3.1.sql` — adds Joomla-compatible checkout metadata to newsletters, templates, topics and digest definitions.
 - `0.3.2.sql` — no-op version marker; profile topic selection uses the existing normalized subscriber-topic relation.
+- `0.3.3.sql` — no-op version marker for the stabilization and security-hardening release.
+- `0.3.4.sql` — portable version marker; package preflight conditionally adds the subscriber `recipient_name` column omitted from the earlier upgrade path, while fresh installations are left unchanged.
 
 Every schema release updates `install.mysql.sql`, adds one forward migration, and never rewrites a released migration. Runtime component/plugin PHP must not execute ad-hoc schema DDL.
 

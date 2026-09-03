@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
-VERSION = "0.3.2"
+VERSION = "0.3.4"
 VERSION_FILE = VERSION.replace(".", "-")
 
 EXTENSIONS: tuple[tuple[str, Path], ...] = (

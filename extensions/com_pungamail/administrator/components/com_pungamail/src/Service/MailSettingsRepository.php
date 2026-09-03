@@ -74,9 +74,24 @@ final class MailSettingsRepository
 		$mailbox = trim((string) ($data['bounce_mailbox'] ?? 'INBOX')) ?: 'INBOX';
 		$address = trim((string) ($data['bounce_address'] ?? ''));
 
+		if ($host !== '' && !$this->isValidHost($host))
+		{
+			throw new \InvalidArgumentException(\Joomla\CMS\Language\Text::_('COM_PUNGAMAIL_BOUNCE_HOST_INVALID'));
+		}
+
+		if (preg_match('/[\x00-\x1F\x7F{}]/', $mailbox) === 1 || mb_strlen($mailbox, 'UTF-8') > 191)
+		{
+			throw new \InvalidArgumentException(\Joomla\CMS\Language\Text::_('COM_PUNGAMAIL_BOUNCE_MAILBOX_INVALID'));
+		}
+
+		if (preg_match('/[\r\n\x00]/', $username) === 1 || mb_strlen($username, 'UTF-8') > 320)
+		{
+			throw new \InvalidArgumentException(\Joomla\CMS\Language\Text::_('COM_PUNGAMAIL_BOUNCE_USERNAME_INVALID'));
+		}
+
 		if ($address !== '' && !filter_var($address, FILTER_VALIDATE_EMAIL))
 		{
-			throw new \InvalidArgumentException('The bounce address is not a valid email address.');
+			throw new \InvalidArgumentException(\Joomla\CMS\Language\Text::_('COM_PUNGAMAIL_BOUNCE_ADDRESS_INVALID'));
 		}
 
 		$existing = $this->load();
@@ -154,5 +169,19 @@ final class MailSettingsRepository
 			->bind(':id', $id, ParameterType::INTEGER);
 
 		return $this->db->setQuery($query)->loadObject() ?: null;
+	}
+
+	/** @return bool */
+	private function isValidHost(string $host): bool
+	{
+		if (preg_match('/[\x00-\x20\x7F{}\/]/', $host) === 1)
+		{
+			return false;
+		}
+
+		$ipHost = trim($host, '[]');
+
+		return filter_var($ipHost, FILTER_VALIDATE_IP) !== false
+			|| filter_var($host, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) !== false;
 	}
 }

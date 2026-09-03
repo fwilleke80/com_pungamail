@@ -13,16 +13,22 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
+use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 /** Suppression-safe CSV import and export actions. */
 final class ImportController extends BaseController
 {
+	/** Maximum accepted CSV size in bytes. */
+	private const MAX_CSV_BYTES = 5 * 1024 * 1024;
+
 	/** @return void */
 	public function preview(): void
 	{
 		$this->guard();
-		$file = Factory::getApplication()->getInput()->files->get('csv_file', null, 'raw');
+		$app = Factory::getApplication();
+		$app->getSession()->clear('pungamail.csv.contents');
+		$file = $app->getInput()->files->get('csv_file', null, 'raw');
 
 		try
 		{
@@ -31,20 +37,27 @@ final class ImportController extends BaseController
 				throw new \RuntimeException(Text::_('COM_PUNGAMAIL_CSV_FILE_REQUIRED'));
 			}
 
-			$contents = file_get_contents((string) $file['tmp_name']);
-
-			if ($contents === false)
+			if ((int) ($file['size'] ?? 0) > self::MAX_CSV_BYTES)
 			{
-				throw new \RuntimeException(Text::_('COM_PUNGAMAIL_CSV_READ_FAILED'));
+				throw new \RuntimeException(Text::_('COM_PUNGAMAIL_CSV_FILE_TOO_LARGE'));
+			}
+
+			$contents = file_get_contents((string) $file['tmp_name'], false, null, 0, self::MAX_CSV_BYTES + 1);
+
+			if ($contents === false || strlen($contents) > self::MAX_CSV_BYTES)
+			{
+				throw new \RuntimeException($contents === false
+					? Text::_('COM_PUNGAMAIL_CSV_READ_FAILED')
+					: Text::_('COM_PUNGAMAIL_CSV_FILE_TOO_LARGE'));
 			}
 
 			ServiceFactory::csv()->preview($contents);
-			Factory::getApplication()->getSession()->set('pungamail.csv.contents', $contents);
+			$app->getSession()->set('pungamail.csv.contents', $contents);
 			$this->redirectToImport(Text::_('COM_PUNGAMAIL_CSV_READY'));
 		}
 		catch (\Throwable $e)
 		{
-			$this->redirectToImport($e->getMessage(), 'error');
+			$this->redirectToImport(ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -70,7 +83,7 @@ final class ImportController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->redirectToImport($e->getMessage(), 'error');
+			$this->redirectToImport(ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -104,7 +117,7 @@ final class ImportController extends BaseController
 
 			foreach ($rows as $row)
 			{
-				fputcsv($stream, array_values($row));
+				fputcsv($stream, array_map([$this, 'escapeSpreadsheetCell'], array_values($row)));
 			}
 
 			fclose($stream);
@@ -131,5 +144,22 @@ final class ImportController extends BaseController
 	private function redirectToImport(string $message, string $type = 'message'): void
 	{
 		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=import', false), $message, $type);
+	}
+
+	/**
+	 * Prevents exported text from being interpreted as a spreadsheet formula.
+	 *
+	 * @param mixed $value Exported scalar value.
+	 *
+	 * @return string|int Safe CSV cell value.
+	 */
+	private function escapeSpreadsheetCell(mixed $value): string|int
+	{
+		if (!is_string($value) || $value === '')
+		{
+			return is_int($value) ? $value : (string) $value;
+		}
+
+		return preg_match('/^[=+\-@]/u', $value) === 1 ? "'" . $value : $value;
 	}
 }

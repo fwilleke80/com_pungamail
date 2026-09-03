@@ -13,6 +13,7 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
+use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 /**
@@ -49,7 +50,7 @@ final class NewslettersController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters&filter[state]=-2', false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters&filter[state]=-2', false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -74,7 +75,7 @@ final class NewslettersController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 

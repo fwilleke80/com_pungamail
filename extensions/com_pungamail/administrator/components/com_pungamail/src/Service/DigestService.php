@@ -40,18 +40,46 @@ final class DigestService
 
 		foreach ($this->digests->due($limit) as $digest)
 		{
+			$digestId = (int) $digest->id;
+
+			if (!$this->digests->acquireRunLock($digestId))
+			{
+				continue;
+			}
+
 			$result['processed']++;
-			$runId = $this->digests->startRun((int) $digest->id);
+			$runId = null;
 
 			try
 			{
-				$outcome = $this->generate($digest, $runId);
+				// Re-check due state after locking because another worker may have
+				// completed this digest between discovery and lock acquisition.
+				$current = $this->digests->find($digestId);
+
+				if ($current === null
+					|| (int) $current->state !== 1
+					|| (string) $current->next_run_at > (new Date('now', 'UTC'))->toSql())
+				{
+					$result['processed']--;
+					continue;
+				}
+
+				$runId = $this->digests->startRun($digestId);
+				$outcome = $this->generate($current, $runId);
 				$result[$outcome]++;
 			}
 			catch (\Throwable $e)
 			{
-				$this->digests->finishRun((int) $digest->id, $runId, 'failed', null, 0, $e->getMessage(), false);
+				if ($runId !== null)
+				{
+					$this->digests->finishRun($digestId, $runId, 'failed', null, 0, ErrorMessage::sanitize($e), false);
+				}
+
 				$result['failed']++;
+			}
+			finally
+			{
+				$this->digests->releaseRunLock($digestId);
 			}
 		}
 

@@ -344,7 +344,7 @@ final class MailService
 
 			// Joomla's Mail API accepts a [mail, name] sender tuple. This retains
 			// Joomla's configured transport rather than constructing another stack.
-			$mailer->setSender([$fromEmail, $fromName]);
+			$mailer->setSender([$fromEmail, $this->headerValue($fromName)]);
 		}
 
 		$mailer->addRecipient($recipient);
@@ -356,14 +356,14 @@ final class MailService
 				throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_REPLY_TO_INVALID'));
 			}
 
-			$mailer->addReplyTo($replyToEmail, $replyToName);
+			$mailer->addReplyTo($replyToEmail, $this->headerValue($replyToName));
 		}
 
 		if ($envelopeSender !== '' && property_exists($mailer, 'Sender'))
 		{
 			$mailer->Sender = $envelopeSender;
 		}
-		$mailer->setSubject($subject);
+		$mailer->setSubject($this->headerValue($subject));
 		$mailer->isHtml(true);
 		$mailer->setBody($html);
 
@@ -385,5 +385,19 @@ final class MailService
 		{
 			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_MAIL_SEND_FAILED'));
 		}
+	}
+
+	/**
+	 * Removes control characters from values passed to mail headers.
+	 *
+	 * @param string $value Header value.
+	 *
+	 * @return string Single-line header value.
+	 */
+	private function headerValue(string $value): string
+	{
+		$value = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value) ?? '';
+
+		return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
 	}
 }

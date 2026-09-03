@@ -1,0 +1,1 @@
+-- Punga Mail 0.3.3 is a stabilization release. No schema changes are required.

@@ -1,0 +1,5 @@
+-- Punga Mail 0.3.4
+-- The package installer conditionally repairs the subscriber recipient_name
+-- column before Joomla processes this version marker. SQL-level conditional DDL
+-- is deliberately avoided for compatibility across supported MySQL/MariaDB
+-- prepared-statement implementations.

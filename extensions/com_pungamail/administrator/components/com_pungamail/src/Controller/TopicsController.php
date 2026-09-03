@@ -8,6 +8,7 @@ use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
+use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 /** Bulk/list actions for mailing topics. */
@@ -30,7 +31,7 @@ final class TopicsController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_(AdministratorRoute::topics(), false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_(AdministratorRoute::topics(), false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 

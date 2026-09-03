@@ -63,52 +63,86 @@ final class BounceService
 	public function process(int $limit = 100): array
 	{
 		$this->requireImap();
-		$config = $this->settings->getConnection();
-		$mailbox = $this->mailboxString($config);
-		$connection = @imap_open($mailbox, (string) $config->bounce_username, (string) $config->bounce_password, 0, 1);
-
-		if ($connection === false)
-		{
-			throw new \RuntimeException(imap_last_error() ?: Text::_('COM_PUNGAMAIL_BOUNCE_CONNECTION_FAILED'));
-		}
-
 		$result = ['processed' => 0, 'hard' => 0, 'soft' => 0, 'unknown' => 0, 'duplicates' => 0];
-		$messages = imap_search($connection, 'UNSEEN') ?: [];
-		$messages = array_slice($messages, 0, max(1, min(500, $limit)));
+
+		if (!$this->acquireProcessLock())
+		{
+			return $result;
+		}
 
 		try
 		{
-			foreach ($messages as $messageNumber)
+			$config = $this->settings->getConnection();
+			$mailbox = $this->mailboxString($config);
+			$connection = @imap_open($mailbox, (string) $config->bounce_username, (string) $config->bounce_password, 0, 1);
+
+			if ($connection === false)
 			{
-				$header = (string) imap_fetchheader($connection, $messageNumber, FT_PEEK);
-				$body = (string) imap_body($connection, $messageNumber, FT_PEEK);
-				$parsed = $this->parse($header, $body, (int) $messageNumber);
+				throw new \RuntimeException(imap_last_error() ?: Text::_('COM_PUNGAMAIL_BOUNCE_CONNECTION_FAILED'));
+			}
 
-				if ($parsed === null)
+			$messages = imap_search($connection, 'UNSEEN') ?: [];
+			$messages = array_slice($messages, 0, max(1, min(500, $limit)));
+
+			try
+			{
+				foreach ($messages as $messageNumber)
 				{
+					$header = (string) imap_fetchheader($connection, $messageNumber, FT_PEEK);
+					$body = (string) imap_body($connection, $messageNumber, FT_PEEK);
+					$parsed = $this->parse($header, $body, (int) $messageNumber);
+
+					if ($parsed === null)
+					{
+						imap_setflag_full($connection, (string) $messageNumber, '\\Seen');
+						continue;
+					}
+
+					if ($this->record($parsed))
+					{
+						$result['processed']++;
+						$result[$parsed['classification']]++;
+					}
+					else
+					{
+						$result['duplicates']++;
+					}
+
 					imap_setflag_full($connection, (string) $messageNumber, '\\Seen');
-					continue;
 				}
-
-				if ($this->record($parsed))
-				{
-					$result['processed']++;
-					$result[$parsed['classification']]++;
-				}
-				else
-				{
-					$result['duplicates']++;
-				}
-
-				imap_setflag_full($connection, (string) $messageNumber, '\\Seen');
+			}
+			finally
+			{
+				imap_close($connection);
 			}
 		}
 		finally
 		{
-			imap_close($connection);
+			$this->releaseProcessLock();
 		}
 
 		return $result;
+	}
+
+	/** @return bool */
+	private function acquireProcessLock(): bool
+	{
+		$name = 'pungamail.bounces';
+		$query = $this->db->getQuery(true)
+			->select('GET_LOCK(:lockName, 0)')
+			->bind(':lockName', $name);
+
+		return (int) $this->db->setQuery($query)->loadResult() === 1;
+	}
+
+	/** @return void */
+	private function releaseProcessLock(): void
+	{
+		$name = 'pungamail.bounces';
+		$query = $this->db->getQuery(true)
+			->select('RELEASE_LOCK(:lockName)')
+			->bind(':lockName', $name);
+		$this->db->setQuery($query)->loadResult();
 	}
 
 	/** @return array<string,mixed>|null */

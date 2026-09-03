@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.4 — 2026-09-02
+
+- Added a comprehensive live acceptance test guide with step-by-step coverage of installation/update, every administrator and frontend workflow, mail generation, all Scheduled Tasks, access-safe digests, queue controls, bounces, CSV, ACL/CSRF/privacy, multilingual output, and end-to-end regressions.
+- Fixed the existing-installation upgrade path for the subscriber `recipient_name` column used by Joomla profile topic/preference persistence and CSV subscriber names.
+- Added a conditional Joomla package-installer repair that works both for older upgraded databases, where the column is missing, and fresh 0.3.x databases, where it already exists.
+- Kept the 0.3.4 SQL update as a portable version marker, avoiding conditional DDL through the database prepared-statement protocol.
+- Added a cumulative migration-versus-fresh-install schema parity check so future columns cannot be added only to one installation path unnoticed.
+
+## 0.3.3 — 2026-09-02
+
+- Corrected signup-module topic-mode detection: no configured topic IDs always presents all published topics as choices, even when only one topic currently exists; direct single-topic mode now requires exactly one explicitly configured topic.
+- Preserved global consent when a logged-in user changes only topic preferences; topic changes can no longer reactivate a globally unsubscribed subscriber.
+- Hardened frontend return-URL validation against external hosts that merely share the site's URL prefix.
+- Added an explicit backend component access check, mail-header control-character filtering, and stricter bounce-mailbox host/folder/username validation.
+- Bounded CSV upload reads, cleared stale preview data before a new upload, protected exported cells from spreadsheet-formula execution, and made unchanged import counts accurate.
+- Sanitized operational errors before logging, persistence, or display so mailbox credentials, authorization payloads, tokens, and secret query parameters are redacted.
+- Made automatic-digest content access checks fail closed when a registered content type lacks usable access metadata.
+- Serialized overlapping digest generation and bounce-mailbox processing with database advisory locks.
+- Made the Dashboard tolerate incomplete schema updates and show an actionable Joomla Database repair notice instead of failing the entire page.
+- Expanded release checks for consent, topic modes, access controls, redaction, CSV safety, task locking, database-update resilience, and English/German system-language parity.
+- Added the forward-only no-op `0.3.3.sql` version marker; no schema changes are required.
+
 ## 0.3.2 — 2026-09-02
 
 - Added a published-topic multi-select beside **Receive newsletter** in Joomla registration, frontend profile, administrator user, and administrator profile forms.

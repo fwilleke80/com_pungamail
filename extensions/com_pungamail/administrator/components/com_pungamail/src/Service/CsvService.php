@@ -56,7 +56,7 @@ final class CsvService
 
 		if ($indices['email'] === null)
 		{
-			throw new \InvalidArgumentException('An email column must be mapped.');
+			throw new \InvalidArgumentException(\Joomla\CMS\Language\Text::_('COM_PUNGAMAIL_CSV_EMAIL_MAPPING_REQUIRED'));
 		}
 
 		$topicMap = [];
@@ -101,6 +101,8 @@ final class CsvService
 					(int) $subscriber->status === SubscriberRepository::STATUS_UNSUBSCRIBED
 					|| (string) ($subscriber->last_bounce_class ?? '') === 'hard'
 				));
+				$isNew = false;
+				$changed = false;
 
 				if ($subscriber === null)
 				{
@@ -112,7 +114,7 @@ final class CsvService
 
 					$subscriberId = $this->subscribers->addAdministratorExternal($email);
 					$subscriber = $this->subscribers->findById($subscriberId);
-					$result['added']++;
+					$isNew = true;
 				}
 				elseif ($isProtected && $wantsActive && !$reactivate)
 				{
@@ -122,22 +124,27 @@ final class CsvService
 				elseif ($isProtected && $wantsActive && $reactivate)
 				{
 					$subscriberId = $this->subscribers->addAdministratorExternal($email);
-					$result['updated']++;
+					$subscriber = $this->subscribers->findById($subscriberId);
+					$changed = true;
 				}
 				else
 				{
 					$subscriberId = (int) $subscriber->id;
-					$result['updated']++;
 				}
 
-				if ($name !== '')
+				if ($name !== '' && $name !== (string) ($subscriber->recipient_name ?? ''))
 				{
 					$this->subscribers->updateRecipientName($subscriberId, $name);
+					$changed = true;
 				}
 
-				if ($wantsUnsubscribed)
+				if ($wantsUnsubscribed && (
+					(int) ($subscriber->status ?? SubscriberRepository::STATUS_SUBSCRIBED) !== SubscriberRepository::STATUS_UNSUBSCRIBED
+					|| !$isSuppressed
+				))
 				{
 					$this->subscribers->unsubscribe($subscriberId, 'csv-import');
+					$changed = true;
 				}
 
 				if ($indices['topics'] !== null)
@@ -155,18 +162,33 @@ final class CsvService
 						}
 					}
 
-					$this->topics->subscribeTopics($subscriberId, $topicIds);
+					$currentTopicIds = $this->topics->getSubscriberTopicIds($subscriberId);
+					$newTopicIds = array_values(array_diff(array_unique($topicIds), $currentTopicIds));
+
+					if ($newTopicIds !== [])
+					{
+						$this->topics->subscribeTopics($subscriberId, $newTopicIds);
+						$changed = true;
+					}
+				}
+
+				if ($isNew)
+				{
+					$result['added']++;
+				}
+				elseif ($changed)
+				{
+					$result['updated']++;
+				}
+				else
+				{
+					$result['unchanged']++;
 				}
 			}
 			catch (\Throwable)
 			{
 				$result['errors']++;
 			}
-		}
-
-		if ($result['updated'] === 0 && $result['added'] === 0 && $result['errors'] === 0 && $result['conflicts'] === 0)
-		{
-			$result['unchanged'] = count($parsed['rows']) - $result['invalid'] - $result['skipped'];
 		}
 
 		return $result;
@@ -248,7 +270,7 @@ final class CsvService
 
 		if (strlen($contents) > 5 * 1024 * 1024)
 		{
-			throw new \RuntimeException('The CSV file exceeds the 5 MiB import limit.');
+			throw new \RuntimeException(\Joomla\CMS\Language\Text::_('COM_PUNGAMAIL_CSV_FILE_TOO_LARGE'));
 		}
 
 		$firstLine = strtok($contents, "\r\n") ?: '';
@@ -259,7 +281,7 @@ final class CsvService
 
 		if ($handle === false)
 		{
-			throw new \RuntimeException('Unable to parse CSV data.');
+			throw new \RuntimeException(\Joomla\CMS\Language\Text::_('COM_PUNGAMAIL_CSV_PARSE_FAILED'));
 		}
 
 		fwrite($handle, $contents);
@@ -287,7 +309,7 @@ final class CsvService
 
 		if ($headers === [])
 		{
-			throw new \InvalidArgumentException('The CSV file has no header row.');
+			throw new \InvalidArgumentException(\Joomla\CMS\Language\Text::_('COM_PUNGAMAIL_CSV_HEADER_REQUIRED'));
 		}
 
 		return ['headers' => $headers, 'rows' => $rows, 'delimiter' => $delimiter];

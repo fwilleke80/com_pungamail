@@ -50,6 +50,33 @@ final class DigestRepository
 		return $this->db->setQuery($query, 0, max(1, $limit))->loadObjectList();
 	}
 
+	/**
+	 * Acquires a connection-scoped lock for one digest generation.
+	 *
+	 * @param int $digestId Digest ID.
+	 *
+	 * @return bool True when this worker owns the digest run.
+	 */
+	public function acquireRunLock(int $digestId): bool
+	{
+		$name = 'pungamail.digest.' . $digestId;
+		$query = $this->db->getQuery(true)
+			->select('GET_LOCK(:lockName, 0)')
+			->bind(':lockName', $name);
+
+		return (int) $this->db->setQuery($query)->loadResult() === 1;
+	}
+
+	/** @return void */
+	public function releaseRunLock(int $digestId): void
+	{
+		$name = 'pungamail.digest.' . $digestId;
+		$query = $this->db->getQuery(true)
+			->select('RELEASE_LOCK(:lockName)')
+			->bind(':lockName', $name);
+		$this->db->setQuery($query)->loadResult();
+	}
+
 	/** @return int */
 	public function save(int $id, array $data, int $userId): int
 	{

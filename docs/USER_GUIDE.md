@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.3.2. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.3.4. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -96,6 +96,7 @@ The **Scheduled Tasks** card shows whether each Punga Mail task type is configur
 
 Warnings appear when:
 
+- Punga Mail detects an incomplete database update; use **System → Maintenance → Database** to apply Joomla's suggested repair before sending;
 - the normal send-queue task is not enabled;
 - an enabled digest exists without the digest task;
 - a scheduled newsletter exists without the scheduled-newsletter task;
@@ -519,7 +520,7 @@ The recipient controls behave exactly like the newsletter editor: sources are co
 
 Before generating a digest, Punga Mail resolves its current recipients and checks Joomla's access levels and applicable category access. It includes an item only when **every resolved recipient would normally be allowed to view that item on the website**.
 
-This deliberately conservative shared-content rule prevents a digest from exposing restricted content to a broader audience. If recipients have mixed access, use separate digests/audiences for public and restricted content. Excluded items and no-content outcomes appear in the digest run details.
+This deliberately conservative shared-content rule prevents a digest from exposing restricted content to a broader audience. If a registered content type does not provide usable access metadata, its items are excluded from automatic digests instead of being assumed public. If recipients have mixed access, use separate digests/audiences for public and restricted content. Excluded items and no-content outcomes appear in the digest run details.
 
 ### Digest tasks and history
 
@@ -635,7 +636,7 @@ For logged-out visitors, the module asks for an email address and uses double op
 
 For logged-in users, the module uses the Joomla account email and current Punga Mail record. Topic changes apply only to the topics visible in that module; memberships in topics not shown by that module remain unchanged.
 
-With one visible topic, the button toggles subscription to that topic. With multiple visible topics, checkboxes and **Save topic preferences** update only those visible topics.
+Only the exactly-one-topic module configuration uses the direct single-topic action. With no configured topics, even one currently published topic remains an explicit visitor choice. Multi-choice forms use checkboxes and **Save topic preferences** to update only the visible topics.
 
 The separate **Subscribe** / **Unsubscribe completely** control changes the global newsletter preference. Leaving one topic does not globally unsubscribe the address. A globally unsubscribed user may still see stored topic choices, but cannot receive mail until intentionally subscribed globally again.
 
@@ -730,6 +731,7 @@ Ask the named administrator to use Save & Close or Cancel. If the edit session w
 
 ## Tutorials
 
+- [Run the complete live acceptance and regression test](TEST_GUIDE.md)
 - [Create and send a newsletter](TUTORIAL_NEWSLETTER.md)
 - [Create an automatic digest](TUTORIAL_DIGEST.md)
 - [Set up topics and frontend signup](TUTORIAL_TOPICS_AND_SIGNUP.md)

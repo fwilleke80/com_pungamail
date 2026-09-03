@@ -17,16 +17,25 @@ final class PungaMailSignupHelper
 	/**
 	 * Returns the current visitor's newsletter state.
 	 *
-	 * @return array{logged_in:bool,email:string,subscribed:bool}
+	 * @return array{logged_in:bool,email:string,subscribed:bool,topics:array<int,object>,selected_topic_ids:array<int,int>,single_topic_mode:bool}
 	 */
 	public static function getState(array $configuredTopicIds = []): array
 	{
+		$configuredTopicIds = array_values(array_unique(array_filter(array_map('intval', $configuredTopicIds))));
 		$user = Factory::getApplication()->getIdentity();
 		$topics = ServiceFactory::topics()->active($configuredTopicIds !== [] ? $configuredTopicIds : null);
+		$singleTopicMode = count($configuredTopicIds) === 1;
 
 		if ((int) $user->id <= 0)
 		{
-			return ['logged_in' => false, 'email' => '', 'subscribed' => false, 'topics' => $topics, 'selected_topic_ids' => []];
+			return [
+				'logged_in' => false,
+				'email' => '',
+				'subscribed' => false,
+				'topics' => $topics,
+				'selected_topic_ids' => [],
+				'single_topic_mode' => $singleTopicMode,
+			];
 		}
 
 		$email = (string) $user->email;
@@ -38,6 +47,7 @@ final class PungaMailSignupHelper
 			'subscribed' => ServiceFactory::subscribers()->isUserSubscribed((int) $user->id, $email),
 			'topics' => $topics,
 			'selected_topic_ids' => $subscriber !== null ? ServiceFactory::topics()->getSubscriberTopicIds((int) $subscriber->id) : [],
+			'single_topic_mode' => $singleTopicMode,
 		];
 	}
 }

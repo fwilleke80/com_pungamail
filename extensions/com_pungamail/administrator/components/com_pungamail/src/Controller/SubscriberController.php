@@ -16,6 +16,7 @@ use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
+use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 /**
@@ -86,7 +87,7 @@ final class SubscriberController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_(AdministratorRoute::subscriber(), false), $e->getMessage(), 'error');
+			$this->setRedirect(Route::_(AdministratorRoute::subscriber(), false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 

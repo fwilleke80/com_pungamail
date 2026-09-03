@@ -7,6 +7,7 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
+use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 /** Bulk/list actions for templates. */
@@ -18,13 +19,13 @@ final class TemplatesController extends BaseController
 	{
 		$this->requirePermission('core.delete'); $this->requireToken();
 		try { $count = ServiceFactory::templates()->deleteTrashed($this->selectedIds()); $this->setRedirect(Route::_('index.php?option=com_pungamail&view=templates&filter[state]=-2', false), Text::plural('COM_PUNGAMAIL_TEMPLATES_DELETED', $count)); }
-		catch (\Throwable $e) { $this->setRedirect(Route::_('index.php?option=com_pungamail&view=templates&filter[state]=-2', false), $e->getMessage(), 'error'); }
+		catch (\Throwable $e) { $this->setRedirect(Route::_('index.php?option=com_pungamail&view=templates&filter[state]=-2', false), ErrorMessage::sanitize($e), 'error'); }
 	}
 	/** @return void */ private function setState(int $state, string $message): void
 	{
 		$this->requirePermission('core.edit.state'); $this->requireToken();
 		try { ServiceFactory::templates()->setState($this->selectedIds(), $state); $this->setRedirect(Route::_('index.php?option=com_pungamail&view=templates', false), $message); }
-		catch (\Throwable $e) { $this->setRedirect(Route::_('index.php?option=com_pungamail&view=templates', false), $e->getMessage(), 'error'); }
+		catch (\Throwable $e) { $this->setRedirect(Route::_('index.php?option=com_pungamail&view=templates', false), ErrorMessage::sanitize($e), 'error'); }
 	}
 	/** @return array<int,int> */ private function selectedIds(): array
 	{

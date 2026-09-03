@@ -15,6 +15,7 @@ use Joomla\Component\Scheduler\Administrator\Task\Status;
 use Joomla\Component\Scheduler\Administrator\Traits\TaskPluginTrait;
 use Joomla\Event\SubscriberInterface;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
+use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 
 /**
  * Joomla Scheduled Tasks integration for the persistent Punga Mail queue.
@@ -92,7 +93,7 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 		}
 		catch (\Throwable $e)
 		{
-			Log::add('Punga Mail reminder task failed: ' . $e->getMessage(), Log::ERROR, 'plg_task_pungamail');
+			Log::add('Punga Mail reminder task failed: ' . ErrorMessage::sanitize($e), Log::ERROR, 'plg_task_pungamail');
 
 			return Status::KNOCKOUT;
 		}
@@ -127,7 +128,7 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 		}
 		catch (\Throwable $e)
 		{
-			Log::add('Punga Mail queue task failed: ' . $e->getMessage(), Log::ERROR, 'plg_task_pungamail');
+			Log::add('Punga Mail queue task failed: ' . ErrorMessage::sanitize($e), Log::ERROR, 'plg_task_pungamail');
 
 			return Status::KNOCKOUT;
 		}
@@ -146,7 +147,7 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 		}
 		catch (\Throwable $e)
 		{
-			Log::add('Punga Mail scheduled-send task failed: ' . $e->getMessage(), Log::ERROR, 'plg_task_pungamail');
+			Log::add('Punga Mail scheduled-send task failed: ' . ErrorMessage::sanitize($e), Log::ERROR, 'plg_task_pungamail');
 
 			return Status::KNOCKOUT;
 		}
@@ -165,7 +166,7 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 		}
 		catch (\Throwable $e)
 		{
-			Log::add('Punga Mail digest task failed: ' . $e->getMessage(), Log::ERROR, 'plg_task_pungamail');
+			Log::add('Punga Mail digest task failed: ' . ErrorMessage::sanitize($e), Log::ERROR, 'plg_task_pungamail');
 
 			return Status::KNOCKOUT;
 		}
@@ -184,7 +185,7 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 		}
 		catch (\Throwable $e)
 		{
-			Log::add('Punga Mail bounce task failed: ' . $e->getMessage(), Log::ERROR, 'plg_task_pungamail');
+			Log::add('Punga Mail bounce task failed: ' . ErrorMessage::sanitize($e), Log::ERROR, 'plg_task_pungamail');
 
 			return Status::KNOCKOUT;
 		}

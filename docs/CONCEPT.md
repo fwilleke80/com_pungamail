@@ -8,14 +8,14 @@ Punga Mail is a focused, self-hosted Joomla! 6 newsletter extension. Its primary
 
 It is not intended to become a behavioural marketing/analytics platform.
 
-## Implemented through 0.3.2
+## Implemented through 0.3.4
 
 ### Lists, automation and access safety
 
 - Subscribers can independently join or leave published mailing topics without changing their global subscription state.
 - Newsletters can target topics and Joomla user groups; recipient resolution deduplicates addresses and applies unsubscribe and suppression barriers.
 - Recurring digests discover content through Joomla registered content types and can create a safe draft or explicitly enabled automatic send.
-- Before a digest is created, each item is checked against the resolved recipients' Joomla authorized view levels and applicable category access. An item is included only in the common visible set, so email never broadens website access.
+- Before a digest is created, each item is checked against the resolved recipients' Joomla authorized view levels and applicable category access. An item is included only in the common visible set, so email never broadens website access. Registered types without usable access metadata are excluded from automatic digests rather than assumed public.
 - Digest runs retain newsletter IDs, outcomes, no-content skips and failure details.
 
 ### Delivery health
@@ -129,6 +129,8 @@ A future optional provider hook is acceptable only as an escape hatch for unusua
 - silently re-subscribing suppressed addresses
 
 ## Possible later additions
+
+### Longer-term candidates
 
 - richer category/subcategory selectors per registered content type where the source exposes categories
 - richer subscriber audit-history UI

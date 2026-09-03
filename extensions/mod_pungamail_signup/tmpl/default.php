@@ -14,6 +14,7 @@ $buttonLabel = trim((string) $params->get('button_label', ''));
 $buttonLabel = $buttonLabel !== '' ? $buttonLabel : Text::_('MOD_PUNGAMAIL_SIGNUP_SUBSCRIBE');
 $topics = (array) ($pungamail['topics'] ?? []);
 $selectedTopicIds = array_map('intval', (array) ($pungamail['selected_topic_ids'] ?? []));
+$singleTopicMode = (bool) ($pungamail['single_topic_mode'] ?? false);
 ?>
 <div class="pungamail-signup">
 	<?php if ($intro !== '') : ?>
@@ -30,10 +31,10 @@ $selectedTopicIds = array_map('intval', (array) ($pungamail['selected_topic_ids'
 			<div style="position:absolute;left:-10000px" aria-hidden="true">
 				<label><?php echo Text::_('MOD_PUNGAMAIL_SIGNUP_HONEYPOT'); ?> <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
 			</div>
-			<?php if (count($topics) === 1) : ?>
+			<?php if ($singleTopicMode && count($topics) === 1) : ?>
 				<input type="hidden" name="topic_ids[]" value="<?php echo (int) $topics[0]->id; ?>">
 				<p class="small"><?php echo Text::sprintf('MOD_PUNGAMAIL_SIGNUP_SINGLE_TOPIC', '<strong>' . htmlspecialchars((string) $topics[0]->title, ENT_QUOTES, 'UTF-8') . '</strong>'); ?></p>
-			<?php elseif (count($topics) > 1) : ?>
+			<?php elseif ($topics !== []) : ?>
 				<fieldset class="mb-3"><legend class="h6"><?php echo Text::_('MOD_PUNGAMAIL_SIGNUP_CHOOSE_TOPICS'); ?></legend>
 				<?php foreach ($topics as $topic) : ?><div class="form-check"><input class="form-check-input" type="checkbox" name="topic_ids[]" value="<?php echo (int) $topic->id; ?>" id="pungamail-topic-<?php echo (int) $module->id; ?>-<?php echo (int) $topic->id; ?>"><label class="form-check-label" for="pungamail-topic-<?php echo (int) $module->id; ?>-<?php echo (int) $topic->id; ?>"><?php echo htmlspecialchars((string) $topic->title, ENT_QUOTES, 'UTF-8'); ?></label><?php if (trim((string) $topic->description) !== '') : ?><div class="form-text"><?php echo htmlspecialchars((string) $topic->description, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?></div><?php endforeach; ?>
 				</fieldset>
@@ -48,7 +49,7 @@ $selectedTopicIds = array_map('intval', (array) ($pungamail['selected_topic_ids'
 			<form class="mb-3" action="<?php echo Route::_('index.php?option=com_pungamail&task=subscription.userTopics'); ?>" method="post">
 				<input type="hidden" name="module_id" value="<?php echo (int) $module->id; ?>">
 				<input type="hidden" name="return" value="<?php echo htmlspecialchars($returnUrl, ENT_QUOTES, 'UTF-8'); ?>">
-				<?php if (count($topics) === 1) : $topic = $topics[0]; $selected = in_array((int) $topic->id, $selectedTopicIds, true); ?>
+				<?php if ($singleTopicMode && count($topics) === 1) : $topic = $topics[0]; $selected = in_array((int) $topic->id, $selectedTopicIds, true); ?>
 					<p><?php echo Text::sprintf('MOD_PUNGAMAIL_SIGNUP_SINGLE_TOPIC', '<strong>' . htmlspecialchars((string) $topic->title, ENT_QUOTES, 'UTF-8') . '</strong>'); ?></p>
 					<?php if (!$selected) : ?><input type="hidden" name="topic_ids[]" value="<?php echo (int) $topic->id; ?>"><?php endif; ?>
 					<button class="btn <?php echo $selected ? 'btn-outline-secondary' : 'btn-primary'; ?>" type="submit"><?php echo Text::_($selected ? 'MOD_PUNGAMAIL_SIGNUP_UNSUBSCRIBE_TOPIC' : 'MOD_PUNGAMAIL_SIGNUP_SUBSCRIBE_TOPIC'); ?></button>

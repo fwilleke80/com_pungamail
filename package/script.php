@@ -125,6 +125,10 @@ return new class () implements InstallerScriptInterface
 		{
 			$this->removeTablesOnUninstall = $this->readRemoveTablesOption();
 		}
+		elseif ($type === 'update')
+		{
+			$this->repairSubscriberRecipientName();
+		}
 
 		if (version_compare(PHP_VERSION, $this->minimumPhp, '<'))
 		{
@@ -147,6 +151,31 @@ return new class () implements InstallerScriptInterface
 		}
 
 		return true;
+	}
+
+	/**
+	 * Repairs the display-name column omitted from the historical update chain.
+	 *
+	 * Fresh installations already contain the column. Checking the real table
+	 * first also makes a retry safe after an interrupted package update.
+	 *
+	 * @return void
+	 */
+	private function repairSubscriberRecipientName(): void
+	{
+		$db = Factory::getContainer()->get(DatabaseInterface::class);
+		$table = $db->replacePrefix('#__pungamail_subscribers');
+		$columns = array_change_key_case($db->getTableColumns($table, true), CASE_LOWER);
+
+		if (isset($columns['recipient_name']))
+		{
+			return;
+		}
+
+		$query = 'ALTER TABLE ' . $db->quoteName('#__pungamail_subscribers')
+			. ' ADD COLUMN ' . $db->quoteName('recipient_name')
+			. " VARCHAR(255) NOT NULL DEFAULT '' AFTER " . $db->quoteName('email');
+		$db->setQuery($query)->execute();
 	}
 
 	/**

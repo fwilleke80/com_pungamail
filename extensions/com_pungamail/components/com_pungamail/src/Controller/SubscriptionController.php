@@ -17,6 +17,7 @@ use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
 use Joomla\Registry\Registry;
 use Punga\Component\PungaMail\Administrator\Service\Address;
+use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 use Punga\Component\PungaMail\Administrator\Service\SubscriberRepository;
 
@@ -92,7 +93,7 @@ final class SubscriptionController extends BaseController
 				}
 				catch (\Throwable $e)
 				{
-					$repo->recordEvent((int) $existing->id, 'topic_confirmation_send_failed', $ip, $userAgent, ['error' => mb_substr($e->getMessage(), 0, 500)]);
+					$repo->recordEvent((int) $existing->id, 'topic_confirmation_send_failed', $ip, $userAgent, ['error' => ErrorMessage::sanitize($e, 500)]);
 				}
 			}
 
@@ -122,7 +123,7 @@ final class SubscriptionController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$repo->recordEvent($subscriberId, 'confirmation_send_failed', $ip, $userAgent, ['error' => mb_substr($e->getMessage(), 0, 500)]);
+			$repo->recordEvent($subscriberId, 'confirmation_send_failed', $ip, $userAgent, ['error' => ErrorMessage::sanitize($e, 500)]);
 		}
 
 		$this->setRedirect($redirect);
@@ -225,15 +226,7 @@ final class SubscriptionController extends BaseController
 			$app->getInput()->server->getString('HTTP_USER_AGENT')
 		);
 
-		$return = base64_decode($app->getInput()->post->getBase64('return'), true);
-		$siteRoot = rtrim((string) \Joomla\CMS\Uri\Uri::root(), '/');
-
-		if (!is_string($return) || $return === '' || !str_starts_with($return, $siteRoot))
-		{
-			$return = Route::_('index.php', false);
-		}
-
-		$this->setRedirect($return, Text::_($subscribed ? 'COM_PUNGAMAIL_PREFERENCE_ENABLED' : 'COM_PUNGAMAIL_PREFERENCE_DISABLED'));
+		$this->setRedirect($this->safeReturn(), Text::_($subscribed ? 'COM_PUNGAMAIL_PREFERENCE_ENABLED' : 'COM_PUNGAMAIL_PREFERENCE_DISABLED'));
 	}
 
 	/** Updates only the topics exposed by the current module. */
@@ -260,9 +253,17 @@ final class SubscriptionController extends BaseController
 			return;
 		}
 
-		if ($subscriber === null || ((int) $subscriber->status !== SubscriberRepository::STATUS_SUBSCRIBED && $selectedIds !== []))
+		if ($subscriber === null)
 		{
-			$subscriberId = $repo->setUserPreference((int) $user->id, (string) $user->email, true, (string) $user->name);
+			// Topic choices and the global newsletter preference are independent.
+			// Create a canonical row using the user's current effective preference,
+			// but never reactivate an opted-out or suppressed address here.
+			$subscriberId = $repo->setUserPreference(
+				(int) $user->id,
+				(string) $user->email,
+				$repo->isUserSubscribed((int) $user->id, (string) $user->email),
+				(string) $user->name
+			);
 		}
 		else
 		{
@@ -359,8 +360,11 @@ final class SubscriptionController extends BaseController
 		$app = Factory::getApplication();
 		$return = base64_decode($app->getInput()->post->getBase64('return'), true);
 		$siteRoot = rtrim((string) \Joomla\CMS\Uri\Uri::root(), '/');
+		$isLocal = is_string($return)
+			&& $return !== ''
+			&& ($return === $siteRoot || str_starts_with($return, $siteRoot . '/'));
 
-		return is_string($return) && $return !== '' && str_starts_with($return, $siteRoot)
+		return $isLocal
 			? $return
 			: Route::_('index.php', false);
 	}
