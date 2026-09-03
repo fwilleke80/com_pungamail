@@ -2,6 +2,7 @@
 
 ## 0.3.4 — 2026-09-02
 
+- Made the package manifest the single release-metadata source for build/check scripts. Archive names, source prefix, release version, and child-extension ZIP mapping are now derived automatically, so future version bumps no longer modify `build.py` or a checker version constant.
 - Added a comprehensive live acceptance test guide with step-by-step coverage of installation/update, every administrator and frontend workflow, mail generation, all Scheduled Tasks, access-safe digests, queue controls, bounces, CSV, ACL/CSRF/privacy, multilingual output, and end-to-end regressions.
 - Fixed the existing-installation upgrade path for the subscriber `recipient_name` column used by Joomla profile topic/preference persistence and CSV subscriber names.
 - Added a conditional Joomla package-installer repair that works both for older upgraded databases, where the column is missing, and fresh 0.3.x databases, where it already exists.

@@ -199,6 +199,8 @@ python3 build.py
 - `dist/pkg_pungamail_v0-3-4.zip` — Joomla installer package
 - `dist/pungamail_v0-3-4_source.zip` — complete Git-ready source tree
 
+The canonical release metadata lives in `package/pkg_pungamail.xml`. The build script reads the package name, version, and child-extension archive names from that manifest, so a version bump does not require editing `build.py` or the version in `tools/check.py`. Joomla still requires the version in each constituent extension manifest; the release checker verifies that they all match the package manifest.
+
 ## License
 
 Punga Mail is released under the MIT License. See [`LICENSE.md`](LICENSE.md).

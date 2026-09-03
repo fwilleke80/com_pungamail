@@ -3,23 +3,86 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
 import zipfile
+import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
-VERSION = "0.3.4"
-VERSION_FILE = VERSION.replace(".", "-")
+PACKAGE_MANIFEST = ROOT / "package/pkg_pungamail.xml"
 
-EXTENSIONS: tuple[tuple[str, Path], ...] = (
-    ("com_pungamail.zip", ROOT / "extensions/com_pungamail"),
-    ("mod_pungamail_signup.zip", ROOT / "extensions/mod_pungamail_signup"),
-    ("plg_user_pungamail.zip", ROOT / "extensions/plg_user_pungamail"),
-    ("plg_task_pungamail.zip", ROOT / "extensions/plg_task_pungamail"),
-)
+
+@dataclass(frozen=True)
+class PackageMetadata:
+    """Release metadata read from the canonical Joomla package manifest."""
+
+    package_name: str
+    version: str
+    extensions: tuple[tuple[str, Path], ...]
+
+    @property
+    def filename_version(self) -> str:
+        """Return the release version formatted for archive filenames.
+
+        @return Hyphen-separated version string.
+        """
+
+        return self.version.replace(".", "-")
+
+
+def load_package_metadata() -> PackageMetadata:
+    """Load and validate build metadata from the package manifest.
+
+    @return Validated package name, version, and child-extension archives.
+    """
+
+    try:
+        manifest = ET.parse(PACKAGE_MANIFEST).getroot()
+    except (OSError, ET.ParseError) as exc:
+        raise RuntimeError(f"Cannot read package manifest {PACKAGE_MANIFEST}: {exc}") from exc
+
+    package_name = (manifest.findtext("packagename") or "").strip()
+    version = (manifest.findtext("version") or "").strip()
+
+    if re.fullmatch(r"[a-z][a-z0-9_]*", package_name) is None:
+        raise RuntimeError(f"Invalid package name in {PACKAGE_MANIFEST}: {package_name!r}")
+
+    if re.fullmatch(r"[0-9]+(?:\.[0-9]+){2}(?:[-+][0-9A-Za-z.-]+)?", version) is None:
+        raise RuntimeError(f"Invalid release version in {PACKAGE_MANIFEST}: {version!r}")
+
+    extensions: list[tuple[str, Path]] = []
+    seen: set[str] = set()
+
+    for entry in manifest.findall("./files/file"):
+        filename = (entry.text or "").strip()
+        path = Path(filename)
+
+        if path.name != filename or re.fullmatch(r"[a-z0-9_]+\.zip", filename) is None:
+            raise RuntimeError(f"Unsafe child-extension filename in {PACKAGE_MANIFEST}: {filename!r}")
+
+        if filename in seen:
+            raise RuntimeError(f"Duplicate child-extension filename in {PACKAGE_MANIFEST}: {filename!r}")
+
+        source = ROOT / "extensions" / path.stem
+
+        if not source.is_dir():
+            raise RuntimeError(f"Missing source directory for {filename}: {source}")
+
+        seen.add(filename)
+        extensions.append((filename, source))
+
+    if not extensions:
+        raise RuntimeError(f"Package manifest contains no child extensions: {PACKAGE_MANIFEST}")
+
+    return PackageMetadata(package_name, version, tuple(extensions))
+
+
+METADATA = load_package_metadata()
 
 
 def add_tree(archive: zipfile.ZipFile, source: Path, prefix: Path | None = None) -> None:
@@ -60,9 +123,9 @@ def build_package(extension_archives: tuple[Path, ...]) -> Path:
     @return Package ZIP path.
     """
 
-    destination = DIST / f"pkg_pungamail_v{VERSION_FILE}.zip"
+    destination = DIST / f"pkg_{METADATA.package_name}_v{METADATA.filename_version}.zip"
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
-        archive.write(ROOT / "package/pkg_pungamail.xml", "pkg_pungamail.xml")
+        archive.write(PACKAGE_MANIFEST, PACKAGE_MANIFEST.name)
         archive.write(ROOT / "package/script.php", "script.php")
         archive.write(ROOT / "README.md", "README.md")
         archive.write(ROOT / "LICENSE.md", "LICENSE.md")
@@ -77,8 +140,8 @@ def build_source_archive() -> Path:
     @return Source ZIP path.
     """
 
-    destination = DIST / f"pungamail_v{VERSION_FILE}_source.zip"
-    prefix = Path(f"pungamail-{VERSION}")
+    destination = DIST / f"{METADATA.package_name}_v{METADATA.filename_version}_source.zip"
+    prefix = Path(f"{METADATA.package_name}-{METADATA.version}")
     excluded_roots = {"dist", ".git", "__pycache__"}
 
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
@@ -109,7 +172,7 @@ def main() -> int:
         shutil.rmtree(DIST)
     DIST.mkdir(parents=True)
 
-    extension_archives = tuple(make_extension_zip(name, source) for name, source in EXTENSIONS)
+    extension_archives = tuple(make_extension_zip(name, source) for name, source in METADATA.extensions)
     package = build_package(extension_archives)
     source = build_source_archive()
 

@@ -12,7 +12,29 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.3.4"
+PACKAGE_MANIFEST = ROOT / "package/pkg_pungamail.xml"
+
+
+def get_release_version() -> str:
+    """Read and validate the release version from the package manifest.
+
+    @return Canonical Punga Mail release version.
+    """
+
+    try:
+        root = ET.parse(PACKAGE_MANIFEST).getroot()
+    except (OSError, ET.ParseError) as exc:
+        raise RuntimeError(f"Cannot read package manifest {PACKAGE_MANIFEST}: {exc}") from exc
+
+    version = (root.findtext("version") or "").strip()
+
+    if re.fullmatch(r"[0-9]+(?:\.[0-9]+){2}(?:[-+][0-9A-Za-z.-]+)?", version) is None:
+        raise RuntimeError(f"Invalid release version in {PACKAGE_MANIFEST}: {version!r}")
+
+    return version
+
+
+VERSION = get_release_version()
 
 REQUIRED_FILES: tuple[str, ...] = (
     "README.md",
@@ -892,11 +914,29 @@ def check_stabilization_033() -> None:
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
 
-    tree = ET.parse(ROOT / "package/pkg_pungamail.xml")
+    tree = ET.parse(PACKAGE_MANIFEST)
     names = {node.text.strip() for node in tree.getroot().findall("./files/file") if node.text}
     expected = {"com_pungamail.zip", "mod_pungamail_signup.zip", "plg_user_pungamail.zip", "plg_task_pungamail.zip"}
     if names != expected:
         fail(f"Package constituents differ: got {sorted(names)}, expected {sorted(expected)}")
+
+
+def check_release_metadata_source() -> None:
+    """Ensure release scripts continue to derive metadata from the manifest."""
+
+    build = (ROOT / "build.py").read_text(encoding="utf-8")
+    checker = (ROOT / "tools/check.py").read_text(encoding="utf-8")
+
+    for path, contents in (("build.py", build), ("tools/check.py", checker)):
+        if re.search(r'^VERSION\s*=\s*["\']', contents, re.MULTILINE) is not None:
+            fail(f"{path} contains a hard-coded release VERSION")
+
+        if "package/pkg_pungamail.xml" not in contents:
+            fail(f"{path} does not use the canonical package manifest")
+
+    for token in ('findtext("packagename")', 'findtext("version")', 'findall("./files/file")'):
+        if token not in build:
+            fail(f"build.py does not derive package metadata from the manifest: {token}")
 
 
 def check_feature_contracts() -> None:
@@ -961,6 +1001,7 @@ def main() -> int:
         check_profile_topics_032,
         check_stabilization_033,
         check_package_members,
+        check_release_metadata_source,
         check_feature_contracts,
     )
     try:
