@@ -1,0 +1,2 @@
+-- Punga Mail 0.3.12
+-- No database schema changes are required for this release.

@@ -31,6 +31,7 @@ final class MailStyleService
 			'content_background' => $this->color((string) $params->get('design_content_background', '#ffffff'), '#ffffff'),
 			'text_color' => $this->color((string) $params->get('design_text_color', '#222222'), '#222222'),
 			'heading_color' => $this->color((string) $params->get('design_heading_color', '#111111'), '#111111'),
+			'heading_background' => $this->optionalColor((string) $params->get('design_heading_background', '')),
 			'link_color' => $this->color((string) $params->get('design_link_color', '#2457a6'), '#2457a6'),
 			'font_family' => $this->fontFamily((string) $params->get('design_font_family', 'Arial, Helvetica, sans-serif')),
 			'font_size' => $this->integer($params->get('design_font_size', 16), 10, 28, 16),
@@ -131,6 +132,7 @@ final class MailStyleService
 			'content_background',
 			'text_color',
 			'heading_color',
+			'heading_background',
 			'link_color',
 			'font_family',
 			'font_size',
@@ -165,6 +167,7 @@ final class MailStyleService
 			'<ul>' => '<ul style="margin:0 0 16px;padding-left:24px">',
 			'<ol>' => '<ol style="margin:0 0 16px;padding-left:24px">',
 			'<li>' => '<li style="margin:0 0 6px">',
+			'<hr>' => '<hr style="border:0;border-top:1px solid #d9d9d9;margin:24px 0">',
 			'<a href=' => '<a style="color:' . $link . ';text-decoration:underline" href=',
 		];
 
@@ -181,6 +184,14 @@ final class MailStyleService
 
 	/** @return string */
 	private function color(string $value, string $fallback): string
+	{
+		$value = trim($value);
+
+		return preg_match('/^#[0-9a-fA-F]{6}$/', $value) === 1 ? strtolower($value) : $fallback;
+	}
+
+	/** @return string */
+	private function optionalColor(string $value, string $fallback = ''): string
 	{
 		$value = trim($value);
 
@@ -240,6 +251,7 @@ final class MailStyleService
 			'content_padding' => $this->integer($value, 0, 96, (int) $fallback),
 			'logo_width' => $this->integer($value, 40, 600, (int) $fallback),
 			'outer_background', 'content_background', 'text_color', 'heading_color', 'link_color', 'footer_color' => $this->color((string) $value, (string) $fallback),
+			'heading_background' => strtolower(trim((string) $value)) === 'none' ? '' : $this->optionalColor((string) $value, (string) $fallback),
 			'font_family' => $this->fontFamily((string) $value),
 			'logo_url' => $this->url((string) $value),
 			default => (string) $fallback,

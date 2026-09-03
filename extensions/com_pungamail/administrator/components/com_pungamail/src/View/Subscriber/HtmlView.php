@@ -20,20 +20,34 @@ use Joomla\CMS\Toolbar\ToolbarHelper;
 final class HtmlView extends BaseHtmlView
 {
 	public ?Form $form = null;
+	public ?object $item = null;
+	/** @var array<int,object> */
+	public array $topics = [];
+	/** @var array<int,int> */
+	public array $selectedTopicIds = [];
+	public ?string $suppressionReason = null;
 
 	/** @return void */
 	public function display($tpl = null): void
 	{
 		$user = Factory::getApplication()->getIdentity();
 
-		if (!$user->authorise('core.create', 'com_pungamail'))
+		$model = $this->getModel();
+		$this->item = $model->getItem();
+		$permission = $this->item === null ? 'core.create' : 'core.edit';
+
+		if (!$user->authorise($permission, 'com_pungamail'))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
 
-		$this->form = $this->getModel()->getForm();
-		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_ADD_SUBSCRIBER'), 'user-plus');
-		ToolbarHelper::save('subscriber.save');
+		$this->form = $model->getForm();
+		$this->topics = $model->getTopics();
+		$this->selectedTopicIds = $model->getSelectedTopicIds();
+		$this->suppressionReason = $model->getSuppressionReason();
+		ToolbarHelper::title(Text::_($this->item === null ? 'COM_PUNGAMAIL_ADD_SUBSCRIBER' : 'COM_PUNGAMAIL_EDIT_SUBSCRIBER'), 'user');
+		ToolbarHelper::apply('subscriber.save');
+		ToolbarHelper::save('subscriber.save2close');
 		ToolbarHelper::cancel('subscriber.cancel');
 		parent::display($tpl);
 	}

@@ -8,7 +8,7 @@ Punga Mail is a focused, self-hosted Joomla! 6 newsletter extension. Its primary
 
 It is not intended to become a behavioural marketing/analytics platform.
 
-## Implemented through 0.3.4
+## Implemented through 0.3.6
 
 ### Lists, automation and access safety
 
@@ -45,7 +45,7 @@ Punga Mail supplies a **Newsletter Subscription** site menu-item type and a comp
 ### Newsletter editor
 
 - Markdown body, HTML/plain-text output, remote/site-relative Markdown images and GitHub-style pipe tables.
-- `{new_content}` is an explicit insertion point and adds no automatic heading. Rendering is segment-based so Markdown parsing cannot mutate or expose an internal placeholder token.
+- `{new_content}` is an explicit insertion point and adds no automatic heading. Each selected item is rendered through an inheritable Markdown item layout (global → Template → Newsletter) with title/link/date/excerpt/read-more/URL/content-type placeholders. Rendering remains segment-based so Markdown parsing cannot mutate or expose an internal placeholder token.
 - `{recipient}` recipient-personalization placeholder: Joomla display name for registered users, email fallback for external subscribers; backend previews use the currently logged-in administrator.
 - Editable “Content published since” date.
 - Joomla registered content types are discovered generically from `#__content_types` metadata; Punga Mail reads their real registered table and does not require other extensions to implement a Punga-specific integration.

@@ -40,6 +40,25 @@ final class TopicRepository
 		return $this->db->setQuery($query)->loadObject() ?: null;
 	}
 
+	/**
+	 * Returns every non-trashed channel for administrator membership editing.
+	 *
+	 * @return array<int,object>
+	 */
+	public function availableForAdministration(): array
+	{
+		$trashed = -2;
+		$query = $this->db->getQuery(true)
+			->select('*')
+			->from($this->db->quoteName('#__pungamail_topics'))
+			->where($this->db->quoteName('state') . ' <> :trashed')
+			->order($this->db->quoteName('ordering') . ' ASC')
+			->order($this->db->quoteName('title') . ' ASC')
+			->bind(':trashed', $trashed, ParameterType::INTEGER);
+
+		return $this->db->setQuery($query)->loadObjectList();
+	}
+
 	/** @return array<int,object> */
 	public function active(?array $onlyIds = null): array
 	{
@@ -68,7 +87,7 @@ final class TopicRepository
 	}
 
 	/** @return int */
-	public function save(int $id, string $title, string $alias, string $description, int $ordering, int $userId): int
+	public function save(int $id, string $title, string $alias, string $description, int $userId): int
 	{
 		$title = trim($title);
 
@@ -107,7 +126,7 @@ final class TopicRepository
 				'alias' => $alias,
 				'description' => trim($description) !== '' ? trim($description) : null,
 				'state' => 1,
-				'ordering' => $ordering,
+				'ordering' => $this->nextOrdering(),
 				'created' => $now,
 				'modified' => $now,
 				'created_by' => $userId,
@@ -123,12 +142,10 @@ final class TopicRepository
 			->set($this->db->quoteName('title') . ' = :title')
 			->set($this->db->quoteName('alias') . ' = :alias')
 			->set($this->db->quoteName('description') . ($descriptionValue === null ? ' = NULL' : ' = :description'))
-			->set($this->db->quoteName('ordering') . ' = :ordering')
 			->set($this->db->quoteName('modified') . ' = :modified')
 			->where($this->db->quoteName('id') . ' = :id')
 			->bind(':title', $title)
 			->bind(':alias', $alias)
-			->bind(':ordering', $ordering, ParameterType::INTEGER)
 			->bind(':modified', $now)
 			->bind(':id', $id, ParameterType::INTEGER);
 
@@ -140,6 +157,53 @@ final class TopicRepository
 		$this->db->setQuery($update)->execute();
 
 		return $id;
+	}
+
+	/**
+	 * Persists Joomla drag-and-drop ordering values.
+	 *
+	 * @param array<int,int> $ids Item IDs in the submitted table order.
+	 * @param array<int,int> $orderings Ordering values paired with the IDs.
+	 *
+	 * @return void
+	 */
+	public function saveOrdering(array $ids, array $orderings): void
+	{
+		if (count($ids) !== count($orderings))
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_ERROR_CHANNEL_ORDER'));
+		}
+
+		$this->db->transactionStart();
+
+		try
+		{
+			foreach ($ids as $index => $id)
+			{
+				$id = (int) $id;
+				$ordering = (int) ($orderings[$index] ?? 0);
+
+				if ($id <= 0)
+				{
+					continue;
+				}
+
+				$query = $this->db->getQuery(true)
+					->update($this->db->quoteName('#__pungamail_topics'))
+					->set($this->db->quoteName('ordering') . ' = :ordering')
+					->where($this->db->quoteName('id') . ' = :id')
+					->bind(':ordering', $ordering, ParameterType::INTEGER)
+					->bind(':id', $id, ParameterType::INTEGER);
+				$this->db->setQuery($query)->execute();
+			}
+
+			$this->db->transactionCommit();
+		}
+		catch (\Throwable $e)
+		{
+			$this->db->transactionRollback();
+			throw $e;
+		}
 	}
 
 	/** @return void */
@@ -209,11 +273,18 @@ final class TopicRepository
 	}
 
 	/** @return void */
-	public function stageInitialTopics(int $subscriberId, array $topicIds): void
+	public function stageInitialTopics(int $subscriberId, array $visibleIds, array $selectedIds): void
 	{
-		foreach ($this->validActiveIds($topicIds) as $topicId)
+		$visible = $this->validActiveIds($visibleIds);
+		$selected = array_flip($this->validActiveIds($selectedIds));
+
+		foreach ($visible as $topicId)
 		{
-			$this->upsertMembership($subscriberId, $topicId, self::MEMBERSHIP_PENDING);
+			$this->upsertMembership(
+				$subscriberId,
+				$topicId,
+				isset($selected[$topicId]) ? self::MEMBERSHIP_PENDING : self::MEMBERSHIP_UNSUBSCRIBED
+			);
 		}
 	}
 
@@ -248,6 +319,24 @@ final class TopicRepository
 	{
 		$visible = $this->validActiveIds($visibleIds);
 		$selected = array_flip($this->validActiveIds($selectedIds));
+
+		foreach ($visible as $topicId)
+		{
+			$status = isset($selected[$topicId]) ? self::MEMBERSHIP_SUBSCRIBED : self::MEMBERSHIP_UNSUBSCRIBED;
+			$this->upsertMembership($subscriberId, $topicId, $status);
+		}
+	}
+
+	/**
+	 * Replaces memberships for every non-trashed channel exposed in the administrator.
+	 * Unpublished channels may keep memberships so they resume naturally when republished.
+	 *
+	 * @return void
+	 */
+	public function updateAdministratorTopics(int $subscriberId, array $visibleIds, array $selectedIds): void
+	{
+		$visible = $this->validAdministrativeIds($visibleIds);
+		$selected = array_flip($this->validAdministrativeIds($selectedIds));
 
 		foreach ($visible as $topicId)
 		{
@@ -356,6 +445,37 @@ final class TopicRepository
 		}
 
 		return true;
+	}
+
+	/** @return int */
+	private function nextOrdering(): int
+	{
+		$query = $this->db->getQuery(true)
+			->select('COALESCE(MAX(' . $this->db->quoteName('ordering') . '), 0) + 1')
+			->from($this->db->quoteName('#__pungamail_topics'));
+
+		return max(1, (int) $this->db->setQuery($query)->loadResult());
+	}
+
+	/** @return array<int,int> */
+	private function validAdministrativeIds(array $ids): array
+	{
+		$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+		if ($ids === [])
+		{
+			return [];
+		}
+
+		$trashed = -2;
+		$query = $this->db->getQuery(true)
+			->select($this->db->quoteName('id'))
+			->from($this->db->quoteName('#__pungamail_topics'))
+			->whereIn($this->db->quoteName('id'), $ids)
+			->where($this->db->quoteName('state') . ' <> :trashed')
+			->bind(':trashed', $trashed, ParameterType::INTEGER);
+
+		return array_map('intval', $this->db->setQuery($query)->loadColumn());
 	}
 
 	/** @return array<int,int> */

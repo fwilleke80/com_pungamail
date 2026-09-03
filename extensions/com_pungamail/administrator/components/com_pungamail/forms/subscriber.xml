@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <form>
-	<fieldset name="details" label="COM_PUNGAMAIL_ADD_SUBSCRIBER">
+	<fieldset name="details">
+		<field name="id" type="hidden" default="0" />
 		<field name="recipient_type" type="radio" layout="joomla.form.field.radio.switcher" default="email" label="COM_PUNGAMAIL_RECIPIENT_TYPE" description="COM_PUNGAMAIL_RECIPIENT_TYPE_DESC">
 			<option value="email">COM_PUNGAMAIL_RECIPIENT_TYPE_EMAIL</option>
 			<option value="user">COM_PUNGAMAIL_RECIPIENT_TYPE_USER</option>
 		</field>
 		<field name="email" type="email" label="COM_PUNGAMAIL_EMAIL" description="COM_PUNGAMAIL_ADD_EMAIL_DESC" showon="recipient_type:email" />
 		<field name="user_id" type="user" label="COM_PUNGAMAIL_JOOMLA_USER" description="COM_PUNGAMAIL_ADD_USER_DESC" showon="recipient_type:user" />
+		<field name="recipient_name" type="text" label="COM_PUNGAMAIL_RECIPIENT_NAME" description="COM_PUNGAMAIL_RECIPIENT_NAME_DESC" showon="recipient_type:email" />
+		<field name="status" type="list" default="1" label="COM_PUNGAMAIL_SUBSCRIPTION_STATUS" description="COM_PUNGAMAIL_SUBSCRIPTION_STATUS_EDIT_DESC">
+			<option value="0">COM_PUNGAMAIL_SUBSCRIBER_PENDING</option>
+			<option value="1">COM_PUNGAMAIL_SUBSCRIBER_SUBSCRIBED</option>
+			<option value="2">COM_PUNGAMAIL_SUBSCRIBER_UNSUBSCRIBED</option>
+		</field>
 	</fieldset>
 </form>

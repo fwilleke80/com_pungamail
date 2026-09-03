@@ -1,7 +1,74 @@
 # Changelog
 
+## 0.3.12 — 2026-09-04
+
+- Moved the Newsletter **Template** selector and **Apply template** action into the **Mail content** tab, next to the content they affect.
+- Added a visible chevron to the collapsed **Selected content layout** override in Newsletter and Template editors; the chevron rotates when the section is expanded.
+- Added an optional mail-heading background colour. The heading renders as a 100%-width block; leaving the background blank preserves the previous appearance. Template and Newsletter design overrides can inherit or replace the global value.
+- Sanitized `{new_content}` excerpts before truncation by removing unresolved Joomla-style content-plugin commands without executing content plugins. Paired plugin markers are removed while readable enclosed text remains.
+- Added Markdown support for a standalone `---` horizontal rule and email-safe `<hr>` styling.
+- Added regression coverage for the editor placement, disclosure indicator, heading background, plugin-token sanitization, and horizontal-rule rendering. No database schema changes are required.
+
+## 0.3.11 — 2026-09-03
+
+- Fixed Markdown hard line breaks: two trailing spaces now render as `<br>` instead of being collapsed into an ordinary space.
+- Fixed escaped Markdown punctuation leaking into rendered newsletter output, so values such as `28\.8\.2026` are displayed as `28.8.2026` while escaped formatting characters remain literal.
+- Made the `{new_content}` layout override in Newsletter and Template editors collapsible and collapsed by default. A small badge remains visible when a custom override is active.
+- Added regression coverage for Markdown hard breaks, escape handling, and the collapsed override editor presentation. No schema changes are required.
+
+## 0.3.10 — 2026-09-03
+
+- Split the Newsletter editor into Joomla-native **Settings**, **Mail content**, **Content selection**, and **Design** tabs to reduce vertical scrolling while preserving the existing toolbar, form controls, audience summary, and compact selected-content picker.
+- Made the Component Options `{new_content}` item-template editor use monospaced text, matching the other Markdown editors.
+- Added always-visible small help text listing the supported `{new_content}` item placeholders in Component Options, Templates, and individual Newsletters.
+- Added release regression coverage for the tabbed editor and consistent Markdown item-template presentation. No schema changes are required.
+
+## 0.3.9 — 2026-09-03
+
+- Made Joomla Scheduled Task descriptions distinguish clearly between manually scheduled ordinary newsletters and recurring Automatic Newsletters.
+- Changed Automatic Newsletter recurrence from an administrator-facing minute count to days. Existing minute values remain stored internally and are converted automatically, so weekly `10080` configurations appear as 7 days.
+- Changed the rolling-content look-back control from hours to days and show it only when **Content from a recent time period** is selected.
+- Show the unattended-send warning and confirmation only when **Send immediately** is selected.
+- Disabled the **View in browser** link in administrator previews and preflight displays, matching the already non-navigable Unsubscribe link.
+- Added configurable Markdown layouts for each `{new_content}` item with `{title}`, `{title_link}`, `{publish_date}`, `{excerpt}`, `{read_more}`, `{url}`, and `{content_type}` placeholders. Layouts inherit from component options to Templates to individual Newsletters.
+- Added the `new_content_item_template` template/newsletter columns and release regression coverage for the new Automatic Newsletter, preview, task-description, and selected-content layout behavior.
+
+## 0.3.8 — 2026-09-03
+
+- Fixed the recipient editor for linked Joomla users: it now shows the current Joomla display name instead of an empty external-recipient name field.
+- Kept Joomla as the source of truth for linked-user names rather than copying them into Punga Mail, so later Joomla profile-name changes appear automatically. External subscribers retain the editable recipient-name field.
+- Added release regression coverage for linked-user display names and the external-only custom-name field. Added the forward-only no-op `0.3.8.sql` marker; no schema changes are required.
+
+## 0.3.7 — 2026-09-03
+
+- Renamed **Newsletter Topics** to **Channels / Kanäle** throughout the administrator and public UI, moved Channels directly after Templates in the Punga Mail sidebar, synchronized Joomla system-language catalogs, and simplified technical or ambiguous wording across subscription and delivery screens.
+- Replaced the visible numeric Channel ordering field with Joomla-style drag-and-drop ordering in the Channels list while preserving the existing database ordering values.
+- Fixed the standalone frontend Newsletter menu page so Channel choices can be saved without a signup-module context; the component now falls back to all published Channels when no module ID exists.
+- Expanded the subscriber editor so administrators can see and change memberships for every non-trashed Channel, including clearly marked unpublished Channels; public forms continue to offer published Channels only.
+- Fixed Automatic Newsletter validation so an unsuccessful Save or Save & Close stays in the editor, reports the error, and preserves the submitted settings instead of returning to the list and discarding the draft.
+- Expanded release checks for the Channel UX, administrator membership path, standalone subscription path, drag ordering, preserved Automatic Newsletter form state, language quality, and package metadata. Added the forward-only no-op `0.3.7.sql` marker; no schema changes are required.
+
+## 0.3.6 — 2026-09-03
+
+- Standardized user-facing terminology on **newsletter reception** as the global master permission and **newsletter topics** as optional preferences, replacing ambiguous singular-newsletter and list/topic wording.
+- Added plain-language status and consequence summaries to the public Newsletter page and signup module, including the exact outcome when no topic is selected.
+- Reorganized the administrator subscriber editor into identity/permission, newsletter topics, and delivery-health sections without changing consent or suppression behavior.
+- Added live audience summaries to newsletter and digest editors. Audience sources are explicitly described as combined rather than intersecting, and selecting all globally subscribed recipients visibly states that topics do not narrow the audience.
+- Added a blocking Preflight check when no audience source is configured and a recipient-specific warning when all-subscriber targeting includes eligible people outside the selected topics.
+- Added English/German terminology parity, administrator documentation, test coverage, and the forward-only no-op `0.3.6.sql` marker. No schema or recipient-resolution semantics changed.
+
+## 0.3.5 — 2026-09-03
+
+- Completed the public Newsletter subscription menu page: guests can choose from all published topics during double-opt-in signup, and logged-in users can save their preselected topic memberships independently of the global subscription switch.
+- Added full subscriber editing in the administrator. Existing subscriber email addresses now open an editor for the raw global status, external recipient name, and all published topic memberships; new subscribers can receive topic memberships during creation.
+- Kept consent boundaries explicit: saving topic choices alone never globally subscribes or unsubscribes an address and never clears a manual or bounce suppression. Changing a protected subscriber explicitly to Subscribed remains a deliberate administrator reactivation.
+- Removed the redundant standalone suppression column from the Subscribers list. The Subscription status cell now shows the raw global state and, when applicable, a separate delivery-block/bounce badge and reason.
+- Added Apply and Save & Close behavior to the subscriber editor, preserved the Subscribers sidebar context, and added English/German UI, documentation, and release-regression coverage.
+- Added the forward-only no-op `0.3.5.sql` version marker; no schema changes are required.
+
 ## 0.3.4 — 2026-09-02
 
+- Fixed a fatal error on the public Newsletter subscription menu-item page caused by `SubscriptionModel::getState()` incompatibly overriding Joomla's base-model method signature.
 - Made the package manifest the single release-metadata source for build/check scripts. Archive names, source prefix, release version, and child-extension ZIP mapping are now derived automatically, so future version bumps no longer modify `build.py` or a checker version constant.
 - Added a comprehensive live acceptance test guide with step-by-step coverage of installation/update, every administrator and frontend workflow, mail generation, all Scheduled Tasks, access-safe digests, queue controls, bounces, CSV, ACL/CSRF/privacy, multilingual output, and end-to-end regressions.
 - Fixed the existing-installation upgrade path for the subscriber `recipient_name` column used by Joomla profile topic/preference persistence and CSV subscriber names.

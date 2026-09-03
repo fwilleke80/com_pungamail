@@ -42,8 +42,24 @@ final class MarkdownRenderer
 				return;
 			}
 
-			$text = implode(' ', array_map('trim', $paragraph));
-			$html[] = '<p>' . $this->inline($text, $baseUrl) . '</p>';
+			$parts = [];
+
+			foreach ($paragraph as $line)
+			{
+				$parts[] = $this->inline($line['text'], $baseUrl);
+
+				if ($line['hard_break'])
+				{
+					$parts[] = '<br>';
+				}
+				else
+				{
+					$parts[] = ' ';
+				}
+			}
+
+			array_pop($parts);
+			$html[] = '<p>' . implode('', $parts) . '</p>';
 			$paragraph = [];
 		};
 
@@ -67,6 +83,14 @@ final class MarkdownRenderer
 			{
 				$flushParagraph();
 				$closeList();
+				continue;
+			}
+
+			if ($trimmed === '---')
+			{
+				$flushParagraph();
+				$closeList();
+				$html[] = '<hr>';
 				continue;
 			}
 
@@ -124,7 +148,10 @@ final class MarkdownRenderer
 			}
 
 			$closeList();
-			$paragraph[] = $trimmed;
+			$paragraph[] = [
+				'text' => $trimmed,
+				'hard_break' => preg_match('/ {2,}$/', $line) === 1,
+			];
 		}
 
 		$flushParagraph();
@@ -216,6 +243,7 @@ final class MarkdownRenderer
 			},
 			$text
 		) ?? $text;
+		$text = $this->unescapeMarkdown($text);
 
 		return trim($text);
 	}
@@ -372,6 +400,7 @@ final class MarkdownRenderer
 	 */
 	private function inline(string $text, ?string $baseUrl): string
 	{
+		[$text, $escapes] = $this->protectMarkdownEscapes($text);
 		$text = htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 		$text = preg_replace_callback(
 			'/!\[([^\]]*)\]\(([^\s)]+)\)/u',
@@ -411,7 +440,50 @@ final class MarkdownRenderer
 			$text
 		) ?? $text;
 
+		foreach ($escapes as $placeholder => $literal)
+		{
+			$text = str_replace($placeholder, htmlspecialchars($literal, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), $text);
+		}
+
 		return $text;
+	}
+
+	/**
+	 * Protects backslash-escaped Markdown punctuation from inline parsing.
+	 *
+	 * @param string $text Markdown inline source.
+	 *
+	 * @return array{0:string,1:array<string,string>} Protected source and replacement map.
+	 */
+	private function protectMarkdownEscapes(string $text): array
+	{
+		$escapes = [];
+		$index = 0;
+		$text = preg_replace_callback(
+			'/\\\\([\\\\`*_{}\[\]()#+.!|>~\-])/',
+			static function (array $match) use (&$escapes, &$index): string
+			{
+				$placeholder = 'PUNGAMAILXESCX' . $index++ . 'XEND';
+				$escapes[$placeholder] = $match[1];
+
+				return $placeholder;
+			},
+			$text
+		) ?? $text;
+
+		return [$text, $escapes];
+	}
+
+	/**
+	 * Removes Markdown escape backslashes for the plain-text representation.
+	 *
+	 * @param string $text Markdown-derived plain text.
+	 *
+	 * @return string Unescaped text.
+	 */
+	private function unescapeMarkdown(string $text): string
+	{
+		return preg_replace('/\\\\([\\\\`*_{}\[\]()#+.!|>~\-])/', '$1', $text) ?? $text;
 	}
 
 	/**

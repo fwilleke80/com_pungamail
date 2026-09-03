@@ -1,0 +1,2 @@
+-- Punga Mail 0.3.8 fixes linked Joomla user names in the recipient editor.
+-- No schema changes are required.

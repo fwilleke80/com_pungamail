@@ -737,6 +737,25 @@ final class SubscriberRepository
 	}
 
 	/**
+	 * Returns the active delivery-block reason for an address.
+	 *
+	 * @param string $normalizedEmail Normalized address.
+	 *
+	 * @return string|null Suppression reason, or null when delivery is not blocked.
+	 */
+	public function getSuppressionReason(string $normalizedEmail): ?string
+	{
+		$query = $this->db->getQuery(true)
+			->select($this->db->quoteName('reason'))
+			->from($this->db->quoteName('#__pungamail_suppressions'))
+			->where($this->db->quoteName('email_normalized') . ' = :email')
+			->bind(':email', $normalizedEmail);
+		$reason = trim((string) $this->db->setQuery($query)->loadResult());
+
+		return $reason !== '' ? $reason : null;
+	}
+
+	/**
 	 * Clears bounce-origin suppression without reactivating a global unsubscribe.
 	 * Bounce history is retained; only counters and the current bounce barrier reset.
 	 *
@@ -752,12 +771,7 @@ final class SubscriberRepository
 		}
 
 		$normalized = (string) $subscriber->email_normalized;
-		$query = $this->db->getQuery(true)
-			->select($this->db->quoteName('reason'))
-			->from($this->db->quoteName('#__pungamail_suppressions'))
-			->where($this->db->quoteName('email_normalized') . ' = :email')
-			->bind(':email', $normalized);
-		$reason = (string) $this->db->setQuery($query)->loadResult();
+		$reason = $this->getSuppressionReason($normalized);
 
 		if (!in_array($reason, ['hard-bounce', 'soft-bounce-threshold'], true))
 		{

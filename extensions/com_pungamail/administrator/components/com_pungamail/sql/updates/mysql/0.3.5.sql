@@ -1,0 +1,1 @@
+-- Punga Mail 0.3.5 requires no database schema changes.

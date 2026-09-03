@@ -15,7 +15,7 @@ use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
  */
 final class HtmlView extends BaseHtmlView
 {
-	/** @var array{logged_in:bool,email:string,subscribed:bool} */
+	/** @var array{logged_in:bool,email:string,subscribed:bool,topics:array<int,object>,selected_topic_ids:array<int,int>} */
 	public array $subscriptionState = [];
 
 	/**
@@ -27,7 +27,7 @@ final class HtmlView extends BaseHtmlView
 	 */
 	public function display($tpl = null): void
 	{
-		$this->subscriptionState = $this->getModel()->getState();
+		$this->subscriptionState = $this->getModel()->getSubscriptionState();
 		parent::display($tpl);
 	}
 }

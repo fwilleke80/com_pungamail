@@ -5,6 +5,7 @@ namespace Punga\Component\PungaMail\Administrator\Controller;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
+use Joomla\CMS\Response\JsonResponse;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
@@ -14,6 +15,40 @@ use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 /** Bulk/list actions for mailing topics. */
 final class TopicsController extends BaseController
 {
+	/**
+	 * Saves drag-and-drop channel ordering from Joomla's draggable list script.
+	 *
+	 * @return void
+	 */
+	public function saveOrderAjax(): void
+	{
+		$app = Factory::getApplication();
+
+		try
+		{
+			if (!$app->getIdentity()->authorise('core.edit.state', 'com_pungamail'))
+			{
+				throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+			}
+
+			if (!Session::checkToken('request'))
+			{
+				throw new \RuntimeException(Text::_('JINVALID_TOKEN'), 403);
+			}
+
+			$ids = array_map('intval', (array) $app->getInput()->post->get('cid', [], 'array'));
+			$orderings = array_map('intval', (array) $app->getInput()->post->get('order', [], 'array'));
+			ServiceFactory::topics()->saveOrdering($ids, $orderings);
+			echo new JsonResponse();
+		}
+		catch (\Throwable $e)
+		{
+			echo new JsonResponse(null, ErrorMessage::sanitize($e), true);
+		}
+
+		$app->close();
+	}
+
 	/** @return void */ public function publish(): void { $this->setState(1, 'COM_PUNGAMAIL_TOPICS_PUBLISHED'); }
 	/** @return void */ public function unpublish(): void { $this->setState(0, 'COM_PUNGAMAIL_TOPICS_UNPUBLISHED'); }
 	/** @return void */ public function trash(): void { $this->setState(-2, 'COM_PUNGAMAIL_TOPICS_TRASHED'); }

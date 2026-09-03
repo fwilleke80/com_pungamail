@@ -27,13 +27,34 @@ final class DigestModel extends BaseDatabaseModel
 		}
 
 		$this->itemLoaded = true;
-		$id = Factory::getApplication()->getInput()->getInt('id');
+		$id = max(0, (int) Factory::getApplication()->getInput()->getInt('id', 0));
 		$this->item = $id > 0 ? ServiceFactory::digests()->find($id) : null;
 
 		if ($this->item !== null)
 		{
 			ServiceFactory::checkouts()->checkout('digest', $id, (int) Factory::getApplication()->getIdentity()->id);
 			$this->item = ServiceFactory::digests()->find($id);
+		}
+
+		$submitted = $this->getSubmittedData();
+
+		if ($submitted !== [])
+		{
+			$item = $this->item ?? (object) [];
+
+			foreach ([
+				'title', 'state', 'template_id', 'subject_pattern', 'recurrence_minutes', 'next_run_at',
+				'cutoff_mode', 'rolling_hours', 'include_subscribers', 'generation_mode', 'empty_action', 'confirm_auto_send',
+			] as $key)
+			{
+				if (array_key_exists($key, $submitted))
+				{
+					$item->{$key} = $submitted[$key];
+				}
+			}
+
+			$item->id = $id;
+			$this->item = $item;
 		}
 
 		return $this->item;
@@ -66,33 +87,61 @@ final class DigestModel extends BaseDatabaseModel
 	/** @return array<int,string> */
 	public function getSourceKeys(): array
 	{
+		$submitted = $this->getSubmittedData();
+
+		if ($submitted !== [])
+		{
+			return array_values(array_filter(array_map('strval', (array) ($submitted['source_keys'] ?? []))));
+		}
+
 		$item = $this->getItem();
 
-		return $item ? ServiceFactory::digests()->getSourceKeys((int) $item->id) : [];
+		return $item && (int) $item->id > 0 ? ServiceFactory::digests()->getSourceKeys((int) $item->id) : [];
 	}
 
 	/** @return array<int,int> */
 	public function getTopicIds(): array
 	{
+		$submitted = $this->getSubmittedData();
+
+		if ($submitted !== [])
+		{
+			return array_values(array_unique(array_filter(array_map('intval', (array) ($submitted['topic_ids'] ?? [])))));
+		}
+
 		$item = $this->getItem();
 
-		return $item ? ServiceFactory::digests()->getTopicIds((int) $item->id) : [];
+		return $item && (int) $item->id > 0 ? ServiceFactory::digests()->getTopicIds((int) $item->id) : [];
 	}
 
 	/** @return array<int,int> */
 	public function getGroupIds(): array
 	{
+		$submitted = $this->getSubmittedData();
+
+		if ($submitted !== [])
+		{
+			return array_values(array_unique(array_filter(array_map('intval', (array) ($submitted['group_ids'] ?? [])))));
+		}
+
 		$item = $this->getItem();
 
-		return $item ? ServiceFactory::digests()->getGroupIds((int) $item->id) : [];
+		return $item && (int) $item->id > 0 ? ServiceFactory::digests()->getGroupIds((int) $item->id) : [];
 	}
 
 	/** @return array<string,array<int,int>> */
 	public function getCategories(): array
 	{
+		$submitted = $this->getSubmittedData();
+
+		if ($submitted !== [])
+		{
+			return (array) ($submitted['categories'] ?? []);
+		}
+
 		$item = $this->getItem();
 
-		return $item ? ServiceFactory::digests()->getCategories((int) $item->id) : [];
+		return $item && (int) $item->id > 0 ? ServiceFactory::digests()->getCategories((int) $item->id) : [];
 	}
 
 	/** @return array<int,object> */
@@ -100,6 +149,16 @@ final class DigestModel extends BaseDatabaseModel
 	{
 		$item = $this->getItem();
 
-		return $item ? ServiceFactory::digests()->getRuns((int) $item->id) : [];
+		return $item && (int) $item->id > 0 ? ServiceFactory::digests()->getRuns((int) $item->id) : [];
+	}
+
+	/** @return array<string,mixed> */
+	private function getSubmittedData(): array
+	{
+		$app = Factory::getApplication();
+		$id = max(0, (int) $app->getInput()->getInt('id', 0));
+		$data = (array) $app->getUserState('com_pungamail.edit.digest.data', []);
+
+		return (int) ($data['id'] ?? -1) === $id ? $data : [];
 	}
 }

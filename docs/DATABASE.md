@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.3.4 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.3.6 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -77,6 +77,8 @@ The migration chain is append-only:
 - `0.3.2.sql` — no-op version marker; profile topic selection uses the existing normalized subscriber-topic relation.
 - `0.3.3.sql` — no-op version marker for the stabilization and security-hardening release.
 - `0.3.4.sql` — portable version marker; package preflight conditionally adds the subscriber `recipient_name` column omitted from the earlier upgrade path, while fresh installations are left unchanged.
+- `0.3.5.sql` — no-op version marker for the complete frontend and administrator subscriber-topic management workflow.
+- `0.3.6.sql` — no-op version marker for terminology, audience explanations, and Preflight clarity; recipient and schema semantics are unchanged.
 
 Every schema release updates `install.mysql.sql`, adds one forward migration, and never rewrites a released migration. Runtime component/plugin PHP must not execute ad-hoc schema DDL.
 

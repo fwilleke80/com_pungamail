@@ -6,12 +6,12 @@ This tutorial takes you from an empty draft to a reviewed, queued, and monitored
 
 Confirm these items once:
 
-- **Punga Mail — Process send queue** exists and is enabled under Joomla Scheduled Tasks.
+- **Punga Mail — Send pending newsletters** exists and is enabled under Joomla Scheduled Tasks.
 - A Published **Punga Mail → Newsletter subscription** menu item exists, even if it is in a hidden menu.
 - The sender under **Punga Mail → Options → Mail** is correct, or Joomla's global sender is correct.
 - At least one eligible subscriber or Joomla user group exists.
 
-If you plan to schedule instead of queue immediately, also enable **Punga Mail — Queue scheduled newsletters**.
+If you plan to schedule instead of queue immediately, also enable **Punga Mail — Prepare scheduled newsletters**.
 
 ## 1. Decide who should receive the newsletter
 
@@ -26,11 +26,11 @@ Recipient sources are added together and duplicate addresses are removed. They a
 
 For example, to send only to News and Events topic members:
 
-1. clear **All confirmed subscribers**;
+1. clear **All globally subscribed recipients, regardless of topic**;
 2. select **News** and **Events**;
 3. leave Joomla groups clear unless their eligible members should also be added.
 
-If **All confirmed subscribers** remains selected, choosing News does not restrict the mailing to News members.
+If **All globally subscribed recipients, regardless of topic** remains selected, choosing News does not restrict the mailing to News members.
 
 ## 2. Create the draft
 
@@ -40,7 +40,7 @@ Enter:
 
 - an **Internal title**, such as `September 2026 community update`;
 - an **Email subject**, such as `What is new this September`;
-- the body in **Markdown**.
+- the body in **Markdown** (including a standalone `---` for a horizontal rule).
 
 The internal title is only for administrators. The email subject is what recipients see in their inbox.
 
@@ -66,7 +66,7 @@ Select **Save** before moving on.
 
 If a reusable template already exists:
 
-1. choose it in **Template**;
+1. open **Mail content** and choose it in **Template**;
 2. select **Apply template**;
 3. review the copied subject, body, message options, and style fields.
 
@@ -119,13 +119,13 @@ Use **Custom** if replies should go somewhere other than the inherited setting. 
 
 Leave a style field blank to inherit from the template or Component Options. Override only the properties this newsletter needs.
 
-The available properties cover width, backgrounds, text/heading/link colors, font, base size, padding, logo, and footer color. Custom CSS is optional and should be treated as an enhancement because mail clients vary.
+The available properties cover width, backgrounds, text/heading/link colors, an optional full-width mail-heading background, font, base size, padding, logo, and footer color. Custom CSS is optional and should be treated as an enhancement because mail clients vary.
 
 ## 7. Select recipients
 
 In **Recipients**:
 
-1. set **All confirmed subscribers** appropriately;
+1. set **All globally subscribed recipients, regardless of topic** appropriately;
 2. select any topics;
 3. select any additional Joomla user groups.
 
@@ -147,7 +147,7 @@ Check:
 - plain-text readability;
 - the example `{recipient}` value.
 
-Preview uses the current administrator as its example recipient. Its unsubscribe link is disabled on purpose.
+Preview uses the current administrator as its example recipient. Both **Unsubscribe** and **View in browser** are deliberately non-clickable in the administrator preview.
 
 Return to the editor and correct anything unexpected.
 
@@ -231,4 +231,3 @@ Before confirming a real queue:
 - send-now or scheduled time is intentional.
 
 For field-by-field reference, see [Punga Mail Administrator Guide](USER_GUIDE.md).
-

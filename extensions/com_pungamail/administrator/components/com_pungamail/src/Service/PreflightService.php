@@ -58,6 +58,35 @@ final class PreflightService
 		$checks = [];
 		$this->check(trim((string) $newsletter->subject) !== '', 'subject', 'COM_PUNGAMAIL_PREFLIGHT_SUBJECT_OK', 'COM_PUNGAMAIL_PREFLIGHT_SUBJECT_MISSING', true, $checks, $errors, $warnings);
 		$this->check(filter_var($sender['email'], FILTER_VALIDATE_EMAIL) !== false, 'sender', 'COM_PUNGAMAIL_PREFLIGHT_SENDER_OK', 'COM_PUNGAMAIL_PREFLIGHT_SENDER_INVALID', true, $checks, $errors, $warnings);
+		$audienceConfigured = (int) $newsletter->include_subscribers === 1 || $topicIds !== [] || $groups !== [];
+		$this->check($audienceConfigured, 'audience', 'COM_PUNGAMAIL_PREFLIGHT_AUDIENCE_OK', 'COM_PUNGAMAIL_PREFLIGHT_AUDIENCE_MISSING', true, $checks, $errors, $warnings);
+
+		if ((int) $newsletter->include_subscribers === 1 && $topicIds !== [])
+		{
+			$allNewsletter = clone $newsletter;
+			$allNewsletter->include_subscribers = 1;
+			$topicNewsletter = clone $newsletter;
+			$topicNewsletter->include_subscribers = 0;
+			$allSubscribers = $this->recipients->resolveWithReport($allNewsletter, [], [], false)['recipients'];
+			$topicSubscribers = $this->recipients->resolveWithReport($topicNewsletter, [], $topicIds, false)['recipients'];
+			$topicAddresses = array_fill_keys(array_column($topicSubscribers, 'email_normalized'), true);
+			$outsideTopics = array_filter($allSubscribers, static function (array $recipient) use ($topicAddresses): bool
+			{
+				return !isset($topicAddresses[(string) $recipient['email_normalized']]);
+			});
+
+			if ($outsideTopics !== [])
+			{
+				$this->issue(
+					'all_subscribers_override_topics',
+					Text::plural('COM_PUNGAMAIL_PREFLIGHT_ALL_TOPICS_OVERRIDE', count($outsideTopics)),
+					false,
+					$checks,
+					$errors,
+					$warnings
+				);
+			}
+		}
 
 		if ($replyTo['email'] !== '')
 		{

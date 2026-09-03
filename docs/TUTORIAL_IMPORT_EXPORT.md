@@ -140,7 +140,7 @@ Review Subscribers afterward. Filter by Active, Unsubscribed, or Suppressed and 
 
 Create a Draft newsletter for one imported topic:
 
-1. clear **All confirmed subscribers**;
+1. clear **All globally subscribed recipients, regardless of topic**;
 2. select only the imported topic;
 3. open Preflight;
 4. inspect final and excluded recipients.
@@ -216,4 +216,3 @@ The UTF-8 export contains:
 - Delete temporary personal-data files according to your organization's retention rules.
 
 For all subscriber states and controls, see [Punga Mail Administrator Guide](USER_GUIDE.md).
-

@@ -85,7 +85,6 @@ final class TopicController extends BaseController
 			$input->post->getString('title'),
 			$input->post->getString('alias'),
 			(string) $input->post->get('description', '', 'raw'),
-			$input->post->getInt('ordering'),
 			$userId
 		);
 		ServiceFactory::checkouts()->checkout('topic', $id, $userId);

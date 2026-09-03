@@ -80,6 +80,14 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.2.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.3.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.4.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.5.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.6.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.7.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.8.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.9.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.10.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.11.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/NewcontenttemplateField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/BounceService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/CheckoutService.php",
@@ -124,11 +132,11 @@ def check_administrator_documentation() -> None:
     required_guide_sections = (
         "## Dashboard",
         "## Component Options",
-        "## Topics / Lists",
+        "## Channels",
         "## Subscribers",
         "## Templates",
         "## Newsletters",
-        "## Automatic Digests",
+        "## Automatic Newsletters",
         "## Delivery / Bounces",
         "## Subscriber Import / Export",
         "## Frontend signup module",
@@ -144,9 +152,9 @@ def check_administrator_documentation() -> None:
 
     for token in (
         "every resolved recipient would normally be allowed to view",
-        "Newsletter topics | Multi-select containing all currently published topics.",
+        "Channels | Multi-select containing all currently published Channels.",
         "Password | Mailbox password. An existing password is never shown.",
-        "Punga Mail — Generate automatic digests",
+        "Punga Mail — Create automatic newsletters",
         "Explicitly reactivate protected addresses",
     ):
         if token not in guide:
@@ -156,14 +164,14 @@ def check_administrator_documentation() -> None:
     required_test_sections = (
         "## A. Installation, update, navigation, and dashboard",
         "## B. Component Options and diagnostics",
-        "## C. Topics / Lists",
+        "## C. Channels",
         "## D. Subscribers and consent state",
         "## E. Frontend module, confirmation, unsubscribe, and Joomla profile",
         "## F. Templates and rendering",
         "## G. Newsletter composition and selected content",
-        "## H. Preview, test mail, preflight, and recipient inspection",
+        "## H. Preview, test mail, check before sending, and recipient inspection",
         "## I. Queue, scheduled sending, snapshots, browser view, and statistics",
-        "## J. Automatic digests",
+        "## J. Automatic Newsletters",
         "## K. Delivery, bounce handling, and mail health",
         "## L. Subscriber CSV import and export",
         "## M. Joomla Scheduled Tasks and reminders",
@@ -361,6 +369,43 @@ def check_migration_chain() -> None:
     ):
         if fragment not in package_script:
             fail(f"0.3.4 conditional installer repair is missing {fragment!r}")
+
+    marker_035 = (sql_root / "updates/mysql/0.3.5.sql").read_text(encoding="utf-8")
+    if any(token in marker_035.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.3.5 changes subscription management only; its version-marker migration must not change schema")
+
+    marker_036 = (sql_root / "updates/mysql/0.3.6.sql").read_text(encoding="utf-8")
+    if any(token in marker_036.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.3.6 changes terminology and explanations only; its version-marker migration must not change schema")
+
+    marker_037 = (sql_root / "updates/mysql/0.3.7.sql").read_text(encoding="utf-8")
+    if any(token in marker_037.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.3.7 changes UI and controller behavior only; its version-marker migration must not change schema")
+
+    marker_038 = (sql_root / "updates/mysql/0.3.8.sql").read_text(encoding="utf-8")
+    if any(token in marker_038.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.3.8 changes recipient-editor presentation only; its version-marker migration must not change schema")
+
+    marker_039 = (sql_root / "updates/mysql/0.3.9.sql").read_text(encoding="utf-8")
+    required_039 = (
+        "ALTER TABLE `#__pungamail_templates`",
+        "ADD COLUMN `new_content_item_template` MEDIUMTEXT NULL AFTER `body_markdown`",
+        "ALTER TABLE `#__pungamail_newsletters`",
+    )
+    for fragment in required_039:
+        if fragment not in marker_039:
+            fail(f"0.3.9 new-content layout migration is missing {fragment!r}")
+
+    if any(token in marker_039.upper() for token in ("CREATE TABLE", "DROP TABLE", "PREPARE ", "EXECUTE ")):
+        fail("0.3.9 migration must remain limited to direct portable ALTER TABLE statements")
+
+    marker_0310 = (sql_root / "updates/mysql/0.3.10.sql").read_text(encoding="utf-8")
+    if any(token in marker_0310.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.3.10 changes administrator presentation only; its version-marker migration must not change schema")
+
+    marker_0311 = (sql_root / "updates/mysql/0.3.11.sql").read_text(encoding="utf-8")
+    if any(token in marker_0311.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.3.11 changes Markdown rendering and administrator presentation only; its version-marker migration must not change schema")
 
 
 def schema_columns_from_create(sql: str) -> dict[str, set[str]]:
@@ -910,6 +955,463 @@ def check_stabilization_033() -> None:
             fail(f"Administrator controller exposes an unsanitized exception: {controller.name}")
 
 
+def check_subscription_management_035() -> None:
+    """Protect the complete menu-page and administrator topic workflow."""
+
+    site_root = ROOT / "extensions/com_pungamail/components/com_pungamail"
+    model = (site_root / "src/Model/SubscriptionModel.php").read_text(encoding="utf-8")
+    layout = (site_root / "tmpl/subscription/default.php").read_text(encoding="utf-8")
+    controller = (site_root / "src/Controller/SubscriptionController.php").read_text(encoding="utf-8")
+
+    for token in ("topics()->active()", "selected_topic_ids", "getSubscriberTopicIds"):
+        if token not in model:
+            fail(f"Subscription menu-page model is missing topic state: {token!r}")
+    for token in ("topic_ids[]", "subscription.userTopics", "COM_PUNGAMAIL_SUBSCRIPTION_SAVE_TOPICS"):
+        if token not in layout:
+            fail(f"Subscription menu-page layout is missing topic controls: {token!r}")
+    if "return ServiceFactory::topics()->active();" not in controller:
+        fail("Standalone subscription requests do not expose all published topics")
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    topic_repository = (admin_root / "src/Service/TopicRepository.php").read_text(encoding="utf-8")
+    route = (admin_root / "src/Service/AdministratorRoute.php").read_text(encoding="utf-8")
+    form = (admin_root / "forms/subscriber.xml").read_text(encoding="utf-8")
+    view = (admin_root / "src/View/Subscriber/HtmlView.php").read_text(encoding="utf-8")
+    edit_layout = (admin_root / "tmpl/subscriber/default.php").read_text(encoding="utf-8")
+    list_layout = (admin_root / "tmpl/subscribers/default.php").read_text(encoding="utf-8")
+    edit_controller = (admin_root / "src/Controller/SubscriberController.php").read_text(encoding="utf-8")
+
+    required = (
+        (route, "subscriber(int $id = 0)", "subscriber edit route"),
+        (form, 'name="status"', "raw global status field"),
+        (view, "ToolbarHelper::apply('subscriber.save')", "subscriber Apply action"),
+        (view, "ToolbarHelper::save('subscriber.save2close')", "subscriber Save & Close action"),
+        (edit_layout, "jform[topic_ids][]", "administrator topic selector"),
+        (list_layout, "AdministratorRoute::subscriber((int) $item->id)", "subscriber edit link"),
+        (edit_controller, "function save2close()", "subscriber Save & Close controller"),
+        (edit_controller, "updateAdministratorTopics", "administrator Channel persistence"),
+        (edit_controller, "if ($newStatus !== $currentStatus)", "topic/consent state separation"),
+        (edit_controller, "guardExistingMutation", "create/edit ACL separation"),
+        (topic_repository, "isset($selected[$topicId]) ? self::MEMBERSHIP_PENDING : self::MEMBERSHIP_UNSUBSCRIBED", "complete double-opt-in topic staging"),
+    )
+    for contents, token, label in required:
+        if token not in contents:
+            fail(f"0.3.5 is missing {label}: {token!r}")
+    if "Text::_('COM_PUNGAMAIL_SUPPRESSED'), 'x.reason'" in list_layout:
+        fail("Subscribers list still renders the redundant suppression column")
+
+    for locale in ("en-GB", "de-DE"):
+        site_language = (site_root / f"language/{locale}/com_pungamail.ini").read_text(encoding="utf-8")
+        admin_language = (admin_root / f"language/{locale}/com_pungamail.ini").read_text(encoding="utf-8")
+        for key in ("COM_PUNGAMAIL_SUBSCRIPTION_TOPICS=", "COM_PUNGAMAIL_SUBSCRIPTION_SAVE_TOPICS="):
+            if key not in site_language:
+                fail(f"0.3.5 site catalog {locale} is missing {key}")
+        for key in ("COM_PUNGAMAIL_EDIT_SUBSCRIBER=", "COM_PUNGAMAIL_SUBSCRIBER_TOPICS_HELP="):
+            if key not in admin_language:
+                fail(f"0.3.5 administrator catalog {locale} is missing {key}")
+
+
+def check_audience_clarity_036() -> None:
+    """Protect the explicit newsletter-permission and audience explanations."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    site_root = ROOT / "extensions/com_pungamail/components/com_pungamail"
+    newsletter_layout = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    digest_layout = (admin_root / "tmpl/digest/default.php").read_text(encoding="utf-8")
+    subscriber_layout = (admin_root / "tmpl/subscriber/default.php").read_text(encoding="utf-8")
+    preflight = (admin_root / "src/Service/PreflightService.php").read_text(encoding="utf-8")
+    subscription_layout = (site_root / "tmpl/subscription/default.php").read_text(encoding="utf-8")
+    module_layout = (ROOT / "extensions/mod_pungamail_signup/tmpl/default.php").read_text(encoding="utf-8")
+
+    required = (
+        (newsletter_layout, 'id="pm-audience-summary"', "newsletter live audience summary"),
+        (newsletter_layout, "COM_PUNGAMAIL_AUDIENCE_ALL_TOPICS_WARNING", "newsletter all/topic warning"),
+        (digest_layout, 'id="pm-digest-audience-summary"', "digest live audience summary"),
+        (subscriber_layout, "COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_HEALTH", "subscriber delivery-health section"),
+        (subscription_layout, "COM_PUNGAMAIL_SUBSCRIPTION_MASTER_HELP", "public master-permission explanation"),
+        (subscription_layout, "pm-subscription-topic-summary", "public topic-consequence summary"),
+        (module_layout, "MOD_PUNGAMAIL_SIGNUP_TOPIC_NONE_HELP", "module no-topic consequence"),
+        (preflight, "COM_PUNGAMAIL_PREFLIGHT_AUDIENCE_MISSING", "missing-audience blocker"),
+        (preflight, "COM_PUNGAMAIL_PREFLIGHT_ALL_TOPICS_OVERRIDE", "recipient-specific all/topic warning"),
+    )
+
+    for contents, token, label in required:
+        if token not in contents:
+            fail(f"0.3.6 is missing {label}: {token!r}")
+
+    for locale in ("en-GB", "de-DE"):
+        catalogs = (
+            (admin_root / f"language/{locale}/com_pungamail.ini").read_text(encoding="utf-8"),
+            (site_root / f"language/{locale}/com_pungamail.ini").read_text(encoding="utf-8"),
+            (ROOT / f"extensions/mod_pungamail_signup/language/{locale}/mod_pungamail_signup.ini").read_text(encoding="utf-8"),
+        )
+        combined = "\n".join(catalogs)
+
+        for obsolete in ("Lists / Topics", "Mailing lists / topics", "Verteiler / Themen"):
+            if obsolete in combined:
+                fail(f"0.3.6 catalog {locale} retains obsolete topic wording: {obsolete!r}")
+
+
+
+def ini_values(path: Path) -> dict[str, str]:
+    """Read simple Joomla INI key/value pairs for release-quality checks.
+
+    @param path Joomla language file.
+    @return Values keyed by language constant.
+    """
+
+    values: dict[str, str] = {}
+
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+
+        if stripped == "" or stripped.startswith(";") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"')
+
+    return values
+
+
+def check_ux_and_fixes_037() -> None:
+    """Protect the 0.3.7 Channel UX and form-state regressions."""
+
+    component_manifest = (ROOT / "extensions/com_pungamail/pungamail.xml").read_text(encoding="utf-8")
+    templates_pos = component_manifest.find('<menu view="templates">')
+    channels_pos = component_manifest.find('<menu view="topics">')
+    subscribers_pos = component_manifest.find('<menu view="subscribers">')
+
+    if min(templates_pos, channels_pos, subscribers_pos) < 0 or not (templates_pos < channels_pos < subscribers_pos):
+        fail("Channels are not positioned directly after Templates in the administrator submenu")
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    site_root = ROOT / "extensions/com_pungamail/components/com_pungamail"
+    topic_layout = (admin_root / "tmpl/topics/default.php").read_text(encoding="utf-8")
+    topic_editor = (admin_root / "tmpl/topic/default.php").read_text(encoding="utf-8")
+    topics_controller = (admin_root / "src/Controller/TopicsController.php").read_text(encoding="utf-8")
+    topic_repository = (admin_root / "src/Service/TopicRepository.php").read_text(encoding="utf-8")
+    subscriber_model = (admin_root / "src/Model/SubscriberModel.php").read_text(encoding="utf-8")
+    subscriber_controller = (admin_root / "src/Controller/SubscriberController.php").read_text(encoding="utf-8")
+    subscriber_layout = (admin_root / "tmpl/subscriber/default.php").read_text(encoding="utf-8")
+    subscription_controller = (site_root / "src/Controller/SubscriptionController.php").read_text(encoding="utf-8")
+    digest_controller = (admin_root / "src/Controller/DigestController.php").read_text(encoding="utf-8")
+    digest_model = (admin_root / "src/Model/DigestModel.php").read_text(encoding="utf-8")
+
+    ordering_requirements = (
+        (topic_layout, "HTMLHelper::_('draggablelist.draggable')", "Joomla draggable-list setup"),
+        (topic_layout, 'class="js-draggable"', "Joomla draggable-list table body"),
+        (topic_layout, "topics.saveOrderAjax", "Channel ordering AJAX endpoint"),
+        (topic_layout, 'name="order[]"', "hidden ordering values"),
+        (topics_controller, "function saveOrderAjax(): void", "ordering controller action"),
+        (topic_repository, "function saveOrdering(array $ids, array $orderings): void", "ordering repository persistence"),
+    )
+    for contents, token, label in ordering_requirements:
+        if token not in contents:
+            fail(f"0.3.7 is missing {label}: {token!r}")
+
+    if 'name="ordering"' in topic_editor:
+        fail("Channel editor still exposes the raw numeric ordering field")
+
+    subscriber_requirements = (
+        (topic_repository, "availableForAdministration(): array", "administrator Channel list"),
+        (topic_repository, "updateAdministratorTopics", "administrator Channel membership persistence"),
+        (subscriber_model, "availableForAdministration()", "subscriber editor Channel loading"),
+        (subscriber_model, "getSelectedTopicIds", "subscriber editor selected memberships"),
+        (subscriber_controller, "updateAdministratorTopics", "subscriber Channel save path"),
+        (subscriber_layout, "jform[topic_ids][]", "subscriber Channel checkboxes"),
+        (subscriber_layout, "Text::_('JUNPUBLISHED')", "unpublished Channel marker"),
+    )
+    for contents, token, label in subscriber_requirements:
+        if token not in contents:
+            fail(f"0.3.7 is missing {label}: {token!r}")
+
+    subscription_requirements = (
+        "post->getInt('module_id', 0)",
+        "private function moduleTopics(int $moduleId): array",
+        "if ($moduleId <= 0)",
+        "return ServiceFactory::topics()->active();",
+    )
+    for token in subscription_requirements:
+        if token not in subscription_controller:
+            fail(f"Standalone Newsletter page fix is missing {token!r}")
+
+    digest_requirements = (
+        (digest_controller, "com_pungamail.edit.digest.data", "failed-save form state"),
+        (digest_controller, "AdministratorRoute::digest($id)", "failed-save editor redirect"),
+        (digest_model, "getSubmittedData(): array", "submitted Digest data restoration"),
+        (digest_model, "array_key_exists($key, $submitted)", "submitted scalar-field restoration"),
+    )
+    for contents, token, label in digest_requirements:
+        if token not in contents:
+            fail(f"Automatic Newsletter validation fix is missing {label}: {token!r}")
+
+    language_files = sorted((ROOT / "extensions").rglob("*.ini"))
+    forbidden_phrases = (
+        "double opt-in",
+        "double-opt-in",
+        "newsletter topics",
+        "newsletter-themen",
+        "topic preferences",
+        "themenauswahl",
+        "subscriber suppressed",
+        "bounce suppression",
+        "process send queue",
+        "generate automatic digests",
+    )
+
+    for language_file in language_files:
+        values = ini_values(language_file)
+
+        for key, value in values.items():
+            if value.strip() == "":
+                fail(f"Empty language value in {language_file.relative_to(ROOT)}: {key}")
+
+            lowered = value.casefold()
+            for phrase in forbidden_phrases:
+                if phrase.casefold() in lowered:
+                    fail(f"Technical/obsolete UI wording remains in {language_file.relative_to(ROOT)}: {key}={value!r}")
+
+    for locale, expected in (("en-GB", "Channels"), ("de-DE", "Kanäle")):
+        admin_main = admin_root / f"language/{locale}/com_pungamail.ini"
+        admin_sys = admin_root / f"language/{locale}/com_pungamail.sys.ini"
+        site_main = site_root / f"language/{locale}/com_pungamail.ini"
+        site_sys = site_root / f"language/{locale}/com_pungamail.sys.ini"
+
+        admin_values = ini_values(admin_main)
+        if admin_values.get("COM_PUNGAMAIL_SUBMENU_TOPICS") != expected:
+            fail(f"Administrator Channel label is wrong for {locale}")
+
+        for main_path, sys_path in ((admin_main, admin_sys), (site_main, site_sys)):
+            main_values = ini_values(main_path)
+            sys_values = ini_values(sys_path)
+            for key in main_values.keys() & sys_values.keys():
+                if main_values[key] != sys_values[key]:
+                    fail(f"System-language value differs from normal catalog for {locale}: {key}")
+
+
+
+def check_recipient_identity_038() -> None:
+    """Protect the 0.3.8 linked-user recipient-name behavior."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    model = (admin_root / "src/Model/SubscriberModel.php").read_text(encoding="utf-8")
+    layout = (admin_root / "tmpl/subscriber/default.php").read_text(encoding="utf-8")
+    form = (admin_root / "forms/subscriber.xml").read_text(encoding="utf-8")
+
+    requirements = (
+        (model, "UserFactoryInterface::class", "live Joomla user lookup"),
+        (model, "$item->user_name", "resolved Joomla display name"),
+        (layout, "$this->item->user_id !== null", "linked-user presentation branch"),
+        (layout, "COM_PUNGAMAIL_JOOMLA_DISPLAY_NAME", "linked-user display-name field"),
+        (layout, "$this->form?->renderField('recipient_name')", "external recipient-name editor"),
+        (form, 'showon="recipient_type:email"', "new-recipient external-name visibility"),
+    )
+
+    for contents, token, label in requirements:
+        if token not in contents:
+            fail(f"0.3.8 recipient identity fix is missing {label}: {token!r}")
+
+    linked_branch = layout.find("$this->item !== null && $this->item->user_id !== null")
+    external_name = layout.find("$this->form?->renderField('recipient_name')")
+    branch_else = layout.find("<?php else : ?>", linked_branch)
+
+    if min(linked_branch, branch_else, external_name) < 0 or not (linked_branch < branch_else < external_name):
+        fail("0.3.8 does not keep the editable recipient-name field out of the linked-user branch")
+
+    for language in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{language}/com_pungamail.ini")
+        for key in ("COM_PUNGAMAIL_JOOMLA_DISPLAY_NAME", "COM_PUNGAMAIL_JOOMLA_DISPLAY_NAME_DESC"):
+            if values.get(key, "").strip() == "":
+                fail(f"0.3.8 is missing {language} recipient display-name copy: {key}")
+
+def check_automatic_newsletter_ux_039() -> None:
+    """Protect the 0.3.9 Automatic Newsletter and selected-content UX."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    digest_layout = (admin_root / "tmpl/digest/default.php").read_text(encoding="utf-8")
+    digest_controller = (admin_root / "src/Controller/DigestController.php").read_text(encoding="utf-8")
+    renderer = (admin_root / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    mail_config = (admin_root / "src/Service/MailConfigurationService.php").read_text(encoding="utf-8")
+    config = (admin_root / "config.xml").read_text(encoding="utf-8")
+    migration = (admin_root / "sql/updates/mysql/0.3.9.sql").read_text(encoding="utf-8")
+    task_en = (ROOT / "extensions/plg_task_pungamail/language/en-GB/plg_task_pungamail.ini").read_text(encoding="utf-8")
+    task_de = (ROOT / "extensions/plg_task_pungamail/language/de-DE/plg_task_pungamail.ini").read_text(encoding="utf-8")
+
+    required = (
+        (digest_layout, 'name="recurrence_days"', "day-based recurrence input"),
+        (digest_layout, 'name="rolling_days"', "day-based rolling input"),
+        (digest_layout, "rollingPeriod.hidden", "conditional rolling-period field"),
+        (digest_layout, "autoConfirm.hidden", "conditional unattended-send confirmation"),
+        (digest_controller, "getInt('recurrence_days', 7)) * 1440", "day-to-minute persistence conversion"),
+        (digest_controller, "getInt('rolling_days', 7)) * 24", "day-to-hour persistence conversion"),
+        (renderer, "{publish_date}", "publish-date selected-content placeholder"),
+        (renderer, "{title_link}", "linked-title selected-content placeholder"),
+        (renderer, "newContentItemTemplate", "selected-content template resolution"),
+        (mail_config, "DEFAULT_NEW_CONTENT_ITEM_TEMPLATE", "safe selected-content default"),
+        (config, 'name="new_content_item_template"', "global selected-content layout setting"),
+        (migration, "new_content_item_template", "selected-content layout schema update"),
+        (task_en, "For ordinary newsletters that you created manually", "clear English scheduled-send task description"),
+        (task_en, "For recurring Automatic Newsletters", "clear English automatic-newsletter task description"),
+        (task_de, "Für normale Newsletter, die Sie manuell erstellt", "clear German scheduled-send task description"),
+        (task_de, "Für wiederkehrende automatische Newsletter", "clear German automatic-newsletter task description"),
+    )
+
+    for contents, token, label in required:
+        if token not in contents:
+            fail(f"0.3.9 is missing {label}: {token!r}")
+
+    if 'name="recurrence_minutes"' in digest_layout or 'name="rolling_hours"' in digest_layout:
+        fail("0.3.9 still exposes minute/hour scheduling fields in the Automatic Newsletter editor")
+
+    for rel in (
+        "tmpl/preview/default.php",
+        "tmpl/preflight/default.php",
+        "tmpl/templatepreview/default.php",
+        "tmpl/newsletter/default.php",
+    ):
+        contents = (admin_root / rel).read_text(encoding="utf-8")
+        if "BROWSER_PLACEHOLDER" not in contents or "aria-disabled" not in contents:
+            fail(f"0.3.9 does not disable View in browser in {rel}")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_RECURRENCE_DAYS",
+            "COM_PUNGAMAIL_ROLLING_DAYS",
+            "COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE",
+            "COM_PUNGAMAIL_PREVIEW_BROWSER_DISABLED",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.3.9 is missing {locale} UX copy: {key}")
+
+
+
+def check_newsletter_editor_ux_0310() -> None:
+    """Protect the 0.3.10 tabbed Newsletter and Markdown-template editor UX."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    newsletter = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    template = (admin_root / "tmpl/template/default.php").read_text(encoding="utf-8")
+    config = (admin_root / "config.xml").read_text(encoding="utf-8")
+    field = (admin_root / "src/Field/NewcontenttemplateField.php").read_text(encoding="utf-8")
+
+    for token, label in (
+        ("uitab.startTabSet", "Joomla tab set"),
+        ("pm-settings", "Settings tab"),
+        ("pm-mail-content", "Mail content tab"),
+        ("pm-content-selection", "Content selection tab"),
+        ("pm-design", "Design tab"),
+        ("uitab.endTabSet", "closed Joomla tab set"),
+    ):
+        if token not in newsletter:
+            fail(f"0.3.10 Newsletter editor is missing {label}: {token!r}")
+
+    if newsletter.count("uitab.addTab") != 4 or newsletter.count("HTMLHelper::_('uitab.endTab')") != 4:
+        fail("0.3.10 Newsletter editor must contain exactly four balanced Joomla tabs")
+
+    for token in ("pm-content-search", "pm-content-list", "pm-audience-summary", "newsletter.applyTemplate"):
+        if token not in newsletter:
+            fail(f"0.3.10 tab refactor dropped existing Newsletter control: {token}")
+
+    if 'type="newcontenttemplate"' not in config or "NewcontenttemplateField" not in field:
+        fail("0.3.10 Component Options does not use the dedicated new-content Markdown editor field")
+
+    if "font-monospace" not in field or "COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP" not in field:
+        fail("0.3.10 Component Options new-content editor is missing monospaced styling or visible placeholder help")
+
+    for contents, label in ((newsletter, "Newsletter"), (template, "Template")):
+        if 'class="form-control font-monospace"' not in contents:
+            fail(f"0.3.10 {label} new-content editor is not monospaced")
+        if "COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP" not in contents:
+            fail(f"0.3.10 {label} new-content editor is missing placeholder help")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_TAB_SETTINGS",
+            "COM_PUNGAMAIL_TAB_MAIL_CONTENT",
+            "COM_PUNGAMAIL_TAB_CONTENT_SELECTION",
+            "COM_PUNGAMAIL_TAB_DESIGN",
+            "COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.3.10 is missing {locale} Newsletter editor copy: {key}")
+
+
+
+def check_markdown_and_override_ux_0311() -> None:
+    """Protect the 0.3.11 Markdown fixes and collapsed new-content overrides."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    renderer = (admin_root / "src/Service/MarkdownRenderer.php").read_text(encoding="utf-8")
+    newsletter = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    template = (admin_root / "tmpl/template/default.php").read_text(encoding="utf-8")
+
+    for token in ("hard_break", "protectMarkdownEscapes", "unescapeMarkdown"):
+        if token not in renderer:
+            fail(f"0.3.11 Markdown renderer is missing regression fix: {token}")
+
+    for contents, label in ((newsletter, "Newsletter"), (template, "Template")):
+        if '<details class="card mb-3 pm-new-content-override">' not in contents:
+            fail(f"0.3.11 {label} new-content override is not a native collapsed details panel")
+        if '<details class="card mb-3 pm-new-content-override" open' in contents:
+            fail(f"0.3.11 {label} new-content override must be collapsed by default")
+        if "COM_PUNGAMAIL_CUSTOM_OVERRIDE_ACTIVE" not in contents:
+            fail(f"0.3.11 {label} new-content override does not indicate an active custom override")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        if values.get("COM_PUNGAMAIL_CUSTOM_OVERRIDE_ACTIVE", "").strip() == "":
+            fail(f"0.3.11 is missing {locale} custom-override badge copy")
+
+
+def check_release_ux_0312() -> None:
+    """Protect the 0.3.12 editor, rendering, and excerpt-sanitization changes."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    newsletter = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    template = (admin_root / "tmpl/template/default.php").read_text(encoding="utf-8")
+    renderer = (admin_root / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    markdown = (admin_root / "src/Service/MarkdownRenderer.php").read_text(encoding="utf-8")
+    styles = (admin_root / "src/Service/MailStyleService.php").read_text(encoding="utf-8")
+    config = (admin_root / "config.xml").read_text(encoding="utf-8")
+    marker = (admin_root / "sql/updates/mysql/0.3.12.sql").read_text(encoding="utf-8")
+
+    settings_pos = newsletter.find("'pm-settings'")
+    mail_pos = newsletter.find("'pm-mail-content'")
+    template_pos = newsletter.find('id="pm-template"')
+    if not (settings_pos >= 0 and mail_pos > settings_pos and template_pos > mail_pos):
+        fail("0.3.12 Template selector is not located in the Newsletter Mail content tab")
+
+    for contents, label in ((newsletter, "Newsletter"), (template, "Template")):
+        for token in ('pm-collapse-indicator', '▶', '[open] .pm-collapse-indicator'):
+            if token not in contents:
+                fail(f"0.3.12 {label} selected-content override is missing disclosure-state indicator: {token}")
+
+    for token, label in (
+        ('name="design_heading_background"', "global heading-background option"),
+        ("'heading_background'", "layered heading-background style"),
+        ('width:100%', "full-width mail heading"),
+        ('stripContentPluginTokens', "content-plugin token sanitization"),
+        ("$trimmed === '---'", "Markdown horizontal rule"),
+        ("'<hr>'", "horizontal-rule HTML output"),
+        ("'<hr>' =>", "email-safe horizontal-rule styling"),
+    ):
+        haystack = config if token.startswith('name=') else (renderer + markdown + styles)
+        if token not in haystack:
+            fail(f"0.3.12 is missing {label}: {token!r}")
+
+    if re.search(r"\b(?:ALTER|CREATE|DROP|RENAME)\b", marker, re.IGNORECASE):
+        fail("0.3.12 must remain a no-schema-change migration marker")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in ("COM_PUNGAMAIL_STYLE_HEADING_BACKGROUND", "COM_PUNGAMAIL_STYLE_HEADING_BACKGROUND_DESC"):
+            if values.get(key, "").strip() == "":
+                fail(f"0.3.12 is missing {locale} heading-background copy: {key}")
+        if "---" not in values.get("COM_PUNGAMAIL_MARKDOWN_HELP", ""):
+            fail(f"0.3.12 {locale} Markdown help does not mention horizontal rules")
 
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
@@ -972,6 +1474,38 @@ def check_feature_contracts() -> None:
             fail(f"Missing feature contract for {label}: {path.relative_to(ROOT)}")
 
 
+def check_joomla_base_method_collisions() -> None:
+    """Reject model methods that incompatibly override Joomla base methods."""
+
+    model_roots = (
+        ROOT / "extensions/com_pungamail/components/com_pungamail/src/Model",
+        ROOT / "extensions/com_pungamail/administrator/components/com_pungamail/src/Model",
+    )
+
+    for model_root in model_roots:
+        for path in sorted(model_root.glob("*Model.php")):
+            contents = path.read_text(encoding="utf-8")
+
+            if "extends BaseDatabaseModel" in contents and re.search(
+                r"public\s+function\s+getState\s*\(\s*\)",
+                contents,
+            ) is not None:
+                fail(f"Model incompatibly overrides Joomla getState(): {path.relative_to(ROOT)}")
+
+    subscription_model = (
+        ROOT / "extensions/com_pungamail/components/com_pungamail/src/Model/SubscriptionModel.php"
+    ).read_text(encoding="utf-8")
+    subscription_view = (
+        ROOT / "extensions/com_pungamail/components/com_pungamail/src/View/Subscription/HtmlView.php"
+    ).read_text(encoding="utf-8")
+
+    if "function getSubscriptionState(): array" not in subscription_model:
+        fail("Subscription model is missing its non-conflicting state accessor")
+
+    if "->getSubscriptionState()" not in subscription_view:
+        fail("Subscription view does not use the non-conflicting state accessor")
+
+
 def main() -> int:
     """Run all release checks.
 
@@ -1000,9 +1534,18 @@ def main() -> int:
         check_regressions_031,
         check_profile_topics_032,
         check_stabilization_033,
+        check_subscription_management_035,
+        check_audience_clarity_036,
+        check_ux_and_fixes_037,
+        check_recipient_identity_038,
+        check_automatic_newsletter_ux_039,
+        check_newsletter_editor_ux_0310,
+        check_markdown_and_override_ux_0311,
+        check_release_ux_0312,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,
+        check_joomla_base_method_collisions,
     )
     try:
         for check in checks:

@@ -10,6 +10,7 @@ namespace Punga\Component\PungaMail\Administrator\Service;
 
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\Uri\Uri;
 
 /**
@@ -64,6 +65,7 @@ final class NewsletterRenderer
 		$itemHtml = '';
 		$itemTextParts = [];
 		$snapshots = [];
+		$itemTemplate = $this->mailConfiguration->newContentItemTemplate($template, $newsletter);
 
 		foreach ($items as $selection)
 		{
@@ -86,6 +88,28 @@ final class NewsletterRenderer
 			}
 
 			$url = (string) ($current?->url ?? $selection->snapshot_url ?? '');
+			$published = (string) ($current?->published ?? '');
+			$contentType = (string) ($current?->source_label ?? $selection->source_key);
+			$publishDate = $this->formatPublishDate($published);
+			$titleMarkdown = $this->escapeMarkdown($title);
+			$excerptMarkdown = $this->escapeMarkdown($excerpt);
+			$contentTypeMarkdown = $this->escapeMarkdown($contentType);
+			$linkUrl = $this->markdownUrl($url);
+			$titleLink = $url !== '' ? '[' . $titleMarkdown . '](' . $linkUrl . ')' : $titleMarkdown;
+			$readMore = $url !== ''
+				? '[' . $this->escapeMarkdown($this->mailText->text('COM_PUNGAMAIL_MAIL_READ_MORE') . ' →') . '](' . $linkUrl . ')'
+				: '';
+			$itemMarkdown = strtr($itemTemplate, [
+				'{title}' => $titleMarkdown,
+				'{title_link}' => $titleLink,
+				'{publish_date}' => $this->escapeMarkdown($publishDate),
+				'{excerpt}' => $excerptMarkdown,
+				'{read_more}' => $readMore,
+				'{url}' => $url,
+				'{content_type}' => $contentTypeMarkdown,
+			]);
+			$itemHtml .= $this->markdown->toHtml($itemMarkdown, Uri::root());
+			$itemTextParts[] = trim($this->markdown->toText($itemMarkdown, Uri::root()));
 			$snapshots[] = [
 				'source_key' => (string) $selection->source_key,
 				'source_item_id' => (string) $selection->source_item_id,
@@ -93,43 +117,6 @@ final class NewsletterRenderer
 				'excerpt' => $excerpt,
 				'url' => $url,
 			];
-
-			$titleHtml = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
-			$urlHtml = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
-			$linkColor = htmlspecialchars((string) $style['link_color'], ENT_QUOTES, 'UTF-8');
-			$headingColor = htmlspecialchars((string) $style['heading_color'], ENT_QUOTES, 'UTF-8');
-			$textColor = htmlspecialchars((string) $style['text_color'], ENT_QUOTES, 'UTF-8');
-			$itemHtml .= '<section style="margin:0 0 28px">';
-			$itemHtml .= '<h3 style="margin:0 0 8px;color:' . $headingColor . '">';
-			$itemHtml .= $url !== ''
-				? '<a style="color:' . $linkColor . ';text-decoration:underline" href="' . $urlHtml . '">' . $titleHtml . '</a>'
-				: $titleHtml;
-			$itemHtml .= '</h3>';
-
-			if ($excerpt !== '')
-			{
-				$itemHtml .= '<p style="margin:0 0 8px;color:' . $textColor . ';line-height:1.55">' . nl2br(htmlspecialchars($excerpt, ENT_QUOTES, 'UTF-8')) . '</p>';
-			}
-
-			if ($url !== '')
-			{
-				$itemHtml .= '<p style="margin:0"><a style="color:' . $linkColor . ';text-decoration:underline" href="' . $urlHtml . '">' . htmlspecialchars($this->mailText->text('COM_PUNGAMAIL_MAIL_READ_MORE'), ENT_QUOTES, 'UTF-8') . ' &rarr;</a></p>';
-			}
-
-			$itemHtml .= '</section>';
-			$itemText = $title;
-
-			if ($excerpt !== '')
-			{
-				$itemText .= "\n" . $excerpt;
-			}
-
-			if ($url !== '')
-			{
-				$itemText .= "\n" . $url;
-			}
-
-			$itemTextParts[] = $itemText;
 		}
 
 		$bodyMarkdown = (string) $newsletter->body_markdown;
@@ -224,6 +211,42 @@ final class NewsletterRenderer
 		return $this->render($newsletter, []);
 	}
 
+	/** @return string */
+	private function formatPublishDate(string $value): string
+	{
+		if (trim($value) === '')
+		{
+			return '';
+		}
+
+		try
+		{
+			$date = Factory::getDate($value, 'UTC');
+			$date->setTimezone(new \DateTimeZone((string) Factory::getApplication()->get('offset', 'UTC')));
+
+			return $date->format(Text::_('DATE_FORMAT_LC3'), true);
+		}
+		catch (\Throwable)
+		{
+			return '';
+		}
+	}
+
+	/** @return string */
+	private function escapeMarkdown(string $value): string
+	{
+		return preg_replace_callback(
+			'/([\\`*_{}\[\]()#+.!|>~-])/',
+			static fn (array $match): string => '\\' . $match[1],
+			$value
+		) ?? $value;
+	}
+	/** @return string */
+	private function markdownUrl(string $value): string
+	{
+		return str_replace([' ', '(', ')'], ['%20', '%28', '%29'], $value);
+	}
+
 	/** @param array<string,string|int> $style @return string */
 	private function wrapHtml(string $bodyHtml, string $footerHtml, string $heading, bool $browserView, array $style): string
 	{
@@ -235,6 +258,7 @@ final class NewsletterRenderer
 		$text = htmlspecialchars((string) $style['text_color'], ENT_QUOTES, 'UTF-8');
 		$link = htmlspecialchars((string) $style['link_color'], ENT_QUOTES, 'UTF-8');
 		$footer = htmlspecialchars((string) $style['footer_color'], ENT_QUOTES, 'UTF-8');
+		$headingBackground = htmlspecialchars((string) ($style['heading_background'] ?? ''), ENT_QUOTES, 'UTF-8');
 		$font = htmlspecialchars((string) $style['font_family'], ENT_QUOTES, 'UTF-8');
 		$customCss = trim((string) ($style['custom_css'] ?? ''));
 		$headCss = $customCss !== '' ? '<style>' . $customCss . '</style>' : '';
@@ -250,7 +274,8 @@ final class NewsletterRenderer
 		if ($heading !== '')
 		{
 			$headingMargin = $logoUrl !== '' ? '16px 0 0' : '0';
-			$headerParts[] = '<h1 style="margin:' . $headingMargin . ';color:' . htmlspecialchars((string) $style['heading_color'], ENT_QUOTES, 'UTF-8') . ';line-height:1.2">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h1>';
+			$headingBackgroundStyle = $headingBackground !== '' ? ';background:' . $headingBackground . ';padding:16px 20px' : '';
+			$headerParts[] = '<h1 style="display:block;width:100%;box-sizing:border-box;margin:' . $headingMargin . ';color:' . htmlspecialchars((string) $style['heading_color'], ENT_QUOTES, 'UTF-8') . ';line-height:1.2' . $headingBackgroundStyle . '">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h1>';
 		}
 
 		$header = implode('', $headerParts);
@@ -314,7 +339,9 @@ final class NewsletterRenderer
 	/** @return string */
 	private function plainExcerpt(string $value): string
 	{
-		$value = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		$value = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		$value = $this->stripContentPluginTokens($value);
+		$value = strip_tags($value);
 		$value = preg_replace('/\s+/u', ' ', trim($value)) ?? trim($value);
 
 		if (mb_strlen($value, 'UTF-8') > 320)
@@ -323,5 +350,25 @@ final class NewsletterRenderer
 		}
 
 		return $value;
+	}
+
+	/**
+	 * Removes unresolved Joomla-style content-plugin command markers from excerpt source.
+	 *
+	 * Content plugins are deliberately not executed for newsletter excerpts. Removing only
+	 * command-shaped brace tokens keeps readable text between paired markers while avoiding
+	 * raw commands such as {snippet alias="example"} in outgoing mail.
+	 *
+	 * @param string $value Article text before HTML stripping and excerpt truncation.
+	 *
+	 * @return string Text with plugin-like command markers removed.
+	 */
+	private function stripContentPluginTokens(string $value): string
+	{
+		return preg_replace(
+			'/\{\/?[A-Za-z][A-Za-z0-9_.-]*(?:(?:\s+|=)[^{}\r\n]*)?\}/u',
+			'',
+			$value
+		) ?? $value;
 	}
 }

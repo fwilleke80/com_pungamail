@@ -115,6 +115,7 @@ final class TemplateController extends BaseController
 				'reply_to_mode' => $input->post->getCmd('reply_to_mode', 'inherit'),
 				'reply_to_email' => trim($input->post->getString('reply_to_email')),
 				'reply_to_name' => trim($input->post->getString('reply_to_name')),
+				'new_content_item_template' => trim((string) $input->post->get('new_content_item_template', '', 'raw')),
 			]
 		);
 		ServiceFactory::checkouts()->checkout('template', $id, $userId);

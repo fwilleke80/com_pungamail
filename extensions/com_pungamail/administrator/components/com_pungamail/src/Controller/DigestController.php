@@ -25,6 +25,7 @@ final class DigestController extends BaseController
 	public function add(): void
 	{
 		$this->guard(false);
+		Factory::getApplication()->setUserState('com_pungamail.edit.digest.data', null);
 		$this->setRedirect(Route::_(AdministratorRoute::digest(), false));
 	}
 
@@ -44,7 +45,8 @@ final class DigestController extends BaseController
 	public function cancel(): void
 	{
 		$this->guard(true);
-		$this->checkin(Factory::getApplication()->getInput()->getInt('id'));
+		Factory::getApplication()->setUserState('com_pungamail.edit.digest.data', null);
+		$this->checkin((int) Factory::getApplication()->getInput()->getInt('id', 0));
 		$this->setRedirect(Route::_(AdministratorRoute::digests(), false));
 	}
 
@@ -52,10 +54,15 @@ final class DigestController extends BaseController
 	private function persist(bool $close): void
 	{
 		$this->guard(true);
+		$app = Factory::getApplication();
+		$id = max(0, (int) $app->getInput()->getInt('id', 0));
 
 		try
 		{
-			$id = $this->saveFromInput();
+			$data = $this->readInput();
+			$app->setUserState('com_pungamail.edit.digest.data', ['id' => $id] + $data);
+			$id = $this->saveData($id, $data);
+			$app->setUserState('com_pungamail.edit.digest.data', null);
 
 			if ($close)
 			{
@@ -67,23 +74,53 @@ final class DigestController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_(AdministratorRoute::digests(), false), ErrorMessage::sanitize($e), 'error');
+			$this->setRedirect(Route::_(AdministratorRoute::digest($id), false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
-	/** @return int */
-	private function saveFromInput(): int
+	/** @return array<string,mixed> */
+	private function readInput(): array
 	{
 		$app = Factory::getApplication();
 		$input = $app->getInput();
-		$id = $input->getInt('id');
+		$categories = [];
+
+		foreach ((array) $input->post->get('source_categories', [], 'array') as $sourceKey => $value)
+		{
+			$categories[(string) $sourceKey] = array_map('intval', preg_split('/\s*,\s*/', (string) $value) ?: []);
+		}
+
+		return [
+			'title' => $input->post->getString('title'),
+			'state' => $input->post->getInt('state', 1),
+			'template_id' => $input->post->getInt('template_id', 0),
+			'subject_pattern' => $input->post->getString('subject_pattern'),
+			'recurrence_minutes' => max(1, $input->post->getInt('recurrence_days', 7)) * 1440,
+			'next_run_at' => $this->utcDate($input->post->getString('next_run_at')),
+			'cutoff_mode' => $input->post->getCmd('cutoff_mode', 'since_last'),
+			'rolling_hours' => max(1, $input->post->getInt('rolling_days', 7)) * 24,
+			'include_subscribers' => $input->post->getInt('include_subscribers', 0),
+			'generation_mode' => $input->post->getCmd('generation_mode', 'draft'),
+			'empty_action' => $input->post->getCmd('empty_action', 'skip'),
+			'source_keys' => (array) $input->post->get('source_keys', [], 'array'),
+			'topic_ids' => (array) $input->post->get('topic_ids', [], 'array'),
+			'group_ids' => (array) $input->post->get('group_ids', [], 'array'),
+			'categories' => $categories,
+			'confirm_auto_send' => $input->post->getInt('confirm_auto_send', 0),
+		];
+	}
+
+	/** @return int */
+	private function saveData(int $id, array $data): int
+	{
+		$app = Factory::getApplication();
 		$userId = (int) $app->getIdentity()->id;
 		$existing = $id > 0 ? ServiceFactory::digests()->find($id) : null;
-		$mode = $input->post->getCmd('generation_mode', 'draft');
+		$mode = (string) ($data['generation_mode'] ?? 'draft');
 
 		if ($mode === 'auto'
 			&& ($existing === null || (string) $existing->generation_mode !== 'auto')
-			&& $input->post->getInt('confirm_auto_send') !== 1)
+			&& (int) ($data['confirm_auto_send'] ?? 0) !== 1)
 		{
 			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_CONFIRM_AUTO_SEND'));
 		}
@@ -93,30 +130,6 @@ final class DigestController extends BaseController
 			ServiceFactory::checkouts()->checkout('digest', $id, $userId);
 		}
 
-		$categories = [];
-
-		foreach ((array) $input->post->get('source_categories', [], 'array') as $sourceKey => $value)
-		{
-			$categories[(string) $sourceKey] = array_map('intval', preg_split('/\s*,\s*/', (string) $value) ?: []);
-		}
-
-		$data = [
-			'title' => $input->post->getString('title'),
-			'state' => $input->post->getInt('state', 1),
-			'template_id' => $input->post->getInt('template_id'),
-			'subject_pattern' => $input->post->getString('subject_pattern'),
-			'recurrence_minutes' => $input->post->getInt('recurrence_minutes', 10080),
-			'next_run_at' => $this->utcDate($input->post->getString('next_run_at')),
-			'cutoff_mode' => $input->post->getCmd('cutoff_mode', 'since_last'),
-			'rolling_hours' => $input->post->getInt('rolling_hours', 168),
-			'include_subscribers' => $input->post->getInt('include_subscribers'),
-			'generation_mode' => $mode,
-			'empty_action' => $input->post->getCmd('empty_action', 'skip'),
-			'source_keys' => (array) $input->post->get('source_keys', [], 'array'),
-			'topic_ids' => (array) $input->post->get('topic_ids', [], 'array'),
-			'group_ids' => (array) $input->post->get('group_ids', [], 'array'),
-			'categories' => $categories,
-		];
 		$id = ServiceFactory::digests()->save($id, $data, $userId);
 		ServiceFactory::checkouts()->checkout('digest', $id, $userId);
 

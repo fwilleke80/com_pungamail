@@ -76,7 +76,7 @@ final class DashboardModel extends BaseDatabaseModel
 			->bind(':element', $element);
 		$manifest = json_decode((string) $db->setQuery($query)->loadResult(), true);
 
-		return is_array($manifest) && isset($manifest['version']) ? (string) $manifest['version'] : '0.3.4';
+		return is_array($manifest) && isset($manifest['version']) ? (string) $manifest['version'] : '—';
 	}
 
 	/**

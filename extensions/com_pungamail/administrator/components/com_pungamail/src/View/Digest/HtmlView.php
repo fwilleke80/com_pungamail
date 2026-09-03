@@ -46,7 +46,7 @@ final class HtmlView extends BaseHtmlView
 		$this->groupIds = $model->getGroupIds();
 		$this->categories = $model->getCategories();
 		$this->runs = $model->getRuns();
-		ToolbarHelper::title(Text::_($this->item ? 'COM_PUNGAMAIL_EDIT_DIGEST' : 'COM_PUNGAMAIL_NEW_DIGEST'), 'clock');
+		ToolbarHelper::title(Text::_((int) ($this->item->id ?? 0) > 0 ? 'COM_PUNGAMAIL_EDIT_DIGEST' : 'COM_PUNGAMAIL_NEW_DIGEST'), 'clock');
 		ToolbarHelper::apply('digest.save');
 		ToolbarHelper::save('digest.save2close');
 		ToolbarHelper::cancel('digest.cancel');

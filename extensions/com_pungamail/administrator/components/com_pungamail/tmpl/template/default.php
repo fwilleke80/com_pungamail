@@ -15,6 +15,7 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 
 $item = $this->item;
+$newContentOverride = trim((string) ($item->new_content_item_template ?? ''));
 $style = $this->styleOverrides;
 $styleFields = [
 	'content_width' => 'COM_PUNGAMAIL_STYLE_CONTENT_WIDTH',
@@ -22,6 +23,7 @@ $styleFields = [
 	'content_background' => 'COM_PUNGAMAIL_STYLE_CONTENT_BACKGROUND',
 	'text_color' => 'COM_PUNGAMAIL_STYLE_TEXT_COLOR',
 	'heading_color' => 'COM_PUNGAMAIL_STYLE_HEADING_COLOR',
+	'heading_background' => 'COM_PUNGAMAIL_STYLE_HEADING_BACKGROUND',
 	'link_color' => 'COM_PUNGAMAIL_STYLE_LINK_COLOR',
 	'font_family' => 'COM_PUNGAMAIL_STYLE_FONT_FAMILY',
 	'font_size' => 'COM_PUNGAMAIL_STYLE_FONT_SIZE',
@@ -31,6 +33,12 @@ $styleFields = [
 	'footer_color' => 'COM_PUNGAMAIL_STYLE_FOOTER_COLOR',
 ];
 ?>
+<style>
+.pm-new-content-override > summary { list-style: none; }
+.pm-new-content-override > summary::-webkit-details-marker { display: none; }
+.pm-new-content-override .pm-collapse-indicator { display: inline-block; transition: transform .15s ease; }
+.pm-new-content-override[open] .pm-collapse-indicator { transform: rotate(90deg); }
+</style>
 <div class="container-fluid">
 	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm">
 		<input type="hidden" name="id" value="<?php echo (int) ($item->id ?? 0); ?>">
@@ -57,6 +65,22 @@ $styleFields = [
 				</div>
 			</div>
 		</div>
+
+		<details class="card mb-3 pm-new-content-override">
+			<summary class="card-header d-flex align-items-center gap-2" style="cursor:pointer">
+				<span class="pm-collapse-indicator" aria-hidden="true">▶</span>
+				<strong><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_LAYOUT'); ?></strong>
+				<?php if ($newContentOverride !== '') : ?>
+					<span class="badge bg-info text-dark"><?php echo Text::_('COM_PUNGAMAIL_CUSTOM_OVERRIDE_ACTIVE'); ?></span>
+				<?php endif; ?>
+			</summary>
+			<div class="card-body">
+				<label class="form-label" for="pt-new-content-template"><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE'); ?></label>
+				<textarea class="form-control font-monospace" id="pt-new-content-template" name="new_content_item_template" rows="7" placeholder="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_INHERIT'), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($newContentOverride, ENT_QUOTES, 'UTF-8'); ?></textarea>
+				<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_OVERRIDE_DESC'); ?></div>
+				<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP'); ?></div>
+			</div>
+		</details>
 
 		<div class="card mb-3"><div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_MESSAGE_OPTIONS'); ?></strong></div><div class="card-body"><div class="row g-3"><div class="col-md-6"><label class="form-label" for="heading-mode"><?php echo Text::_('COM_PUNGAMAIL_MAIL_BODY_HEADING'); ?></label><select class="form-select" id="heading-mode" name="heading_mode"><option value="inherit" <?php echo (string) ($item->heading_mode ?? 'inherit') === 'inherit' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_INHERIT'); ?></option><option value="custom" <?php echo (string) ($item->heading_mode ?? '') === 'custom' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_CUSTOM'); ?></option><option value="site" <?php echo (string) ($item->heading_mode ?? '') === 'site' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_USE_SITE_NAME'); ?></option><option value="none" <?php echo (string) ($item->heading_mode ?? '') === 'none' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_NO_HEADING'); ?></option></select></div><div class="col-md-6"><label class="form-label" for="mail-heading"><?php echo Text::_('COM_PUNGAMAIL_CUSTOM_HEADING'); ?></label><input class="form-control" id="mail-heading" name="mail_heading" value="<?php echo htmlspecialchars((string) ($item->mail_heading ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div><div class="col-md-6"><label class="form-label" for="browser-view"><?php echo Text::_('COM_PUNGAMAIL_BROWSER_VIEW'); ?></label><select class="form-select" id="browser-view" name="browser_view"><option value="-1" <?php echo (int) ($item->browser_view ?? -1) === -1 ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_INHERIT'); ?></option><option value="1" <?php echo (int) ($item->browser_view ?? -1) === 1 ? 'selected' : ''; ?>><?php echo Text::_('JENABLED'); ?></option><option value="0" <?php echo (int) ($item->browser_view ?? -1) === 0 ? 'selected' : ''; ?>><?php echo Text::_('JDISABLED'); ?></option></select></div><div class="col-md-6"><label class="form-label" for="reply-mode"><?php echo Text::_('COM_PUNGAMAIL_REPLY_TO'); ?></label><select class="form-select" id="reply-mode" name="reply_to_mode"><option value="inherit" <?php echo (string) ($item->reply_to_mode ?? 'inherit') === 'inherit' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_INHERIT'); ?></option><option value="custom" <?php echo (string) ($item->reply_to_mode ?? '') === 'custom' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_CUSTOM'); ?></option><option value="none" <?php echo (string) ($item->reply_to_mode ?? '') === 'none' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_REPLY_TO_NONE'); ?></option></select></div><div class="col-md-6"><label class="form-label" for="reply-email"><?php echo Text::_('COM_PUNGAMAIL_REPLY_TO_EMAIL'); ?></label><input class="form-control" type="email" id="reply-email" name="reply_to_email" value="<?php echo htmlspecialchars((string) ($item->reply_to_email ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div><div class="col-md-6"><label class="form-label" for="reply-name"><?php echo Text::_('COM_PUNGAMAIL_REPLY_TO_NAME'); ?></label><input class="form-control" id="reply-name" name="reply_to_name" value="<?php echo htmlspecialchars((string) ($item->reply_to_name ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div></div></div></div>
 

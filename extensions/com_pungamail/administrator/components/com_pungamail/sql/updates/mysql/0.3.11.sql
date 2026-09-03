@@ -1,0 +1,1 @@
+-- Punga Mail 0.3.11 fixes Markdown rendering and administrator editor presentation only; no schema changes are required.

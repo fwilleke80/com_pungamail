@@ -52,9 +52,9 @@ final class AdministratorRoute
 	}
 
 	/** @return string */
-	public static function subscriber(): string
+	public static function subscriber(int $id = 0): string
 	{
-		return self::subscribers() . '&screen=subscriber';
+		return self::subscribers() . '&screen=subscriber' . ($id > 0 ? '&id=' . $id : '');
 	}
 
 	/** @return string */

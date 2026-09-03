@@ -108,6 +108,7 @@ final class NewsletterRepository
 		$replyToMode = in_array((string) ($options['reply_to_mode'] ?? 'inherit'), ['inherit', 'custom', 'none'], true) ? (string) ($options['reply_to_mode'] ?? 'inherit') : 'inherit';
 		$replyToEmail = trim((string) ($options['reply_to_email'] ?? ''));
 		$replyToName = trim((string) ($options['reply_to_name'] ?? ''));
+		$newContentItemTemplate = trim((string) ($options['new_content_item_template'] ?? ''));
 		$topicIds = (array) ($options['topic_ids'] ?? []);
 		$this->db->transactionStart();
 
@@ -119,6 +120,7 @@ final class NewsletterRepository
 					'title' => $title,
 					'subject' => $subject,
 					'body_markdown' => $bodyMarkdown,
+					'new_content_item_template' => $newContentItemTemplate !== '' ? $newContentItemTemplate : null,
 					'state' => 1,
 					'status' => self::STATUS_DRAFT,
 					'template_id' => $templateId,
@@ -169,6 +171,7 @@ final class NewsletterRepository
 					->set($this->db->quoteName('title') . ' = :title')
 					->set($this->db->quoteName('subject') . ' = :subject')
 					->set($this->db->quoteName('body_markdown') . ' = :body')
+					->set($this->db->quoteName('new_content_item_template') . ($newContentItemTemplate === '' ? ' = NULL' : ' = :newContentItemTemplate'))
 					->set($this->db->quoteName('template_id') . ($templateId === null ? ' = NULL' : ' = :templateId'))
 					->set($this->db->quoteName('style_overrides') . ($styleValue === null ? ' = NULL' : ' = :styleOverrides'))
 					->set($this->db->quoteName('custom_css') . ($cssValue === null ? ' = NULL' : ' = :customCss'))
@@ -191,6 +194,11 @@ final class NewsletterRepository
 					->bind(':replyToMode', $replyToMode)
 					->bind(':modified', $now)
 					->bind(':id', $id, ParameterType::INTEGER);
+
+				if ($newContentItemTemplate !== '')
+				{
+					$query->bind(':newContentItemTemplate', $newContentItemTemplate);
+				}
 
 				if ($templateId !== null)
 				{

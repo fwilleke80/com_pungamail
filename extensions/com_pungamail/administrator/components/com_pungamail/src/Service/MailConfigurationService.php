@@ -15,6 +15,8 @@ use Joomla\CMS\Uri\Uri;
 /** Resolves inherited message metadata independently from visual styles. */
 final class MailConfigurationService
 {
+	private const DEFAULT_NEW_CONTENT_ITEM_TEMPLATE = "### {title_link}\n\n{excerpt}\n\n{read_more}";
+
 	/** @param MailSettingsRepository $mailSettings Bounce/envelope settings. */
 	public function __construct(private readonly MailSettingsRepository $mailSettings)
 	{
@@ -56,6 +58,29 @@ final class MailConfigurationService
 		}
 
 		return str_replace('{site_name}', (string) Factory::getApplication()->get('sitename'), trim($value));
+	}
+
+	/** @return string */
+	public function newContentItemTemplate(?object $template, object $newsletter): string
+	{
+		$value = trim((string) ComponentHelper::getParams('com_pungamail')->get('new_content_item_template', self::DEFAULT_NEW_CONTENT_ITEM_TEMPLATE));
+
+		if ($value === '')
+		{
+			$value = self::DEFAULT_NEW_CONTENT_ITEM_TEMPLATE;
+		}
+
+		foreach ([$template, $newsletter] as $layer)
+		{
+			$override = $layer !== null ? trim((string) ($layer->new_content_item_template ?? '')) : '';
+
+			if ($override !== '')
+			{
+				$value = $override;
+			}
+		}
+
+		return $value;
 	}
 
 	/** @return bool */

@@ -98,6 +98,7 @@ namespace Punga\Component\PungaMail\Administrator\Service
 namespace
 {
 	use Punga\Component\PungaMail\Administrator\Service\ContentTypeService;
+	use Punga\Component\PungaMail\Administrator\Service\MailConfigurationService;
 	use Punga\Component\PungaMail\Administrator\Service\MailStyleService;
 	use Punga\Component\PungaMail\Administrator\Service\MailTextService;
 	use Punga\Component\PungaMail\Administrator\Service\MarkdownRenderer;
@@ -108,6 +109,7 @@ namespace
 	require_once $serviceRoot . 'MarkdownRenderer.php';
 	require_once $serviceRoot . 'ContentTypeService.php';
 	require_once $serviceRoot . 'MailStyleService.php';
+	require_once $serviceRoot . 'MailConfigurationService.php';
 	require_once $serviceRoot . 'MailTextService.php';
 	require_once $serviceRoot . 'TemplateRepository.php';
 	require_once $serviceRoot . 'NewsletterRenderer.php';
@@ -134,13 +136,17 @@ namespace
 	$templateReflection = new \ReflectionClass(TemplateRepository::class);
 	/** @var TemplateRepository $templates */
 	$templates = $templateReflection->newInstanceWithoutConstructor();
+	$mailConfigurationReflection = new \ReflectionClass(MailConfigurationService::class);
+	/** @var MailConfigurationService $mailConfiguration */
+	$mailConfiguration = $mailConfigurationReflection->newInstanceWithoutConstructor();
 
 	$renderer = new NewsletterRenderer(
 		new MarkdownRenderer(),
 		$contentTypes,
 		new MailStyleService(),
 		$templates,
-		new MailTextService()
+		new MailTextService(),
+		$mailConfiguration
 	);
 	$newsletter = (object) [
 		'subject' => 'Renderer test for {recipient}',
@@ -192,6 +198,20 @@ namespace
 		failNewsletterRendererTest('Recipient placeholder was resolved before recipient-specific delivery.');
 	}
 
+	$customNewsletter = clone $newsletter;
+	$customNewsletter->new_content_item_template = "## {title_link}\n\nSource: {content_type}\n\n{excerpt}\n\n{read_more}";
+	$customResult = $renderer->render($customNewsletter, $items);
+
+	if (!str_contains($customResult['html'], '<h2') || !str_contains($customResult['html'], 'com_example.item'))
+	{
+		failNewsletterRendererTest('Custom selected-content Markdown layout was not applied.');
+	}
+
+	if (!str_contains($customResult['html'], 'Read more') || !str_contains($customResult['html'], 'https://site.example/item/42'))
+	{
+		failNewsletterRendererTest('Selected-content link placeholders were not rendered.');
+	}
+
 	$personalized = $renderer->personalize(
 		$result['subject'],
 		$result['html'],
@@ -212,6 +232,37 @@ namespace
 	if (!str_contains($personalized['text'], 'Hello Alice & Bob.') || str_contains($personalized['text'], NewsletterRenderer::RECIPIENT_PLACEHOLDER))
 	{
 		failNewsletterRendererTest('Recipient placeholder was not resolved in plain-text output.');
+	}
+
+
+	$pluginNewsletter = clone $newsletter;
+	$pluginNewsletter->style_overrides = json_encode(['heading_background' => '#ffeecc']);
+	$pluginItems = [
+		(object) [
+			'source_key' => 'com_example.item',
+			'source_item_id' => '43',
+			'title_override' => '',
+			'excerpt_override' => '',
+			'snapshot_title' => 'Plugin excerpt item',
+			'snapshot_excerpt' => 'Before {snippet alias="wichtig"} after {1, 2, 3}. {box}Inside{/box}',
+			'snapshot_url' => 'https://site.example/item/43',
+		],
+	];
+	$pluginResult = $renderer->render($pluginNewsletter, $pluginItems);
+
+	if (str_contains($pluginResult['html'], '{snippet') || str_contains($pluginResult['html'], '{box}') || str_contains($pluginResult['html'], '{/box}'))
+	{
+		failNewsletterRendererTest('Unresolved Joomla-style content-plugin commands leaked into the excerpt.');
+	}
+
+	if (!str_contains($pluginResult['html'], 'Before after {1, 2, 3}. Inside'))
+	{
+		failNewsletterRendererTest('Excerpt plugin sanitization removed ordinary brace text or readable paired-plugin content.');
+	}
+
+	if (!str_contains($pluginResult['html'], 'width:100%') || !str_contains($pluginResult['html'], 'background:#ffeecc'))
+	{
+		failNewsletterRendererTest('Mail heading is not a full-width block with the configured background colour.');
 	}
 
 	fwrite(STDOUT, "[OK] Newsletter renderer new-content/recipient regression test passed\n");

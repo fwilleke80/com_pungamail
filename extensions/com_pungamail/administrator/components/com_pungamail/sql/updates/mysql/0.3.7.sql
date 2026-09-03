@@ -1,0 +1,2 @@
+-- Punga Mail 0.3.7 improves Channel UX and fixes subscription, ordering, subscriber editing, and validation flow.
+-- No schema changes are required.

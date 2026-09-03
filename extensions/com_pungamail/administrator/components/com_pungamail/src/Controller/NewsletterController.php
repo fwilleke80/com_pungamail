@@ -103,6 +103,8 @@ final class NewsletterController extends BaseController
 			$data['reply_to_mode'] = (string) ($template->reply_to_mode ?? 'inherit');
 			$data['reply_to_email'] = (string) ($template->reply_to_email ?? '');
 			$data['reply_to_name'] = (string) ($template->reply_to_name ?? '');
+			// Keep this empty so the newsletter inherits the selected Template's item layout.
+			$data['new_content_item_template'] = '';
 
 			if ($data['title'] === '')
 			{
@@ -334,6 +336,7 @@ final class NewsletterController extends BaseController
 				'reply_to_mode' => (string) ($newsletter->reply_to_mode ?? 'inherit'),
 				'reply_to_email' => (string) ($newsletter->reply_to_email ?? ''),
 				'reply_to_name' => (string) ($newsletter->reply_to_name ?? ''),
+				'new_content_item_template' => (string) ($newsletter->new_content_item_template ?? ''),
 			]
 		);
 		$this->setRedirect(Route::_(AdministratorRoute::newsletter($newId), false), Text::_('COM_PUNGAMAIL_NEWSLETTER_DUPLICATED'));
@@ -415,6 +418,7 @@ final class NewsletterController extends BaseController
 			'reply_to_mode' => $input->post->getCmd('reply_to_mode', 'inherit'),
 			'reply_to_email' => trim($input->post->getString('reply_to_email')),
 			'reply_to_name' => trim($input->post->getString('reply_to_name')),
+			'new_content_item_template' => trim((string) $input->post->get('new_content_item_template', '', 'raw')),
 		];
 	}
 
@@ -460,6 +464,7 @@ final class NewsletterController extends BaseController
 				'reply_to_mode' => $data['reply_to_mode'],
 				'reply_to_email' => $data['reply_to_email'],
 				'reply_to_name' => $data['reply_to_name'],
+				'new_content_item_template' => $data['new_content_item_template'],
 			]
 		);
 		ServiceFactory::checkouts()->checkout('newsletter', $id, $userId);

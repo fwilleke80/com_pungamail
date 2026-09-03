@@ -9,7 +9,17 @@ use Punga\Component\PungaMail\Administrator\Service\NewsletterRenderer;
 
 $newsletter = $this->data['newsletter'];
 $rendered = $this->data['rendered'];
-$previewHtml = str_replace('href="' . NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER . '"', 'aria-disabled="true" title="' . htmlspecialchars(Text::_('COM_PUNGAMAIL_PREVIEW_UNSUBSCRIBE_DISABLED'), ENT_QUOTES, 'UTF-8') . '"', (string) $rendered['html']);
+$previewHtml = str_replace(
+	[
+		'href="' . NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER . '"',
+		'href="' . NewsletterRenderer::BROWSER_PLACEHOLDER . '"',
+	],
+	[
+		'aria-disabled="true" title="' . htmlspecialchars(Text::_('COM_PUNGAMAIL_PREVIEW_UNSUBSCRIBE_DISABLED'), ENT_QUOTES, 'UTF-8') . '"',
+		'aria-disabled="true" title="' . htmlspecialchars(Text::_('COM_PUNGAMAIL_PREVIEW_BROWSER_DISABLED'), ENT_QUOTES, 'UTF-8') . '"',
+	],
+	(string) $rendered['html']
+);
 $previewText = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, '[' . Text::_('COM_PUNGAMAIL_PERSONAL_UNSUBSCRIBE_URL') . ']', (string) $rendered['text']);
 ?>
 <div class="container-fluid">

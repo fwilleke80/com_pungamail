@@ -1,0 +1,1 @@
+-- Punga Mail 0.3.10 changes administrator editor presentation only; no schema changes are required.

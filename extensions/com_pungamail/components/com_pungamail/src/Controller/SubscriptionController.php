@@ -40,7 +40,7 @@ final class SubscriptionController extends BaseController
 		$app = Factory::getApplication();
 		$input = $app->getInput();
 		$email = trim($input->post->getString('email'));
-		$availableTopics = $this->moduleTopics($input->post->getInt('module_id'));
+		$availableTopics = $this->moduleTopics((int) $input->post->getInt('module_id', 0));
 		$visibleTopicIds = array_map(static fn (object $topic): int => (int) $topic->id, $availableTopics);
 		$selectedTopicIds = array_values(array_intersect($visibleTopicIds, array_map('intval', (array) $input->post->get('topic_ids', [], 'array'))));
 		$honeypot = trim($input->post->getString('website'));
@@ -114,7 +114,7 @@ final class SubscriptionController extends BaseController
 		$expires = (new Date('+' . $hours . ' hours', 'UTC'))->toSql();
 		$language = $app->getLanguage()->getTag();
 		$subscriberId = $repo->storePendingExternal($email, $tokenData['hash'], $expires, $language);
-		ServiceFactory::topics()->stageInitialTopics($subscriberId, $selectedTopicIds);
+		ServiceFactory::topics()->stageInitialTopics($subscriberId, $visibleTopicIds, $selectedTopicIds);
 
 		try
 		{
@@ -229,7 +229,7 @@ final class SubscriptionController extends BaseController
 		$this->setRedirect($this->safeReturn(), Text::_($subscribed ? 'COM_PUNGAMAIL_PREFERENCE_ENABLED' : 'COM_PUNGAMAIL_PREFERENCE_DISABLED'));
 	}
 
-	/** Updates only the topics exposed by the current module. */
+	/** Updates only the topics exposed by the current module or menu page. */
 	public function userTopics(): void
 	{
 		$this->requireFormToken();
@@ -241,7 +241,7 @@ final class SubscriptionController extends BaseController
 			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_AUTHENTICATION_REQUIRED'), 403);
 		}
 
-		$topics = $this->moduleTopics($app->getInput()->post->getInt('module_id'));
+		$topics = $this->moduleTopics((int) $app->getInput()->post->getInt('module_id', 0));
 		$visibleIds = array_map(static fn (object $topic): int => (int) $topic->id, $topics);
 		$selectedIds = array_values(array_intersect($visibleIds, array_map('intval', (array) $app->getInput()->post->get('topic_ids', [], 'array'))));
 		$repo = ServiceFactory::subscribers();
@@ -327,7 +327,9 @@ final class SubscriptionController extends BaseController
 	{
 		if ($moduleId <= 0)
 		{
-			return [];
+			// The standalone subscription menu page is not tied to a module and
+			// therefore exposes all published topics.
+			return ServiceFactory::topics()->active();
 		}
 
 		$db = ServiceFactory::database();

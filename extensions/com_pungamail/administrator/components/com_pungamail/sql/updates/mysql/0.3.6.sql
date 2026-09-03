@@ -1,0 +1,1 @@
+-- Punga Mail 0.3.6 improves terminology and audience explanations without schema changes.

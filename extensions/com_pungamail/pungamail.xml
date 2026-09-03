@@ -2,8 +2,8 @@
 <extension type="component" method="upgrade">
 	<name>COM_PUNGAMAIL</name>
 	<element>com_pungamail</element>
-	<version>0.3.4</version>
-	<creationDate>2026-09-02</creationDate>
+	<version>0.3.12</version>
+	<creationDate>2026-09-04</creationDate>
 	<author>Punga</author>
 	<license>MIT License</license>
 	<description>COM_PUNGAMAIL_XML_DESCRIPTION</description>
@@ -19,8 +19,8 @@
 			<menu view="dashboard">COM_PUNGAMAIL_SUBMENU_DASHBOARD</menu>
 			<menu view="newsletters">COM_PUNGAMAIL_SUBMENU_NEWSLETTERS</menu>
 			<menu view="templates">COM_PUNGAMAIL_SUBMENU_TEMPLATES</menu>
-			<menu view="subscribers">COM_PUNGAMAIL_SUBMENU_SUBSCRIBERS</menu>
 			<menu view="topics">COM_PUNGAMAIL_SUBMENU_TOPICS</menu>
+			<menu view="subscribers">COM_PUNGAMAIL_SUBMENU_SUBSCRIBERS</menu>
 			<menu view="digests">COM_PUNGAMAIL_SUBMENU_DIGESTS</menu>
 			<menu view="delivery">COM_PUNGAMAIL_SUBMENU_DELIVERY</menu>
 			<menu view="import">COM_PUNGAMAIL_SUBMENU_IMPORT_EXPORT</menu>

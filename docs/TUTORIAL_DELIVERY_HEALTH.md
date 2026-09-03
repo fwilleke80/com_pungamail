@@ -35,7 +35,7 @@ If it fails, correct Joomla/Punga Mail sender configuration first. Punga Mail do
 Go to **System → Scheduled Tasks**:
 
 1. select **New**;
-2. choose **Punga Mail — Process send queue**;
+2. choose **Punga Mail — Send pending newsletters**;
 3. set a frequent schedule, commonly every 1–5 minutes;
 4. enable and save it.
 
@@ -103,7 +103,7 @@ The threshold protects list quality without permanently blocking an address afte
 Under Joomla Scheduled Tasks:
 
 1. select **New**;
-2. choose **Punga Mail — Process bounce mailbox**;
+2. choose **Punga Mail — Check returned mail**;
 3. run it every 15–60 minutes depending on volume;
 4. enable and save it.
 
@@ -196,7 +196,7 @@ Punga Mail does not modify DNS automatically.
 - Recent hard/soft bounces are plausible, not a parser/provider anomaly.
 - Suppressed addresses remain excluded in Preflight.
 - Batch size/retry values match current provider limits.
-- Automatic digests use the normal queue and are not empty by default.
+- Automatic newsletters use the normal sending system and are not empty by default.
 
 For all settings and statuses, see [Punga Mail Administrator Guide](USER_GUIDE.md).
 

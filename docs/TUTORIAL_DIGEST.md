@@ -1,8 +1,8 @@
-# Tutorial: Create an Automatic Digest
+# Tutorial: Create an Automatic Newsletter
 
 This tutorial creates a recurring newsletter from new Joomla content. Begin with **Create draft** mode; switch to automatic sending only after reviewing several successful runs.
 
-## What a digest does
+## What an automatic newsletter does
 
 A digest definition periodically:
 
@@ -13,7 +13,7 @@ A digest definition periodically:
 5. either leaves it as a Draft or places it into the normal send queue;
 6. records the outcome in digest history.
 
-The recurring Joomla task wakes Punga Mail up. Each digest's own **Next run** and **Recurrence minutes** determine whether it is actually due.
+The recurring Joomla task wakes Punga Mail up. Each Automatic Newsletter’s own **Next run** and **Create every … days** settings determine whether it is actually due.
 
 ## 1. Prepare the template
 
@@ -37,7 +37,7 @@ Preview it, keeping in mind that no real digest items are selected in a standalo
 
 ## 2. Prepare the audience
 
-Create and publish any Punga Mail topics under **Topics / Lists**. Confirm that subscribers have joined them through the module, or import the memberships.
+Create and publish any Punga Mail Channels under **Channels**. Confirm that subscribers have chosen them through the module, or import the memberships.
 
 Decide whether the digest should target:
 
@@ -46,11 +46,11 @@ Decide whether the digest should target:
 - selected Joomla groups;
 - the union of multiple sources.
 
-For a topic-only digest, plan to clear **All confirmed subscribers** in the digest editor.
+For a topic-only digest, plan to clear **All globally subscribed recipients, regardless of topic** in the digest editor.
 
 ## 3. Create the digest
 
-Go to **Components → Punga Mail → Automatic Digests** and select **New**.
+Go to **Components → Punga Mail → Automatic Newsletters** and select **New**.
 
 Under **Basics**:
 
@@ -91,11 +91,11 @@ The maximum matching set is intentionally generous; the access and cutoff rules 
 
 Use **Since last** for a normal “what is new” digest. After a successful run, the next run starts from the preceding successful cutoff. This prevents routine repetition.
 
-On the first run, Punga Mail looks back one recurrence interval. If a weekly digest's first run is scheduled for Friday, it normally finds the previous week's matching content.
+On the first run, Punga Mail looks back one recurrence interval. If a weekly Automatic Newsletter’s first run is scheduled for Friday, it normally finds the previous week’s matching content. If you instead choose **Content from a recent time period**, the separate **Look back … days** field appears and controls that fixed window.
 
 ### Rolling
 
-Use **Rolling** when each digest should always cover a fixed recent window, for example “the last 48 hours.” Set **Rolling hours** accordingly.
+Use **Content from a recent time period** when each Automatic Newsletter should always cover a fixed recent window, for example “the last 2 days.” The **Look back … days** field appears only in this mode.
 
 Overlapping rolling windows can include the same item more than once. Choose this only when repetition is intentional.
 
@@ -104,17 +104,17 @@ Overlapping rolling windows can include the same item more than once. Choose thi
 Enter:
 
 - **Next run** in the Joomla site timezone shown on the form;
-- **Recurrence minutes**, minimum 15.
+- **Create every … days**, minimum 1 day.
 
 Useful intervals include:
 
-| Schedule | Minutes |
+| Schedule | Days |
 | --- | ---: |
-| Hourly | 60 |
-| Daily | 1440 |
-| Weekly | 10080 |
+| Daily | 1 |
+| Weekly | 7 |
+| Roughly monthly | 30 |
 
-The task's own frequency should be shorter than the digest recurrence. Running the task every 5 or 15 minutes is normally enough.
+The task’s own frequency should be shorter than the Automatic Newsletter recurrence. Running the task every 5 or 15 minutes is normally enough.
 
 ## 7. Keep Create draft selected
 
@@ -128,7 +128,7 @@ The alternative **Create draft** creates a draft even with no matching content. 
 
 Use the same audience rules as a normal newsletter:
 
-- select **All confirmed subscribers** only for a site-wide digest;
+- select **All globally subscribed recipients, regardless of topic** only for a site-wide digest;
 - clear it for topic-only targeting;
 - select one or more topics as an either/or group;
 - select Joomla groups only when their eligible members should be added.
@@ -164,13 +164,13 @@ Only enabled definitions are processed. Saving a digest does not run it immediat
 Go to **System → Scheduled Tasks**:
 
 1. select **New**;
-2. choose **Punga Mail — Generate automatic digests**;
+2. choose **Punga Mail — Create automatic newsletters**;
 3. configure it to run every 5–15 minutes;
 4. enable and save it.
 
 The Punga Mail Dashboard warns when an enabled digest exists without this task.
 
-Draft-mode digests need only this task. Automatic-send digests also need **Punga Mail — Process send queue**.
+Draft-mode digests need only this task. Automatic-send digests also need **Punga Mail — Send pending newsletters**.
 
 ## 12. Review draft runs
 

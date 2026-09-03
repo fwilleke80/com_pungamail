@@ -9,7 +9,7 @@ Punga Mail treats these as separate choices:
 - **Receive newsletters globally** — the address is allowed to receive Punga Mail;
 - **Topic preferences** — the kinds of newsletters the subscriber wants.
 
-Removing one topic does not unsubscribe the address from every topic. **Unsubscribe completely** is the global action.
+Removing one topic does not turn newsletter reception off. **Stop all newsletters** is the global action.
 
 ## 1. Plan a small topic set
 
@@ -25,7 +25,7 @@ Topics are not Joomla user groups. Joomla groups describe website accounts and a
 
 ## 2. Create the topics
 
-Go to **Components → Punga Mail → Topics / Lists** and select **New**.
+Go to **Components → Punga Mail → Channels** and select **New**.
 
 For each topic, enter:
 
@@ -52,7 +52,9 @@ Go to Joomla's Menu manager:
 
 It may be placed in a hidden menu if you do not want a visible navigation link.
 
-This item provides the frontend Punga Mail destination and gives Joomla a stable SEF route for subscription, confirmation, unsubscribe, status, and browser-view links. Give it Public access so ordinary email recipients can use those links.
+This item provides a complete frontend subscription destination and gives Joomla a stable SEF route for subscription, confirmation, unsubscribe, status, and browser-view links. Give it Public access so ordinary email recipients can use those links.
+
+The page always offers all published topics. Guests choose topics while requesting email confirmation; logged-in users see their current choices and save them independently of the separate global Subscribe/Unsubscribe action. A signup module is therefore optional when this standalone page is sufficient for your site.
 
 ## 4. Publish the signup module
 
@@ -101,7 +103,7 @@ You should see:
 - one named topic, several checkboxes, or no choices if no topics currently exist;
 - the Subscribe button.
 
-Submit a test address and topic choices. Punga Mail sends a double-opt-in message; nothing becomes active until the recipient selects the valid confirmation link.
+Submit a test address and topic choices. Punga Mail sends a confirmation email; nothing becomes active until the recipient selects the confirmation link.
 
 Confirm that:
 
@@ -119,16 +121,16 @@ Sign in with a Joomla user and return to the module.
 The module uses the account email and shows:
 
 - the email address;
-- topic preferences for topics exposed by this module;
+- newsletter choices for topics exposed by this module;
 - the global subscription state;
-- a clear global Subscribe or **Unsubscribe completely** action.
+- a clear **Start receiving newsletters** or **Stop all newsletters** master action.
 
-With one visible topic, use the direct topic button. With several topics, check/uncheck choices and select **Save topic preferences**.
+With one visible topic, use the direct topic button. With several topics, check/uncheck choices and select **Save newsletter choices**.
 
 Then test the global action separately:
 
 - **Unsubscribe from topic** or unchecking one topic leaves other memberships and the global state intact.
-- **Unsubscribe completely** globally opts out the address and prevents all future newsletters, including Joomla-group targeting.
+- **Stop all newsletters** globally opts out the address and prevents all future newsletters, including Joomla-group targeting.
 
 ## 8. Test the Joomla profile fields
 
@@ -136,16 +138,16 @@ The Punga Mail user plugin adds a **Newsletter** fieldset to Joomla registration
 
 It contains:
 
-- **Receive newsletter: Yes/No** for the global preference;
-- **Newsletter topics** for all currently published topic choices.
+- **Receive newsletters: Yes/No** for the master permission;
+- **Channels** for all currently published Channel choices.
 
-Sign in as a test user, open the Joomla profile, enable Receive newsletter, select one or more topics, and save. Reopen the profile and confirm that the choices remain selected. The same memberships should also appear selected in a Punga Mail Signup module that exposes those topics.
+Sign in as a test user, open the Joomla profile, enable Receive newsletters, select one or more topics, and save. Reopen the profile and confirm that the choices remain selected. The same memberships should also appear selected in a Punga Mail Signup module that exposes those topics.
 
-Now set Receive newsletter to No and save. The topic choices remain stored, but the global unsubscribe prevents every delivery. Setting it to Yes later restores global eligibility without forcing the user to rebuild their topic choices.
+Now set Receive newsletters to No and save. The topic choices remain stored, but the global unsubscribe prevents every delivery. Setting it to Yes later restores global eligibility without forcing the user to rebuild their topic choices.
 
 Clearing a topic marks only that published topic unsubscribed. Unpublished topic relationships are not shown or changed by the form.
 
-Do not present Receive newsletter as though Yes automatically chooses every topic. A user can be globally subscribed and belong to zero topics; that user can still receive a newsletter deliberately sent to All confirmed subscribers or an eligible Joomla group.
+Do not present Receive newsletters as though Yes automatically chooses every topic. A user can have newsletter reception enabled and belong to zero topics; that user can still receive a newsletter deliberately sent to All globally subscribed recipients, regardless of topic, or an eligible Joomla group.
 
 The signup module is therefore optional for registered-user topic management, but remains necessary for convenient inline preferences and email-only public signup.
 
@@ -153,13 +155,13 @@ The signup module is therefore optional for registered-user topic management, bu
 
 When composing a newsletter for Events only:
 
-1. clear **All confirmed subscribers**;
+1. clear **All globally subscribed recipients, regardless of topic**;
 2. select **Events** under Topics;
 3. leave unrelated Joomla groups unselected;
 4. run Preflight;
 5. inspect included and excluded recipients.
 
-If All confirmed subscribers stays selected, the mailing is not restricted to Events.
+If All globally subscribed recipients remains selected, the mailing is not restricted to Events.
 
 ## 10. Common layouts
 
@@ -187,7 +189,7 @@ If All confirmed subscribers stays selected, the mailing is not restricted to Ev
 - Do not globally reactivate an unsubscribed or suppressed address without consent.
 - Use topic unsubscribe for preference changes and global unsubscribe only when the person wants all Punga Mail stopped.
 - Keep aliases stable for CSV import/export.
-- Test both logged-out double opt-in and logged-in preference management.
+- Test both logged-out email confirmation and logged-in preference management.
 - Use Preflight to verify real audience results before sending.
 
 For the complete reference, see [Punga Mail Administrator Guide](USER_GUIDE.md).
