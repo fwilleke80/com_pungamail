@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS `#__pungamail_preference_request_topics`;
 DROP TABLE IF EXISTS `#__pungamail_preference_requests`;
 DROP TABLE IF EXISTS `#__pungamail_newsletter_topics`;
 DROP TABLE IF EXISTS `#__pungamail_subscriber_topics`;
+DROP TABLE IF EXISTS `#__pungamail_topic_groups`;
 DROP TABLE IF EXISTS `#__pungamail_topics`;
 DROP TABLE IF EXISTS `#__pungamail_mail_settings`;
 DROP TABLE IF EXISTS `#__pungamail_newsletter_groups`;

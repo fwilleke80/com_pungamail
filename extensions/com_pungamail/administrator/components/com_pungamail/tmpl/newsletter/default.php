@@ -6,6 +6,7 @@ defined('_JEXEC') or die;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
+use Punga\Component\PungaMail\Administrator\Helper\MarkdownEditorHelper;
 use Punga\Component\PungaMail\Administrator\Service\NewsletterRenderer;
 use Punga\Component\PungaMail\Administrator\Service\NewsletterRepository;
 
@@ -140,7 +141,7 @@ $styleFields = [
 						<div id="pm-audience-all-warning" class="alert alert-warning small" hidden><?php echo Text::_('COM_PUNGAMAIL_AUDIENCE_ALL_TOPICS_WARNING'); ?></div>
 						<div class="form-check mb-3">
 							<input type="hidden" name="include_subscribers" value="0">
-							<input class="form-check-input pm-audience-all" type="checkbox" name="include_subscribers" value="1" id="include-subscribers" <?php echo $item === null || (int) $item->include_subscribers === 1 ? 'checked' : ''; ?>>
+							<input class="form-check-input pm-audience-all" type="checkbox" name="include_subscribers" value="1" id="include-subscribers" <?php echo $item !== null && (int) $item->include_subscribers === 1 ? 'checked' : ''; ?>>
 							<label class="form-check-label fw-semibold" for="include-subscribers"><?php echo Text::_('COM_PUNGAMAIL_ALL_CONFIRMED_SUBSCRIBERS'); ?></label>
 							<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_ALL_SUBSCRIBERS_HELP'); ?></div>
 						</div>
@@ -190,11 +191,14 @@ $styleFields = [
 					</div>
 					<div>
 						<label class="form-label" for="pm-body"><?php echo Text::_('COM_PUNGAMAIL_NEWSLETTER_BODY_MARKDOWN'); ?></label>
-						<textarea class="form-control font-monospace" id="pm-body" name="body_markdown" rows="18"><?php echo htmlspecialchars((string) ($item->body_markdown ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_MARKDOWN_HELP'); ?></div>
-						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_NEWSLETTER_PLACEHOLDER_HELP'); ?></div>
-						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_MARKDOWN_IMAGE_HELP'); ?></div>
-						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_MARKDOWN_TABLE_HELP'); ?></div>
+						<?php echo MarkdownEditorHelper::render(
+							'body_markdown',
+							'pm-body',
+							(string) ($item->body_markdown ?? ''),
+							18,
+							['{recipient}', '{new_content}'],
+							[Text::_('COM_PUNGAMAIL_NEWSLETTER_PLACEHOLDER_HELP'), Text::_('COM_PUNGAMAIL_MARKDOWN_HELP'), Text::_('COM_PUNGAMAIL_MARKDOWN_IMAGE_HELP'), Text::_('COM_PUNGAMAIL_MARKDOWN_TABLE_HELP')]
+						); ?>
 					</div>
 				</div>
 			</div>
@@ -209,9 +213,14 @@ $styleFields = [
 				</summary>
 				<div class="card-body">
 					<label class="form-label" for="pm-new-content-template"><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE'); ?></label>
-					<textarea class="form-control font-monospace" id="pm-new-content-template" name="new_content_item_template" rows="7" placeholder="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_INHERIT'), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($newContentOverride, ENT_QUOTES, 'UTF-8'); ?></textarea>
-					<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_OVERRIDE_DESC'); ?></div>
-					<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP'); ?></div>
+					<?php echo MarkdownEditorHelper::render(
+						'new_content_item_template',
+						'pm-new-content-template',
+						$newContentOverride,
+						7,
+						['{title}', '{title_link}', '{publish_date}', '{excerpt}', '{read_more}', '{url}', '{content_type}'],
+						[Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_OVERRIDE_DESC'), Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP')]
+					); ?>
 				</div>
 			</details>
 		</div>

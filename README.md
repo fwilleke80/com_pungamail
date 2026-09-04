@@ -2,13 +2,13 @@
 
 Punga Mail is a focused, self-hosted newsletter extension for **Joomla! 6**.
 
-Version: **0.3.13**
+Version: **0.4.0**
 
 Its core workflow is deliberately small:
 
 **subscribe → choose Channels → confirm your email → compose or automate → check → schedule or send → handle delivery problems**
 
-Version 0.3.13 improves Automatic Newsletter scheduling with day/week/calendar-month intervals, adds translated content-source labels and clearer reminder guidance, makes selected content titles open their frontend pages, and gives the Template editor the same compact tabbed structure as the Newsletter editor.
+Version 0.4.0 is a larger authoring and operations update: Punga Mail now has a Joomla/CodeMirror-based Markdown editor with formatting controls and previews, an actionable Dashboard, optional review notifications for automatically created drafts, Channel eligibility by Joomla account/group, safer empty-by-default Newsletter audiences, and a corrected multi-Channel CSV export.
 
 Automatic newsletters enforce website visibility before generation. Punga Mail resolves the intended recipients and includes a content item only when every recipient would normally be authorized to view it through Joomla access levels and, where applicable, category access. This conservative shared-content rule prevents restricted website content from leaking through email.
 
@@ -39,11 +39,12 @@ Punga Mail uses Joomla's users, user groups, content-type registry, routing, mai
 - English and German UI.
 - Administrator **Subscribers → New** can directly add an external email recipient or enable the newsletter preference for an existing Joomla user.
 - Existing subscriber addresses open an administrator editor for global status, external display name, delivery health, and memberships in all non-trashed Channels; unpublished Channels are clearly marked.
-- The standalone Newsletter menu page offers all published Channels to guests and logged-in users without requiring a signup module.
+- Channels can be available to everyone, registered Joomla users, or selected Joomla user groups. Eligibility is enforced on signup/profile surfaces and rechecked at delivery time.
+- The standalone Newsletter menu page offers every published Channel the current visitor is eligible to subscribe to without requiring a signup module.
 
 ### Newsletter authoring
 
-- Markdown body with headings, emphasis, lists, links, images and GitHub-style pipe tables.
+- Markdown body with headings, emphasis, lists, links, images and GitHub-style pipe tables. The Punga Mail Markdown editor builds on Joomla CodeMirror when available, adds formatting and placeholder controls, and previews through Punga Mail’s own renderer.
 - HTML and plain-text alternatives are generated from the same source.
 - Markdown images can reference HTTP(S), root-relative or site-relative images hosted on the Joomla site.
 - `{new_content}` inserts the selected content items exactly where the author places it; Punga Mail does not append content automatically or generate a heading.

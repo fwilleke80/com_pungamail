@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS `#__pungamail_newsletters` (
   `reply_to_mode` VARCHAR(12) NOT NULL DEFAULT 'inherit',
   `reply_to_email` VARCHAR(320) NULL,
   `reply_to_name` VARCHAR(255) NULL,
-  `include_subscribers` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  `include_subscribers` TINYINT UNSIGNED NOT NULL DEFAULT 0,
   `content_cutoff_start` DATETIME NULL,
   `content_cutoff_end` DATETIME NULL,
   `snapshot_subject` VARCHAR(255) NULL,
@@ -149,6 +149,7 @@ CREATE TABLE IF NOT EXISTS `#__pungamail_topics` (
   `title` VARCHAR(255) NOT NULL,
   `alias` VARCHAR(191) NOT NULL,
   `description` TEXT NULL,
+  `audience_mode` VARCHAR(16) NOT NULL DEFAULT 'everyone',
   `state` TINYINT NOT NULL DEFAULT 1,
   `ordering` INT NOT NULL DEFAULT 0,
   `created` DATETIME NOT NULL,
@@ -161,6 +162,13 @@ CREATE TABLE IF NOT EXISTS `#__pungamail_topics` (
   KEY `idx_pungamail_topic_state_order` (`state`, `ordering`),
   KEY `idx_pungamail_topic_title` (`title`),
   KEY `idx_pungamail_topic_checkout` (`checked_out`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `#__pungamail_topic_groups` (
+  `topic_id` BIGINT UNSIGNED NOT NULL,
+  `group_id` INT UNSIGNED NOT NULL,
+  PRIMARY KEY (`topic_id`, `group_id`),
+  KEY `idx_pungamail_topic_group` (`group_id`, `topic_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `#__pungamail_subscriber_topics` (

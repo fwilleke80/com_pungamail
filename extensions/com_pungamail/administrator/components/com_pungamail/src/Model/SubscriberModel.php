@@ -70,7 +70,10 @@ final class SubscriberModel extends FormModel
 	/** @return array<int,object> */
 	public function getTopics(): array
 	{
-		return ServiceFactory::topics()->availableForAdministration();
+		$item = $this->getItem();
+		$userId = $item !== null && $item->user_id !== null ? (int) $item->user_id : null;
+
+		return ServiceFactory::topics()->annotateEligibility(ServiceFactory::topics()->availableForAdministration(), $userId);
 	}
 
 	/** @return array<int,int> */

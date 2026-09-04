@@ -85,7 +85,9 @@ final class TopicController extends BaseController
 			$input->post->getString('title'),
 			$input->post->getString('alias'),
 			(string) $input->post->get('description', '', 'raw'),
-			$userId
+			$userId,
+			$input->post->getCmd('audience_mode', 'everyone'),
+			(array) $input->post->get('group_ids', [], 'array')
 		);
 		ServiceFactory::checkouts()->checkout('topic', $id, $userId);
 

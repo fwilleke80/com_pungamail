@@ -55,12 +55,21 @@ use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 					<p class="form-text"><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_TOPICS_HELP'); ?></p>
 					<?php foreach ($this->topics as $topic) : ?>
 						<div class="form-check mb-2">
-							<input class="form-check-input" type="checkbox" name="jform[topic_ids][]" value="<?php echo (int) $topic->id; ?>" id="subscriber-topic-<?php echo (int) $topic->id; ?>" <?php echo in_array((int) $topic->id, $this->selectedTopicIds, true) ? 'checked' : ''; ?>>
+							<input class="form-check-input" type="checkbox" name="jform[topic_ids][]" value="<?php echo (int) $topic->id; ?>" id="subscriber-topic-<?php echo (int) $topic->id; ?>" <?php echo in_array((int) $topic->id, $this->selectedTopicIds, true) ? 'checked' : ''; ?> <?php echo !($topic->eligible ?? true) ? 'disabled' : ''; ?>>
 							<label class="form-check-label" for="subscriber-topic-<?php echo (int) $topic->id; ?>">
 								<?php echo htmlspecialchars((string) $topic->title, ENT_QUOTES, 'UTF-8'); ?>
 								<?php if ((int) $topic->state !== 1) : ?><span class="badge bg-secondary ms-1"><?php echo Text::_('JUNPUBLISHED'); ?></span><?php endif; ?>
 							</label>
 							<?php if (trim((string) $topic->description) !== '') : ?><div class="form-text"><?php echo htmlspecialchars((string) $topic->description, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+							<?php if (!($topic->eligible ?? true)) : ?>
+								<div class="form-text text-warning">
+								<?php if ((string) ($topic->audience_mode ?? '') === 'groups') : ?>
+									<?php echo Text::sprintf('COM_PUNGAMAIL_CHANNEL_REQUIRES_GROUPS', htmlspecialchars(implode(', ', (array) ($topic->audience_group_titles ?? [])), ENT_QUOTES, 'UTF-8')); ?>
+								<?php else : ?>
+									<?php echo Text::_('COM_PUNGAMAIL_CHANNEL_REQUIRES_REGISTERED'); ?>
+								<?php endif; ?>
+								</div>
+							<?php endif; ?>
 						</div>
 					<?php endforeach; ?>
 				</fieldset>

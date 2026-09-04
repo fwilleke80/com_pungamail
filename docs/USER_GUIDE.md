@@ -81,26 +81,13 @@ Create the digest, scheduled-send, and reminder tasks only if you use those feat
 
 ## Dashboard
 
-Open **Components → Punga Mail** to reach the Dashboard.
+Open **Components → Punga Mail** to reach the Dashboard. The 0.4 Dashboard is designed as a control centre rather than a database-status page.
 
-The summary cards show:
+The top cards show active recipients and Channels, the last sent newsletter, the next enabled Automatic Newsletter, and recent delivery health. **Needs your attention** stays quiet when everything is healthy and surfaces only actionable problems such as a missing Scheduled Task, an incomplete database update, or failed deliveries.
 
-- the Punga Mail version;
-- active subscribers, with pending and suppressed totals;
-- active newsletters, with draft, sent, and trashed totals;
-- pending queue rows, with processing and failed totals.
+**Quick actions** provide direct paths to a new Newsletter, new Automatic Newsletter, recipient creation, and Channels. When pending mail exists or the normal queue task is unavailable, a manual **Process queue now** action remains available as a recovery/testing tool.
 
-**Process queue now** processes a batch immediately. It is useful for testing or maintenance, but normal unattended delivery should use Joomla Scheduled Tasks.
-
-The **Scheduled Tasks** card shows whether each Punga Mail task type is configured and enabled, plus its next execution when known. The button below the card opens Joomla's Scheduled Tasks manager.
-
-Warnings appear when:
-
-- Punga Mail detects an incomplete database update; use **System → Maintenance → Database** to apply Joomla's suggested repair before sending;
-- the normal send-queue task is not enabled;
-- an enabled digest exists without the digest task;
-- a scheduled newsletter exists without the scheduled-newsletter task;
-- a bounce mailbox is configured without the bounce-processing task.
+The lower panels summarize recent newsletter/automation activity, upcoming scheduled mail, the last 30 days of recipient processing, the most-used Channels, and enabled Automatic Newsletters. Scheduled-task and queue implementation details are deliberately not shown unless they require action.
 
 ## Component Options
 
@@ -207,6 +194,10 @@ This optional feature alerts an administrator when no newsletter has been sent f
 
 Run **Punga Mail — Newsletter reminder** daily. Punga Mail records the reminder for the current last-sent cycle so it does not send the same warning every day.
 
+### Automatic Newsletter draft notifications
+
+When an Automatic Newsletter is configured to **Create draft**, Punga Mail can email the person who reviews newsletters as soon as a new draft is ready. Enable the notification and enter an explicit reviewer address under Component Options → Automatic newsletters. The message names the automation and draft, reports selected and access-excluded content counts, and links directly to the draft in Joomla administration. Automatic Newsletters configured to send immediately do not send this review notification.
+
 ### Maintenance / Data
 
 | Setting | What it controls |
@@ -231,6 +222,16 @@ The columns show the title and description, alias, current member count, publica
 - A trashed topic cannot be permanently deleted while subscriber, newsletter, or digest relationships still use it.
 
 ### Channel editor
+
+In addition to title, alias, description and drag ordering, each Channel controls **Who can subscribe?**:
+
+| Choice | Eligibility |
+| --- | --- |
+| Everyone | Joomla users and external email-only subscribers may see and subscribe to the Channel. |
+| Registered users | Only subscribers linked to a Joomla account may use the Channel. |
+| Selected Joomla user groups | Only linked Joomla accounts belonging to at least one selected group (including Joomla’s inherited group membership) may use the Channel. |
+
+Eligibility is not merely a hidden checkbox. Punga Mail rechecks it when preferences are saved and again when recipients are resolved for delivery. If a user later loses an allowed Joomla group, an old membership cannot keep delivering the restricted Channel.
 
 | Field | What it means |
 | --- | --- |
@@ -292,7 +293,7 @@ Select an email address in the list to edit that subscriber. The editor shows:
 | Email / Joomla user | The canonical subscriber identity. Existing identities are read-only here; edit a linked account through Joomla Users. |
 | Recipient name | Optional name for an external email-only subscriber. Linked accounts use the Joomla display name. |
 | Newsletter permission | The master state: Pending, Subscribed, or Unsubscribed. Pending can be retained for an existing confirmation request but cannot be assigned manually. |
-| Channels | All non-trashed Channels assigned to this subscriber. Unpublished Channels remain editable for administrators and are clearly marked; they are not offered on public signup forms. |
+| Channels | All non-trashed Channels. Unpublished Channels remain visible to administrators. For a linked Joomla user, Channels the user is not eligible for are disabled and explain the required account/group access; external subscribers cannot be assigned registered/group-restricted Channels. |
 
 **Apply** saves and keeps the editor open. **Save & Close** saves and returns to Subscribers. **Cancel** discards unsaved changes.
 
@@ -314,7 +315,7 @@ The Templates list supports search, sorting, pagination, trash, restore, and del
 | Email subject | Default subject copied to a newsletter. A digest can replace it with a subject pattern. |
 | Newsletter body (Markdown) | Reusable message content. Place `{new_content}` exactly where selected website content should appear. Place `{recipient}` where the recipient's name should appear. |
 
-The body supports Markdown headings, emphasis, lists, links, images, pipe tables, and a standalone `---` horizontal rule. Images may use HTTP(S), root-relative, or site-relative URLs. Preview the output because mail clients differ.
+The body supports Markdown headings, emphasis, lists, links, images, pipe tables, and a standalone `---` horizontal rule. The Punga Mail Markdown editor uses Joomla CodeMirror when available, provides formatting buttons and context-specific placeholder insertion, and can switch between source and a preview generated by Punga Mail’s own renderer. Detailed syntax/placeholder help is collapsed by default. Images may use HTTP(S), root-relative, or site-relative URLs. Preview the output because mail clients differ.
 
 ### Template message options
 
@@ -332,7 +333,7 @@ Every global design property can be overridden: content width, backgrounds, text
 
 Template custom CSS is added after the global custom CSS. Newsletter custom CSS can add another layer.
 
-**Preview** renders the template. The editor is divided into **Settings**, **Mail content**, and **Design** tabs, matching the structure of the Newsletter editor without showing a content-selection tab that templates do not need. **Save**, **Save & Close**, and **Cancel** behave like standard Joomla editor actions.
+**Preview** renders the template. The editor is divided into **Settings**, **Mail content**, and **Design** tabs. Message behavior such as the mail heading, browser view and Reply-To now lives in **Settings**; reusable subject/body and the selected-content layout live in **Mail content**; visual overrides live in **Design**. **Save**, **Save & Close**, and **Cancel** behave like standard Joomla editor actions.
 
 Applying a template in a newsletter **copies** its values. Later template edits do not alter an existing draft and can never alter a sent snapshot.
 
@@ -429,7 +430,7 @@ The preview, test message, Preflight, real message, and browser version all use 
 | Channels | When the all-subscriber choice is clear, includes active members of any selected Channel. Multiple Channels are combined and deduplicated. |
 | Additional Joomla user groups | Adds eligible unblocked users in any selected group, including inherited child-group membership. Explicit Punga Mail opt-outs and suppressions still win. Users without an explicit preference are included only when the corresponding Component Option allows it. |
 
-Choose at least one effective source. The live summary explains the current union. The final audience is calculated at Preflight/queue time, not assumed from raw group or topic totals. Preflight blocks a mailing with no source and warns when all-subscriber targeting adds people outside selected topics.
+A new Newsletter starts with **no audience selected**. Choose at least one effective source deliberately; Punga Mail does not assume that “all subscribers” is safe. Existing newsletters retain their saved audience. The live summary explains the current union. The final audience is calculated at Preflight/queue time, not assumed from raw group or topic totals. Preflight blocks a mailing with no source and warns when all-subscriber targeting adds people outside selected topics.
 
 #### Toolbar actions
 
@@ -566,6 +567,8 @@ Create and enable **Punga Mail — Create automatic newsletters** in Joomla Sche
 
 An automatic-send definition also requires **Punga Mail — Send pending newsletters**. A draft run does not send until an administrator reviews its generated newsletter and sends or schedules it.
 
+If Component Options → Automatic newsletters → **Notify reviewer about new drafts** is enabled, a successful draft run also sends the configured reviewer a direct administrator link. Automatic-send runs do not send this review notification.
+
 The editor's history table records run time, status, resulting newsletter link, content item count, and details such as access exclusions or errors.
 
 Only enabled digests run. Editing a digest does not itself generate a newsletter.
@@ -646,7 +649,7 @@ Choose a scope:
 - unsubscribed subscribers;
 - suppressed subscribers.
 
-Optionally select one or more topics. Multiple selected topics include members of any selected topic. The UTF-8 CSV contains email, name, numeric status, source, language value, topic aliases, suppression reason, bounce counts, and last-bounce details.
+Optionally select one or more Channels. Multiple selected Channels include members of any selected Channel; 0.4.0 fixes the prepared-statement error that previously affected multi-Channel exports. The UTF-8 CSV contains email, name, numeric status, source, language value, topic aliases, suppression reason, bounce counts, and last-bounce details.
 
 Treat exported files as personal data and store/share them accordingly.
 
@@ -666,7 +669,7 @@ Punga Mail-specific options are:
 
 | Module configuration | Visitor experience |
 | --- | --- |
-| No Channels selected | Offers all currently published Channels. |
+| No Channels selected | Offers all currently published Channels the current visitor/account is eligible to subscribe to. |
 | Exactly one Channel selected | Hides the selector, names the Channel, and performs the Channel action directly. |
 | Multiple Channels selected | Shows only those published Channels and allows one or more choices. |
 
@@ -685,7 +688,7 @@ The enabled Punga Mail user plugin adds a **Newsletter** fieldset to Joomla regi
 | Field | What it does |
 | --- | --- |
 | Receive newsletters | **Yes** enables the user's master Punga Mail permission. **No** globally opts the address out and overrides every topic/Joomla-group selection. |
-| Channels | Multi-select containing all currently published Channels. Existing active memberships are preselected. Saving adds selected memberships and removes cleared published Channel memberships. |
+| Channels | Multi-select containing currently published Channels the Joomla account is eligible to subscribe to. Existing eligible memberships are preselected. Saving adds selected memberships and removes cleared visible memberships. |
 
 The two controls are deliberately independent. Topic choices are retained when **Receive newsletters** is No, but no newsletter is delivered until the master permission is Yes again. This lets a user opt out completely without losing their preferred topic set.
 
@@ -699,13 +702,13 @@ Create a menu item of type **Punga Mail → Newsletter subscription**.
 
 The page is a complete standalone subscription destination and acts as the Joomla SEF routing anchor for confirmation, unsubscribe, and browser-view routes. Keep it Published. It may be assigned to a hidden menu if it should not appear in site navigation.
 
-- Logged-out visitors enter an email address, choose from all published Channels, and confirm their address using the email Punga Mail sends them.
-- Logged-in users see their account email, a clearly labelled newsletter-reception master state, and a preselected checklist of all published topics.
+- Logged-out visitors enter an email address, choose from published Channels available to external subscribers, and confirm their address using the email Punga Mail sends them.
+- Logged-in users see their account email, a clearly labelled newsletter-reception master state, and a preselected checklist of published Channels allowed for their Joomla account/group membership.
 - The topic Save action changes only topic memberships. The separate Start/Stop all newsletters action controls global delivery.
 - A consequence summary states what the current topic choice means, including the possibility of general newsletters when no topic is selected.
 - If no topics are published, the page still provides global newsletter signup and subscription management.
 
-Unlike the signup module, this menu page has no configured topic subset: it always offers every currently published topic.
+Unlike the signup module, this menu page has no configured Channel subset: it offers every currently published Channel the current visitor is eligible to subscribe to.
 
 Do not restrict the menu item to an access level that ordinary email recipients cannot use, or their confirmation and unsubscribe links may not reach the intended page.
 

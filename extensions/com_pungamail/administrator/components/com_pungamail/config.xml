@@ -40,7 +40,7 @@
 		<field name="signup_ip_hourly_limit" type="number" default="12" min="1" max="500" label="COM_PUNGAMAIL_CONFIG_SIGNUP_IP_LIMIT" description="COM_PUNGAMAIL_CONFIG_SIGNUP_IP_LIMIT_DESC" />
 		<field name="resend_minutes" type="number" default="10" min="1" max="1440" label="COM_PUNGAMAIL_CONFIG_RESEND_MINUTES" description="COM_PUNGAMAIL_CONFIG_RESEND_MINUTES_DESC" />
 		<field name="confirmation_subject" type="text" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_SUBJECT" description="COM_PUNGAMAIL_CONFIG_CONFIRMATION_SUBJECT_DESC" />
-		<field name="confirmation_markdown" type="textarea" filter="raw" rows="12" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_MARKDOWN" description="COM_PUNGAMAIL_CONFIG_CONFIRMATION_MARKDOWN_DESC" />
+		<field name="confirmation_markdown" type="markdown" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" filter="raw" rows="12" placeholders="{confirmation_url}|{site_name}|{email}" helpkeys="COM_PUNGAMAIL_CONFIG_CONFIRMATION_MARKDOWN_DESC|COM_PUNGAMAIL_MARKDOWN_HELP|COM_PUNGAMAIL_MARKDOWN_IMAGE_HELP|COM_PUNGAMAIL_MARKDOWN_TABLE_HELP" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_MARKDOWN" description="COM_PUNGAMAIL_CONFIG_CONFIRMATION_MARKDOWN_DESC" />
 	</fieldset>
 	<fieldset name="queue" label="COM_PUNGAMAIL_CONFIG_QUEUE">
 		<field name="queue_paused" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_QUEUE_PAUSED" description="COM_PUNGAMAIL_QUEUE_PAUSED_DESC"><option value="0">JNO</option><option value="1">JYES</option></field>
@@ -58,7 +58,12 @@
 		<field name="reminder_days" type="number" default="30" min="1" max="3650" label="COM_PUNGAMAIL_CONFIG_REMINDER_DAYS" description="COM_PUNGAMAIL_CONFIG_REMINDER_DAYS_DESC" />
 		<field name="reminder_email" type="email" label="COM_PUNGAMAIL_CONFIG_REMINDER_EMAIL" description="COM_PUNGAMAIL_CONFIG_REMINDER_EMAIL_DESC" />
 		<field name="reminder_subject" type="text" label="COM_PUNGAMAIL_CONFIG_REMINDER_SUBJECT" description="COM_PUNGAMAIL_CONFIG_REMINDER_SUBJECT_DESC" />
-		<field name="reminder_markdown" type="textarea" filter="raw" rows="8" label="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN" description="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN_DESC" />
+		<field name="reminder_markdown" type="markdown" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" filter="raw" rows="8" placeholders="{days}|{last_newsletter}|{last_sent_date}|{site_name}" helpkeys="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN_DESC|COM_PUNGAMAIL_MARKDOWN_HELP|COM_PUNGAMAIL_MARKDOWN_IMAGE_HELP|COM_PUNGAMAIL_MARKDOWN_TABLE_HELP" label="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN" description="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN_DESC" />
+	</fieldset>
+	<fieldset name="automatic" label="COM_PUNGAMAIL_CONFIG_AUTOMATIC_NEWSLETTERS">
+		<field name="automatic_note" type="note" class="alert alert-info" label="" description="COM_PUNGAMAIL_CONFIG_AUTOMATIC_NOTE" />
+		<field name="automatic_draft_notification_enabled" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_NOTIFY" description="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_NOTIFY_DESC"><option value="0">JNO</option><option value="1">JYES</option></field>
+		<field name="automatic_draft_notification_email" type="email" showon="automatic_draft_notification_enabled:1" label="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_EMAIL" description="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_EMAIL_DESC" />
 	</fieldset>
 	<fieldset name="maintenance" label="COM_PUNGAMAIL_CONFIG_MAINTENANCE">
 		<field name="remove_tables_on_uninstall" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_REMOVE_TABLES" description="COM_PUNGAMAIL_CONFIG_REMOVE_TABLES_DESC"><option value="0">JNO</option><option value="1">JYES</option></field>

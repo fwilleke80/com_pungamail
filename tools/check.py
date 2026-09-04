@@ -89,6 +89,11 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.11.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.12.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.13.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.0.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/MarkdownEditorHelper.php",
+    "extensions/plg_user_pungamail/src/Field/ChannelsField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/NewcontenttemplateField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/BounceService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestService.php",
@@ -156,7 +161,7 @@ def check_administrator_documentation() -> None:
 
     for token in (
         "every resolved recipient would normally be allowed to view",
-        "Channels | Multi-select containing all currently published Channels.",
+        "Channels | Multi-select containing currently published Channels the Joomla account is eligible to subscribe to.",
         "Password | Mailbox password. An existing password is never shown.",
         "Punga Mail — Create automatic newsletters",
         "Explicitly reactivate protected addresses",
@@ -860,19 +865,24 @@ def check_profile_topics_032() -> None:
 
     for token in (
         'name="topic_ids"',
-        'type="sql"',
+        'type="channels"',
+        'addfieldprefix="Punga\\Plugin\\User\\PungaMail\\Field"',
         'multiple="true"',
-        "FROM #__pungamail_topics WHERE state = 1",
         "PLG_USER_PUNGAMAIL_TOPICS_LABEL",
         "PLG_USER_PUNGAMAIL_TOPICS_DESC",
     ):
         if token not in form:
-            fail(f"User profile topic selector is missing {token!r}")
+            fail(f"User profile Channel selector is missing {token!r}")
+
+    channels_field = (plugin_root / "src/Field/ChannelsField.php").read_text(encoding="utf-8")
+    for token in ("eligibleIds", "AUDIENCE_GROUPS", "ServiceFactory::topics()"):
+        if token not in channels_field:
+            fail(f"User profile Channel field does not enforce eligibility via {token!r}")
 
     for token in (
         "getSubscriberTopicIds",
         "updateVisibleTopics",
-        "$topics->active()",
+        "$topics->activeForUser($userId)",
         "'_topics_updated'",
         "'topic_ids' => $topicIds",
     ):
@@ -967,14 +977,14 @@ def check_subscription_management_035() -> None:
     layout = (site_root / "tmpl/subscription/default.php").read_text(encoding="utf-8")
     controller = (site_root / "src/Controller/SubscriptionController.php").read_text(encoding="utf-8")
 
-    for token in ("topics()->active()", "selected_topic_ids", "getSubscriberTopicIds"):
+    for token in ("topics()->activeForUser", "selected_topic_ids", "getSubscriberTopicIds"):
         if token not in model:
             fail(f"Subscription menu-page model is missing topic state: {token!r}")
     for token in ("topic_ids[]", "subscription.userTopics", "COM_PUNGAMAIL_SUBSCRIPTION_SAVE_TOPICS"):
         if token not in layout:
             fail(f"Subscription menu-page layout is missing topic controls: {token!r}")
-    if "return ServiceFactory::topics()->active();" not in controller:
-        fail("Standalone subscription requests do not expose all published topics")
+    if "return ServiceFactory::topics()->activeForUser($userId);" not in controller:
+        fail("Standalone subscription requests do not expose the current user’s eligible published Channels")
 
     admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
     topic_repository = (admin_root / "src/Service/TopicRepository.php").read_text(encoding="utf-8")
@@ -1134,7 +1144,7 @@ def check_ux_and_fixes_037() -> None:
         "post->getInt('module_id', 0)",
         "private function moduleTopics(int $moduleId): array",
         "if ($moduleId <= 0)",
-        "return ServiceFactory::topics()->active();",
+        "return ServiceFactory::topics()->activeForUser($userId);",
     )
     for token in subscription_requirements:
         if token not in subscription_controller:
@@ -1321,12 +1331,15 @@ def check_newsletter_editor_ux_0310() -> None:
     if 'type="newcontenttemplate"' not in config or "NewcontenttemplateField" not in field:
         fail("0.3.10 Component Options does not use the dedicated new-content Markdown editor field")
 
-    if "font-monospace" not in field or "COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP" not in field:
-        fail("0.3.10 Component Options new-content editor is missing monospaced styling or visible placeholder help")
+    markdown_helper = (admin_root / "src/Helper/MarkdownEditorHelper.php").read_text(encoding="utf-8")
+    if "MarkdownField" not in field or "COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP" not in field:
+        fail("0.3.10 Component Options new-content editor lost its dedicated Markdown field or placeholder help")
+    if "font-monospace" not in markdown_helper and "font-family:var(--font-monospace" not in markdown_helper:
+        fail("Shared Markdown editor does not preserve monospaced source editing")
 
     for contents, label in ((newsletter, "Newsletter"), (template, "Template")):
-        if 'class="form-control font-monospace"' not in contents:
-            fail(f"0.3.10 {label} new-content editor is not monospaced")
+        if "MarkdownEditorHelper::render" not in contents:
+            fail(f"0.4.0 {label} new-content editor is not using the shared Markdown editor")
         if "COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP" not in contents:
             fail(f"0.3.10 {label} new-content editor is missing placeholder help")
 
@@ -1541,6 +1554,112 @@ def check_release_ux_0313() -> None:
             if values.get(key, "").strip() == "":
                 fail(f"0.3.13 is missing {locale} UI copy: {key}")
 
+
+def check_release_ux_0400() -> None:
+    """Protect the 0.4.0 editor, dashboard, audience, Channel and export contracts."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    site_root = ROOT / "extensions/com_pungamail/components/com_pungamail"
+    marker_sql = (admin_root / "sql/updates/mysql/0.4.0.sql").read_text(encoding="utf-8")
+    install_sql = (admin_root / "sql/install.mysql.sql").read_text(encoding="utf-8")
+    purge_sql = (admin_root / "sql/purge.mysql.sql").read_text(encoding="utf-8")
+    topic_repo = (admin_root / "src/Service/TopicRepository.php").read_text(encoding="utf-8")
+    resolver = (admin_root / "src/Service/RecipientResolver.php").read_text(encoding="utf-8")
+    newsletter = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    template = (admin_root / "tmpl/template/default.php").read_text(encoding="utf-8")
+    renderer = (admin_root / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    csv = (admin_root / "src/Service/CsvService.php").read_text(encoding="utf-8")
+    markdown = (admin_root / "src/Helper/MarkdownEditorHelper.php").read_text(encoding="utf-8")
+    config = (admin_root / "config.xml").read_text(encoding="utf-8")
+    digest = (admin_root / "src/Service/DigestService.php").read_text(encoding="utf-8")
+    mail = (admin_root / "src/Service/MailService.php").read_text(encoding="utf-8")
+    dashboard = (admin_root / "tmpl/dashboard/default.php").read_text(encoding="utf-8")
+    profile_field = (ROOT / "extensions/plg_user_pungamail/src/Field/ChannelsField.php").read_text(encoding="utf-8")
+    site_model = (site_root / "src/Model/SubscriptionModel.php").read_text(encoding="utf-8")
+
+    for token in (
+        "ALTER TABLE `#__pungamail_newsletters` MODIFY `include_subscribers` TINYINT UNSIGNED NOT NULL DEFAULT 0",
+        "ADD COLUMN `audience_mode` VARCHAR(16) NOT NULL DEFAULT 'everyone'",
+        "CREATE TABLE IF NOT EXISTS `#__pungamail_topic_groups`",
+    ):
+        if token not in marker_sql:
+            fail(f"0.4.0 migration is missing {token!r}")
+    if "`include_subscribers` TINYINT UNSIGNED NOT NULL DEFAULT 0" not in install_sql:
+        fail("Fresh 0.4.0 Newsletter schema is not audience-safe by default")
+    if "DROP TABLE IF EXISTS `#__pungamail_topic_groups`;" not in purge_sql:
+        fail("0.4.0 Channel group table is missing from uninstall cleanup")
+
+    for token in (
+        "AUDIENCE_EVERYONE",
+        "AUDIENCE_REGISTERED",
+        "AUDIENCE_GROUPS",
+        "activeForUser",
+        "annotateEligibility",
+        "eligibleIds",
+        "replaceTopicGroups",
+    ):
+        if token not in topic_repo:
+            fail(f"0.4.0 Channel eligibility repository is missing {token!r}")
+    for token in ("#__pungamail_topic_groups", "target_group.id = tg.group_id", "s.user_id IS NOT NULL"):
+        if token not in resolver:
+            fail(f"0.4.0 delivery-time Channel eligibility is missing {token!r}")
+    if "activeForUser" not in site_model or "eligibleIds" not in profile_field:
+        fail("0.4.0 public/profile Channel visibility is not eligibility-aware")
+
+    if "$item !== null && (int) $item->include_subscribers === 1 ? 'checked' : ''" not in newsletter:
+        fail("0.4.0 new Newsletter still implicitly selects the all-subscriber audience")
+    if 'name="include_subscribers" value="0"' not in newsletter:
+        fail("0.4.0 Newsletter editor is missing the explicit unchecked audience value")
+
+    for contents, label in ((newsletter, "Newsletter"), (template, "Template")):
+        if "MarkdownEditorHelper::render" not in contents:
+            fail(f"0.4.0 {label} editor is not using the shared Markdown editor")
+    for token in ("EditorsRegistry", "has('codemirror')", "'syntax' => 'markdown'", "pm-md-action", "pm-md-placeholder", "pm-md-preview", "COM_PUNGAMAIL_MARKDOWN_HELP_DETAILS"):
+        if token not in markdown:
+            fail(f"0.4.0 shared Markdown editor is missing {token!r}")
+    for field in ("confirmation_markdown", "reminder_markdown"):
+        if f'name="{field}" type="markdown"' not in config:
+            fail(f"0.4.0 Component Options field {field} does not use the shared Markdown editor")
+
+    settings_pos = template.find("'pm-template-settings'")
+    mail_pos = template.find("'pm-template-mail-content'")
+    options_pos = template.find("COM_PUNGAMAIL_MESSAGE_OPTIONS")
+    if min(settings_pos, mail_pos, options_pos) < 0 or not (settings_pos < options_pos < mail_pos):
+        fail("0.4.0 Template message settings are not grouped into the Settings tab")
+
+    for token in ("pm-dashboard-value", "COM_PUNGAMAIL_DASHBOARD_ATTENTION", "COM_PUNGAMAIL_QUICK_ACTIONS", "COM_PUNGAMAIL_DASHBOARD_RECENT_ACTIVITY", "COM_PUNGAMAIL_DASHBOARD_DELIVERY_30_DAYS", "COM_PUNGAMAIL_DASHBOARD_AUTOMATIC"):
+        if token not in dashboard:
+            fail(f"0.4.0 Dashboard redesign is missing {token!r}")
+
+    for token in ("automatic_draft_notification_enabled", "automatic_draft_notification_email"):
+        if token not in config:
+            fail(f"0.4.0 Automatic Newsletter draft notification setting is missing {token!r}")
+    if "sendAutomaticDraftNotification" not in mail or "notifyDraftCreated" not in digest:
+        fail("0.4.0 Automatic Newsletter draft-review notification is incomplete")
+    auto_branch = digest.find("if ((string) $digest->generation_mode === 'auto'")
+    notify_pos = digest.find("$this->notifyDraftCreated")
+    if min(auto_branch, notify_pos) < 0 or notify_pos < auto_branch:
+        fail("0.4.0 draft-review notification can run before the automatic-send branch exits")
+
+    if "array_filter(array_map('intval', $topicIds))" not in csv or "filter_st.topic_id') . ' IN (' . $topicList . ')'" not in csv:
+        fail("0.4.0 CSV export does not safely handle multiple Channel IDs")
+    if "whereIn($this->db->quoteName('filter_st.topic_id'), $topicIds)" in csv:
+        fail("0.4.0 CSV export reintroduced nested whereIn positional bindings")
+
+    if "<table role=\"presentation\" width=\"100%\"" not in renderer or "padding:16px ' . $padding . 'px" not in renderer:
+        fail("0.4.0 mail heading does not separate full-width background from padded heading text")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_CHANNEL_WHO_CAN_SUBSCRIBE",
+            "COM_PUNGAMAIL_MARKDOWN_TOOLBAR",
+            "COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_NOTIFY",
+            "COM_PUNGAMAIL_DASHBOARD_ATTENTION",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.4.0 is missing {locale} UI copy: {key}")
+
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
 
@@ -1671,6 +1790,7 @@ def main() -> int:
         check_markdown_and_override_ux_0311,
         check_release_ux_0312,
         check_release_ux_0313,
+        check_release_ux_0400,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

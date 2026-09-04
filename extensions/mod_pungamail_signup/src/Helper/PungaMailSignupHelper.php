@@ -23,7 +23,7 @@ final class PungaMailSignupHelper
 	{
 		$configuredTopicIds = array_values(array_unique(array_filter(array_map('intval', $configuredTopicIds))));
 		$user = Factory::getApplication()->getIdentity();
-		$topics = ServiceFactory::topics()->active($configuredTopicIds !== [] ? $configuredTopicIds : null);
+		$topics = ServiceFactory::topics()->activeForUser((int) $user->id > 0 ? (int) $user->id : null, $configuredTopicIds !== [] ? $configuredTopicIds : null);
 		$singleTopicMode = count($configuredTopicIds) === 1;
 
 		if ((int) $user->id <= 0)

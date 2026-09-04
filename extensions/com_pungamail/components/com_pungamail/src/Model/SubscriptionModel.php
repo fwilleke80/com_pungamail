@@ -25,7 +25,7 @@ final class SubscriptionModel extends BaseDatabaseModel
 	public function getSubscriptionState(): array
 	{
 		$user = Factory::getApplication()->getIdentity();
-		$topics = ServiceFactory::topics()->active();
+		$topics = ServiceFactory::topics()->activeForUser((int) $user->id > 0 ? (int) $user->id : null);
 
 		if ((int) $user->id <= 0)
 		{

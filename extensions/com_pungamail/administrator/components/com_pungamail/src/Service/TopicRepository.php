@@ -22,6 +22,9 @@ final class TopicRepository
 	public const MEMBERSHIP_PENDING = 0;
 	public const MEMBERSHIP_SUBSCRIBED = 1;
 	public const MEMBERSHIP_UNSUBSCRIBED = 2;
+	public const AUDIENCE_EVERYONE = 'everyone';
+	public const AUDIENCE_REGISTERED = 'registered';
+	public const AUDIENCE_GROUPS = 'groups';
 
 	/** @param DatabaseInterface $db Database connection. */
 	public function __construct(private readonly DatabaseInterface $db)
@@ -87,7 +90,7 @@ final class TopicRepository
 	}
 
 	/** @return int */
-	public function save(int $id, string $title, string $alias, string $description, int $userId): int
+	public function save(int $id, string $title, string $alias, string $description, int $userId, string $audienceMode = self::AUDIENCE_EVERYONE, array $groupIds = []): int
 	{
 		$title = trim($title);
 
@@ -117,6 +120,8 @@ final class TopicRepository
 			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_ERROR_TOPIC_ALIAS_EXISTS'));
 		}
 
+		$audienceMode = $this->normalizeAudienceMode($audienceMode);
+		$groupIds = $audienceMode === self::AUDIENCE_GROUPS ? $this->normalizeGroupIds($groupIds) : [];
 		$now = (new Date('now', 'UTC'))->toSql();
 
 		if ($id <= 0)
@@ -125,6 +130,7 @@ final class TopicRepository
 				'title' => $title,
 				'alias' => $alias,
 				'description' => trim($description) !== '' ? trim($description) : null,
+				'audience_mode' => $audienceMode,
 				'state' => 1,
 				'ordering' => $this->nextOrdering(),
 				'created' => $now,
@@ -132,6 +138,7 @@ final class TopicRepository
 				'created_by' => $userId,
 			];
 			$this->db->insertObject('#__pungamail_topics', $row, 'id');
+			$this->replaceTopicGroups((int) $row->id, $groupIds);
 
 			return (int) $row->id;
 		}
@@ -142,10 +149,12 @@ final class TopicRepository
 			->set($this->db->quoteName('title') . ' = :title')
 			->set($this->db->quoteName('alias') . ' = :alias')
 			->set($this->db->quoteName('description') . ($descriptionValue === null ? ' = NULL' : ' = :description'))
+			->set($this->db->quoteName('audience_mode') . ' = :audienceMode')
 			->set($this->db->quoteName('modified') . ' = :modified')
 			->where($this->db->quoteName('id') . ' = :id')
 			->bind(':title', $title)
 			->bind(':alias', $alias)
+			->bind(':audienceMode', $audienceMode)
 			->bind(':modified', $now)
 			->bind(':id', $id, ParameterType::INTEGER);
 
@@ -155,6 +164,7 @@ final class TopicRepository
 		}
 
 		$this->db->setQuery($update)->execute();
+		$this->replaceTopicGroups($id, $groupIds);
 
 		return $id;
 	}
@@ -247,6 +257,11 @@ final class TopicRepository
 			}
 		}
 
+		$deleteGroups = $this->db->getQuery(true)
+			->delete($this->db->quoteName('#__pungamail_topic_groups'))
+			->whereIn($this->db->quoteName('topic_id'), $ids);
+		$this->db->setQuery($deleteGroups)->execute();
+
 		$trashed = -2;
 		$query = $this->db->getQuery(true)
 			->delete($this->db->quoteName('#__pungamail_topics'))
@@ -333,22 +348,28 @@ final class TopicRepository
 	 *
 	 * @return void
 	 */
-	public function updateAdministratorTopics(int $subscriberId, array $visibleIds, array $selectedIds): void
+	public function updateAdministratorTopics(int $subscriberId, array $visibleIds, array $selectedIds, ?int $userId = null): void
 	{
 		$visible = $this->validAdministrativeIds($visibleIds);
-		$selected = array_flip($this->validAdministrativeIds($selectedIds));
+		$eligible = array_flip($this->eligibleIds($visible, $userId, false));
+		$selected = array_flip($this->eligibleIds($selectedIds, $userId, false));
 
 		foreach ($visible as $topicId)
 		{
+			if (!isset($eligible[$topicId]))
+			{
+				continue;
+			}
+
 			$status = isset($selected[$topicId]) ? self::MEMBERSHIP_SUBSCRIBED : self::MEMBERSHIP_UNSUBSCRIBED;
 			$this->upsertMembership($subscriberId, $topicId, $status);
 		}
 	}
 
 	/** Adds active topic memberships without removing existing memberships. */
-	public function subscribeTopics(int $subscriberId, array $topicIds): void
+	public function subscribeTopics(int $subscriberId, array $topicIds, ?int $userId = null): void
 	{
-		foreach ($this->validActiveIds($topicIds) as $topicId)
+		foreach ($this->eligibleIds($topicIds, $userId, true) as $topicId)
 		{
 			$this->upsertMembership($subscriberId, $topicId, self::MEMBERSHIP_SUBSCRIBED);
 		}
@@ -397,7 +418,7 @@ final class TopicRepository
 	{
 		$now = (new Date('now', 'UTC'))->toSql();
 		$query = $this->db->getQuery(true)
-			->select(['r.*', 's.email'])
+			->select(['r.*', 's.email', 's.user_id'])
 			->from($this->db->quoteName('#__pungamail_preference_requests', 'r'))
 			->innerJoin($this->db->quoteName('#__pungamail_subscribers', 's') . ' ON s.id = r.subscriber_id')
 			->where($this->db->quoteName('r.token_hash') . ' = :hash')
@@ -431,8 +452,16 @@ final class TopicRepository
 		{
 			foreach ($this->db->setQuery($query)->loadObjectList() as $item)
 			{
-				$status = (string) $item->action === 'subscribe' ? self::MEMBERSHIP_SUBSCRIBED : self::MEMBERSHIP_UNSUBSCRIBED;
-				$this->upsertMembership((int) $request->subscriber_id, (int) $item->topic_id, $status);
+				$topicId = (int) $item->topic_id;
+				$isSubscribe = (string) $item->action === 'subscribe';
+
+				if ($isSubscribe && !in_array($topicId, $this->eligibleIds([$topicId], $request->user_id !== null ? (int) $request->user_id : null, true), true))
+				{
+					continue;
+				}
+
+				$status = $isSubscribe ? self::MEMBERSHIP_SUBSCRIBED : self::MEMBERSHIP_UNSUBSCRIBED;
+				$this->upsertMembership((int) $request->subscriber_id, $topicId, $status);
 			}
 
 			$this->deletePreferenceRequest($requestId);
@@ -445,6 +474,198 @@ final class TopicRepository
 		}
 
 		return true;
+	}
+
+
+	/** @return array<int,int> */
+	public function getTopicGroupIds(int $topicId): array
+	{
+		$query = $this->db->getQuery(true)
+			->select($this->db->quoteName('group_id'))
+			->from($this->db->quoteName('#__pungamail_topic_groups'))
+			->where($this->db->quoteName('topic_id') . ' = :topicId')
+			->bind(':topicId', $topicId, ParameterType::INTEGER);
+
+		return array_map('intval', $this->db->setQuery($query)->loadColumn());
+	}
+
+	/**
+	 * Returns published Channels the current account is allowed to subscribe to.
+	 * A null user ID represents an email-only/external subscriber.
+	 *
+	 * @return array<int,object>
+	 */
+	public function activeForUser(?int $userId, ?array $onlyIds = null): array
+	{
+		$topics = $this->active($onlyIds);
+		$eligible = array_flip($this->eligibleIds(array_map(static fn (object $topic): int => (int) $topic->id, $topics), $userId, true));
+
+		return array_values(array_filter($topics, static fn (object $topic): bool => isset($eligible[(int) $topic->id])));
+	}
+
+	/**
+	 * Annotates administrator Channel rows with current eligibility for one subscriber.
+	 *
+	 * @return array<int,object>
+	 */
+	public function annotateEligibility(array $topics, ?int $userId): array
+	{
+		$ids = array_map(static fn (object $topic): int => (int) $topic->id, $topics);
+		$eligible = array_flip($this->eligibleIds($ids, $userId, false));
+		$groupMap = $this->topicGroupMap($ids);
+		$groupTitles = $this->groupTitleMap();
+
+		foreach ($topics as $topic)
+		{
+			$topic->eligible = isset($eligible[(int) $topic->id]);
+			$topic->audience_group_ids = $groupMap[(int) $topic->id] ?? [];
+			$topic->audience_group_titles = array_values(array_filter(array_map(
+				static fn (int $groupId): string => (string) ($groupTitles[$groupId] ?? ''),
+				$topic->audience_group_ids
+			)));
+		}
+
+		return $topics;
+	}
+
+	/**
+	 * Filters Channel IDs by publication state and current Joomla-account eligibility.
+	 *
+	 * @return array<int,int>
+	 */
+	public function eligibleIds(array $ids, ?int $userId, bool $publishedOnly = true): array
+	{
+		$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+		if ($ids === [])
+		{
+			return [];
+		}
+
+		$stateClause = $publishedOnly ? ' = 1' : ' <> -2';
+		$query = $this->db->getQuery(true)
+			->select(['id', 'audience_mode'])
+			->from($this->db->quoteName('#__pungamail_topics'))
+			->whereIn($this->db->quoteName('id'), $ids)
+			->where($this->db->quoteName('state') . $stateClause);
+		$topics = $this->db->setQuery($query)->loadObjectList();
+		$userGroups = $userId !== null && $userId > 0 ? array_flip($this->userAuthorisedGroupIds($userId)) : [];
+		$groupMap = $this->topicGroupMap($ids);
+		$result = [];
+
+		foreach ($topics as $topic)
+		{
+			$mode = $this->normalizeAudienceMode((string) ($topic->audience_mode ?? self::AUDIENCE_EVERYONE));
+			$allowed = $mode === self::AUDIENCE_EVERYONE
+				|| ($mode === self::AUDIENCE_REGISTERED && $userId !== null && $userId > 0);
+
+			if ($mode === self::AUDIENCE_GROUPS && $userId !== null && $userId > 0)
+			{
+				foreach ($groupMap[(int) $topic->id] ?? [] as $groupId)
+				{
+					if (isset($userGroups[$groupId]))
+					{
+						$allowed = true;
+						break;
+					}
+				}
+			}
+
+			if ($allowed)
+			{
+				$result[] = (int) $topic->id;
+			}
+		}
+
+		return $result;
+	}
+
+	/** @return array<int,int> */
+	public function userAuthorisedGroupIds(int $userId): array
+	{
+		if ($userId <= 0)
+		{
+			return [];
+		}
+
+		$query = $this->db->getQuery(true)
+			->select('DISTINCT ' . $this->db->quoteName('target_group.id'))
+			->from($this->db->quoteName('#__user_usergroup_map', 'm'))
+			->innerJoin($this->db->quoteName('#__usergroups', 'member_group') . ' ON member_group.id = m.group_id')
+			->innerJoin($this->db->quoteName('#__usergroups', 'target_group') . ' ON member_group.lft BETWEEN target_group.lft AND target_group.rgt')
+			->where($this->db->quoteName('m.user_id') . ' = :userId')
+			->bind(':userId', $userId, ParameterType::INTEGER);
+
+		return array_map('intval', $this->db->setQuery($query)->loadColumn());
+	}
+
+	/** @return array<int,array<int,int>> */
+	private function topicGroupMap(array $topicIds): array
+	{
+		$topicIds = array_values(array_unique(array_filter(array_map('intval', $topicIds))));
+
+		if ($topicIds === [])
+		{
+			return [];
+		}
+
+		$query = $this->db->getQuery(true)
+			->select(['topic_id', 'group_id'])
+			->from($this->db->quoteName('#__pungamail_topic_groups'))
+			->whereIn($this->db->quoteName('topic_id'), $topicIds);
+		$map = [];
+
+		foreach ($this->db->setQuery($query)->loadObjectList() as $row)
+		{
+			$map[(int) $row->topic_id][] = (int) $row->group_id;
+		}
+
+		return $map;
+	}
+
+	/** @return array<int,string> */
+	private function groupTitleMap(): array
+	{
+		$query = $this->db->getQuery(true)
+			->select(['id', 'title'])
+			->from($this->db->quoteName('#__usergroups'));
+		$map = [];
+
+		foreach ($this->db->setQuery($query)->loadObjectList() as $row)
+		{
+			$map[(int) $row->id] = (string) $row->title;
+		}
+
+		return $map;
+	}
+
+	/** @return void */
+	private function replaceTopicGroups(int $topicId, array $groupIds): void
+	{
+		$delete = $this->db->getQuery(true)
+			->delete($this->db->quoteName('#__pungamail_topic_groups'))
+			->where($this->db->quoteName('topic_id') . ' = :topicId')
+			->bind(':topicId', $topicId, ParameterType::INTEGER);
+		$this->db->setQuery($delete)->execute();
+
+		foreach ($this->normalizeGroupIds($groupIds) as $groupId)
+		{
+			$this->db->insertObject('#__pungamail_topic_groups', (object) ['topic_id' => $topicId, 'group_id' => $groupId]);
+		}
+	}
+
+	/** @return array<int,int> */
+	private function normalizeGroupIds(array $groupIds): array
+	{
+		return array_values(array_unique(array_filter(array_map('intval', $groupIds), static fn (int $id): bool => $id > 0)));
+	}
+
+	/** @return string */
+	private function normalizeAudienceMode(string $mode): string
+	{
+		return in_array($mode, [self::AUDIENCE_EVERYONE, self::AUDIENCE_REGISTERED, self::AUDIENCE_GROUPS], true)
+			? $mode
+			: self::AUDIENCE_EVERYONE;
 	}
 
 	/** @return int */

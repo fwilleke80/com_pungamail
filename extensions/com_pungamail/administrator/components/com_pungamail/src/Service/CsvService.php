@@ -230,12 +230,17 @@ final class CsvService
 
 		if ($topicIds !== [])
 		{
+			// Do not use Query::whereIn() on a subquery that is then stringified into
+			// the parent query: its generated positional bindings are not transferred
+			// to the parent statement. The IDs are normalized integers, so emitting
+			// the literal list is safe and keeps the prepared-statement bindings exact.
+			$topicList = implode(',', $topicIds);
 			$subQuery = $this->db->getQuery(true)
 				->select('1')
 				->from($this->db->quoteName('#__pungamail_subscriber_topics', 'filter_st'))
 				->where($this->db->quoteName('filter_st.subscriber_id') . ' = s.id')
 				->where($this->db->quoteName('filter_st.status') . ' = :membershipStatus')
-				->whereIn($this->db->quoteName('filter_st.topic_id'), $topicIds);
+				->where($this->db->quoteName('filter_st.topic_id') . ' IN (' . $topicList . ')');
 			$query->where('EXISTS (' . $subQuery . ')')->bind(':membershipStatus', $activeMembership, ParameterType::INTEGER);
 		}
 

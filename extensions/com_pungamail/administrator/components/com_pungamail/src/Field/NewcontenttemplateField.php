@@ -8,32 +8,25 @@
 
 namespace Punga\Component\PungaMail\Administrator\Field;
 
-use Joomla\CMS\Form\Field\TextareaField;
-use Joomla\CMS\Language\Text;
-
 /** Markdown layout editor for items inserted at {new_content}. */
-final class NewcontenttemplateField extends TextareaField
+final class NewcontenttemplateField extends MarkdownField
 {
 	/** @var string Joomla form field type. */
 	protected $type = 'Newcontenttemplate';
 
-	/**
-	 * Render a monospaced Markdown editor with always-visible placeholder help.
-	 *
-	 * @return string Field HTML.
-	 */
+	/** @return string */
 	protected function getInput(): string
 	{
-		$classes = preg_split('/\s+/', trim((string) $this->element['class'])) ?: [];
-
-		if (!in_array('font-monospace', $classes, true))
+		if (!isset($this->element['placeholders']))
 		{
-			$classes[] = 'font-monospace';
+			$this->element['placeholders'] = '{title}|{title_link}|{publish_date}|{excerpt}|{read_more}|{url}|{content_type}';
 		}
 
-		$this->element['class'] = trim(implode(' ', array_filter($classes)));
+		if (!isset($this->element['helpkeys']))
+		{
+			$this->element['helpkeys'] = 'COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP';
+		}
 
-		return parent::getInput()
-			. '<div class="form-text">' . Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP') . '</div>';
+		return parent::getInput();
 	}
 }

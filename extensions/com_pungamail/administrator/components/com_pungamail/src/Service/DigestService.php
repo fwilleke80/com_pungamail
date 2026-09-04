@@ -8,8 +8,10 @@
 
 namespace Punga\Component\PungaMail\Administrator\Service;
 
+use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Date\Date;
 use Joomla\CMS\Factory;
+use Joomla\CMS\Uri\Uri;
 
 /** Generates access-safe recurring newsletters from registered Joomla content. */
 final class DigestService
@@ -21,6 +23,7 @@ final class DigestService
 	 * @param ContentTypeService   $contentTypes Registered content source.
 	 * @param RecipientResolver    $recipients   Recipient resolver.
 	 * @param QueueService         $queue        Queue creator.
+	 * @param MailService          $mail         Administrator notification sender.
 	 */
 	public function __construct(
 		private readonly DigestRepository $digests,
@@ -28,7 +31,8 @@ final class DigestService
 		private readonly TemplateRepository $templates,
 		private readonly ContentTypeService $contentTypes,
 		private readonly RecipientResolver $recipients,
-		private readonly QueueService $queue
+		private readonly QueueService $queue,
+		private readonly MailService $mail
 	)
 	{
 	}
@@ -187,6 +191,13 @@ final class DigestService
 		$message = $forceDraftForEmptyDigest
 			? 'No matching content was available; an empty draft was created as configured.'
 			: ($blockedCount > 0 ? $blockedCount . ' inaccessible item(s) were excluded.' : '');
+		$notificationError = $this->notifyDraftCreated($digest, $internalTitle, $newsletterId, count($items), $blockedCount);
+
+		if ($notificationError !== '')
+		{
+			$message = trim($message . ' ' . $notificationError);
+		}
+
 		$this->digests->finishRun((int) $digest->id, $runId, 'draft', $newsletterId, count($items), $message, true);
 
 		return 'drafts';
@@ -222,4 +233,47 @@ final class DigestService
 			DigestSchedule::normalizeUnit((string) ($digest->recurrence_unit ?? DigestSchedule::UNIT_WEEKS))
 		);
 	}
+	/**
+	 * Sends the optional draft-review notification without turning a successful
+	 * automatic draft creation into a failed run when mail delivery fails.
+	 *
+	 * @return string Empty on success/disabled, otherwise a short diagnostic.
+	 */
+	private function notifyDraftCreated(object $digest, string $draftTitle, int $newsletterId, int $itemCount, int $blockedCount): string
+	{
+		$params = ComponentHelper::getParams('com_pungamail');
+
+		if ((int) $params->get('automatic_draft_notification_enabled', 0) !== 1)
+		{
+			return '';
+		}
+
+		$email = trim((string) $params->get('automatic_draft_notification_email', ''));
+
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+		{
+			return 'Draft review notification was enabled, but no valid recipient address is configured.';
+		}
+
+		$reviewUrl = rtrim(Uri::root(), '/') . '/administrator/' . AdministratorRoute::newsletter($newsletterId);
+
+		try
+		{
+			$this->mail->sendAutomaticDraftNotification(
+				$email,
+				(string) $digest->title,
+				$draftTitle,
+				$itemCount,
+				$blockedCount,
+				$reviewUrl
+			);
+		}
+		catch (\Throwable $e)
+		{
+			return 'Draft review notification could not be sent: ' . ErrorMessage::sanitize($e);
+		}
+
+		return '';
+	}
+
 }

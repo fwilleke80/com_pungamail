@@ -147,7 +147,7 @@ final class ServiceFactory
 	/** @return DigestService */
 	public static function digestProcessor(): DigestService
 	{
-		return new DigestService(self::digests(), self::newsletters(), self::templates(), self::contentTypes(), self::recipients(), self::queue());
+		return new DigestService(self::digests(), self::newsletters(), self::templates(), self::contentTypes(), self::recipients(), self::queue(), self::mail());
 	}
 
 	/** @return StatisticsService */

@@ -156,7 +156,7 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 		);
 		$visibleIds = array_map(
 			static fn (object $topic): int => (int) $topic->id,
-			$topics->active()
+			$topics->activeForUser($userId)
 		);
 		$selectedIds = array_values(array_unique(array_filter(array_map(
 			'intval',

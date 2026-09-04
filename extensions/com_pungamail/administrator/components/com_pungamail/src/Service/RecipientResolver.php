@@ -156,11 +156,23 @@ final class RecipientResolver
 	private function topicMemberMap(array $topicIds): array
 	{
 		$status = TopicRepository::MEMBERSHIP_SUBSCRIBED;
+		$everyone = $this->db->quote(TopicRepository::AUDIENCE_EVERYONE);
+		$registered = $this->db->quote(TopicRepository::AUDIENCE_REGISTERED);
+		$groups = $this->db->quote(TopicRepository::AUDIENCE_GROUPS);
 		$query = $this->db->getQuery(true)
-			->select('DISTINCT ' . $this->db->quoteName('subscriber_id'))
-			->from($this->db->quoteName('#__pungamail_subscriber_topics'))
-			->whereIn($this->db->quoteName('topic_id'), $topicIds)
-			->where($this->db->quoteName('status') . ' = :status')
+			->select('DISTINCT ' . $this->db->quoteName('st.subscriber_id'))
+			->from($this->db->quoteName('#__pungamail_subscriber_topics', 'st'))
+			->innerJoin($this->db->quoteName('#__pungamail_subscribers', 's') . ' ON s.id = st.subscriber_id')
+			->innerJoin($this->db->quoteName('#__pungamail_topics', 't') . ' ON t.id = st.topic_id AND t.state = 1')
+			->leftJoin($this->db->quoteName('#__pungamail_topic_groups', 'tg') . ' ON tg.topic_id = t.id')
+			->leftJoin($this->db->quoteName('#__user_usergroup_map', 'm') . ' ON m.user_id = s.user_id')
+			->leftJoin($this->db->quoteName('#__usergroups', 'member_group') . ' ON member_group.id = m.group_id')
+			->leftJoin($this->db->quoteName('#__usergroups', 'target_group') . ' ON member_group.lft BETWEEN target_group.lft AND target_group.rgt')
+			->whereIn($this->db->quoteName('st.topic_id'), $topicIds)
+			->where($this->db->quoteName('st.status') . ' = :status')
+			->where('(t.audience_mode = ' . $everyone
+				. ' OR (t.audience_mode = ' . $registered . ' AND s.user_id IS NOT NULL)'
+				. ' OR (t.audience_mode = ' . $groups . ' AND s.user_id IS NOT NULL AND target_group.id = tg.group_id))')
 			->bind(':status', $status, \Joomla\Database\ParameterType::INTEGER);
 
 		return array_fill_keys(array_map('intval', $this->db->setQuery($query)->loadColumn()), true);

@@ -196,6 +196,50 @@ final class MailService
 	}
 
 	/**
+	 * Sends a notification that an Automatic Newsletter created a draft for review.
+	 *
+	 * @param string $email           Reviewer address.
+	 * @param string $automaticTitle Automatic Newsletter title.
+	 * @param string $draftTitle     Generated Newsletter title.
+	 * @param int    $itemCount      Included content items.
+	 * @param int    $blockedCount   Items excluded by Joomla access permissions.
+	 * @param string $reviewUrl      Absolute administrator review URL.
+	 *
+	 * @return void
+	 */
+	public function sendAutomaticDraftNotification(
+		string $email,
+		string $automaticTitle,
+		string $draftTitle,
+		int $itemCount,
+		int $blockedCount,
+		string $reviewUrl
+	): void
+	{
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_ERROR_AUTOMATIC_DRAFT_EMAIL'));
+		}
+
+		$language = Factory::getApplication()->getLanguage();
+		$language->load('com_pungamail', JPATH_ADMINISTRATOR . '/components/com_pungamail', null, true);
+		$subject = Text::sprintf('COM_PUNGAMAIL_AUTOMATIC_DRAFT_NOTIFICATION_SUBJECT', $automaticTitle);
+		$markdown = Text::sprintf(
+			'COM_PUNGAMAIL_AUTOMATIC_DRAFT_NOTIFICATION_BODY',
+			$automaticTitle,
+			$draftTitle,
+			$itemCount,
+			$blockedCount,
+			$reviewUrl
+		);
+		$htmlBody = $this->markdown->toHtml($markdown, Uri::root());
+		$textBody = $this->markdown->toText($markdown, Uri::root());
+		$html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>';
+		$html .= '<body style="font-family:Arial,Helvetica,sans-serif;color:#222;line-height:1.55">' . $htmlBody . '</body></html>';
+		$this->sendMultipart($email, $subject, $html, $textBody);
+	}
+
+	/**
 	 * Sends a Markdown reminder message.
 	 *
 	 * @param string $email    Recipient address.

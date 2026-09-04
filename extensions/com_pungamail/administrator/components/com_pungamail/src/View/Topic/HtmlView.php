@@ -11,6 +11,8 @@ use Joomla\CMS\Toolbar\ToolbarHelper;
 final class HtmlView extends BaseHtmlView
 {
 	public ?object $item = null;
+	public array $groups = [];
+	public array $selectedGroupIds = [];
 
 	/** @return void */
 	public function display($tpl = null): void
@@ -21,6 +23,8 @@ final class HtmlView extends BaseHtmlView
 		}
 
 		$this->item = $this->getModel()->getItem();
+		$this->groups = \Punga\Component\PungaMail\Administrator\Service\ServiceFactory::newsletters()->getUserGroups();
+		$this->selectedGroupIds = $this->item !== null ? \Punga\Component\PungaMail\Administrator\Service\ServiceFactory::topics()->getTopicGroupIds((int) $this->item->id) : [];
 		ToolbarHelper::title(Text::_($this->item ? 'COM_PUNGAMAIL_EDIT_TOPIC' : 'COM_PUNGAMAIL_NEW_TOPIC'), 'list');
 		ToolbarHelper::apply('topic.save');
 		ToolbarHelper::save('topic.save2close');

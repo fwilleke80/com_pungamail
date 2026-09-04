@@ -8,23 +8,15 @@
 
 namespace Punga\Component\PungaMail\Administrator\Field;
 
-use Joomla\CMS\Form\Field\TextareaField;
 use Punga\Component\PungaMail\Administrator\Service\MailTextService;
 
-/**
- * Markdown footer field with the localized Website mail text as its default.
- */
-final class MailfooterField extends TextareaField
+/** Markdown footer field with the localized Website mail text as its default. */
+final class MailfooterField extends MarkdownField
 {
 	/** @var string */
 	protected $type = 'Mailfooter';
 
-	/**
-	 * Renders the textarea, showing the Website-language footer when no custom
-	 * component value has been stored yet.
-	 *
-	 * @return string Field HTML.
-	 */
+	/** @return string */
 	protected function getInput(): string
 	{
 		if (trim((string) $this->value) === '')

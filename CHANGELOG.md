@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 — 2026-09-04
+
+- Added a shared Punga Mail Markdown editor built on Joomla’s CodeMirror provider when available, with a plain textarea fallback, formatting toolbar, context-aware placeholder insertion, Edit/Preview mode, and collapsible detailed help. Preview uses Punga Mail’s own Markdown renderer.
+- Applied the Markdown editor consistently to Newsletter and Template bodies, selected-content layouts, confirmation messages, reminder messages, and other Markdown-capable Component Options fields.
+- Reorganized the Template editor so message settings live in its Settings tab, matching the Newsletter editor’s information hierarchy more closely.
+- Redesigned the Dashboard as an operational overview with active-recipient, last-newsletter, next-automatic-newsletter and delivery-health cards; actionable warnings; quick actions; recent activity; upcoming mail; Channel statistics; Automatic Newsletter status; and a lightweight 30-day delivery chart. Low-level queue controls are shown only when useful as a recovery/manual action.
+- Added optional email notification when an Automatic Newsletter creates a draft for review. The reviewer address is explicit, the message includes selected/excluded item counts, and it links directly to the generated Joomla administrator draft. Automatic-send runs do not trigger this notification.
+- Added Channel eligibility rules: everyone, registered Joomla users, or selected Joomla user groups. Eligibility is applied to public signup, module/profile choices, administrator recipient editing, confirmation/save paths, and is rechecked dynamically at delivery time. External email-only subscribers cannot join account/group-restricted Channels.
+- New Newsletters no longer preselect “All newsletter subscribers, regardless of Channel”; a recipient source must now be chosen deliberately. Existing Newsletter audience settings are preserved.
+- Fixed the mail-heading layout so its background spans the full content container while the heading text keeps the configured content padding.
+- Fixed CSV export with multiple selected Channels by avoiding nested positional bindings in the filtered membership subquery.
+- Expanded release checks for the new access controls, authoring UI, Dashboard, draft notification, safe audience default, heading layout, CSV filter, schema migration and uninstall cleanup.
+
 ## 0.3.13 — 2026-09-04
 
 - Automatic Newsletters can now repeat in days, weeks, or true calendar months; monthly schedules preserve their intended day-of-month instead of drifting by fixed 30-day intervals.

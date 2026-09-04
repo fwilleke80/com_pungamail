@@ -1555,6 +1555,16 @@ Follow PM-232 using **Punga Mail — Check returned mail**.
 
 ---
 
+### 0.4.0 focused acceptance
+
+- Create Channels for **Everyone**, **Registered users**, and selected **Manager / Administrator** Joomla groups. Verify guests see only Everyone, ordinary registered users cannot save group-only memberships, eligible administrators can subscribe, and removing the Joomla group prevents that Channel from resolving at send time.
+- Create a new Newsletter and verify no audience source is selected by default. Preflight must block until an audience is chosen. Existing newsletters must retain their stored audience.
+- Exercise the Markdown toolbar, placeholder menu, collapsible help, CodeMirror source editor (when available), and Punga-renderer Preview in Newsletter, Template, confirmation/reminder and selected-content-layout fields.
+- Generate an Automatic Newsletter in draft mode with review notification enabled. Verify the configured reviewer receives the draft link and counts; repeat in automatic-send mode and verify no review notification is sent.
+- Export subscribers with zero, one, and at least two selected Channels. Each CSV download must complete without a prepared-statement binding error and the multi-Channel result must use OR membership semantics.
+- Send/preview a newsletter with mail-heading background and confirm the background spans the full content container while the heading text remains aligned to the configured body padding.
+- Review the Dashboard with healthy data and with a deliberately missing Scheduled Task/failed queue row; only actionable warnings should appear.
+
 ## N. ACL, CSRF, privacy, language, and regression sweep
 
 ### PM-290 — Administrator ACL

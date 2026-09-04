@@ -13,6 +13,7 @@ defined('_JEXEC') or die;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
+use Punga\Component\PungaMail\Administrator\Helper\MarkdownEditorHelper;
 
 $item = $this->item;
 $newContentOverride = trim((string) ($item->new_content_item_template ?? ''));
@@ -53,44 +54,6 @@ $styleFields = [
 					<input class="form-control" id="pt-title" required name="title" value="<?php echo htmlspecialchars((string) ($item->title ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
 				</div>
 			</div>
-		</div>
-		<?php echo HTMLHelper::_('uitab.endTab'); ?>
-
-		<?php echo HTMLHelper::_('uitab.addTab', 'pm-template-tabs', 'pm-template-mail-content', Text::_('COM_PUNGAMAIL_TAB_MAIL_CONTENT')); ?>
-		<div class="pt-3">
-			<div class="card mb-3">
-				<div class="card-body">
-					<div class="mb-3">
-						<label class="form-label" for="pt-subject"><?php echo Text::_('COM_PUNGAMAIL_EMAIL_SUBJECT'); ?></label>
-						<input class="form-control" id="pt-subject" name="subject" value="<?php echo htmlspecialchars((string) ($item->subject ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-					</div>
-					<div>
-						<label class="form-label" for="pt-body"><?php echo Text::_('COM_PUNGAMAIL_NEWSLETTER_BODY_MARKDOWN'); ?></label>
-						<textarea class="form-control font-monospace" id="pt-body" name="body_markdown" rows="18"><?php echo htmlspecialchars((string) ($item->body_markdown ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_MARKDOWN_HELP'); ?></div>
-						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_NEWSLETTER_PLACEHOLDER_HELP'); ?></div>
-						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_MARKDOWN_IMAGE_HELP'); ?></div>
-						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_MARKDOWN_TABLE_HELP'); ?></div>
-					</div>
-				</div>
-			</div>
-
-			<details class="card mb-3 pm-new-content-override">
-				<summary class="card-header d-flex align-items-center gap-2" style="cursor:pointer">
-					<span class="pm-collapse-indicator" aria-hidden="true">▶</span>
-					<strong><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_LAYOUT'); ?></strong>
-					<?php if ($newContentOverride !== '') : ?>
-						<span class="badge bg-info text-dark"><?php echo Text::_('COM_PUNGAMAIL_CUSTOM_OVERRIDE_ACTIVE'); ?></span>
-					<?php endif; ?>
-				</summary>
-				<div class="card-body">
-					<label class="form-label" for="pt-new-content-template"><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE'); ?></label>
-					<textarea class="form-control font-monospace" id="pt-new-content-template" name="new_content_item_template" rows="7" placeholder="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_INHERIT'), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($newContentOverride, ENT_QUOTES, 'UTF-8'); ?></textarea>
-					<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_OVERRIDE_DESC'); ?></div>
-					<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP'); ?></div>
-				</div>
-			</details>
-
 			<div class="card mb-3">
 				<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_MESSAGE_OPTIONS'); ?></strong></div>
 				<div class="card-body">
@@ -135,6 +98,52 @@ $styleFields = [
 					</div>
 				</div>
 			</div>
+		</div>
+		<?php echo HTMLHelper::_('uitab.endTab'); ?>
+
+		<?php echo HTMLHelper::_('uitab.addTab', 'pm-template-tabs', 'pm-template-mail-content', Text::_('COM_PUNGAMAIL_TAB_MAIL_CONTENT')); ?>
+		<div class="pt-3">
+			<div class="card mb-3">
+				<div class="card-body">
+					<div class="mb-3">
+						<label class="form-label" for="pt-subject"><?php echo Text::_('COM_PUNGAMAIL_EMAIL_SUBJECT'); ?></label>
+						<input class="form-control" id="pt-subject" name="subject" value="<?php echo htmlspecialchars((string) ($item->subject ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+					</div>
+					<div>
+						<label class="form-label" for="pt-body"><?php echo Text::_('COM_PUNGAMAIL_NEWSLETTER_BODY_MARKDOWN'); ?></label>
+						<?php echo MarkdownEditorHelper::render(
+							'body_markdown',
+							'pt-body',
+							(string) ($item->body_markdown ?? ''),
+							18,
+							['{recipient}', '{new_content}'],
+							[Text::_('COM_PUNGAMAIL_NEWSLETTER_PLACEHOLDER_HELP'), Text::_('COM_PUNGAMAIL_MARKDOWN_HELP'), Text::_('COM_PUNGAMAIL_MARKDOWN_IMAGE_HELP'), Text::_('COM_PUNGAMAIL_MARKDOWN_TABLE_HELP')]
+						); ?>
+					</div>
+				</div>
+			</div>
+
+			<details class="card mb-3 pm-new-content-override">
+				<summary class="card-header d-flex align-items-center gap-2" style="cursor:pointer">
+					<span class="pm-collapse-indicator" aria-hidden="true">▶</span>
+					<strong><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_LAYOUT'); ?></strong>
+					<?php if ($newContentOverride !== '') : ?>
+						<span class="badge bg-info text-dark"><?php echo Text::_('COM_PUNGAMAIL_CUSTOM_OVERRIDE_ACTIVE'); ?></span>
+					<?php endif; ?>
+				</summary>
+				<div class="card-body">
+					<label class="form-label" for="pt-new-content-template"><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE'); ?></label>
+					<?php echo MarkdownEditorHelper::render(
+						'new_content_item_template',
+						'pt-new-content-template',
+						$newContentOverride,
+						7,
+						['{title}', '{title_link}', '{publish_date}', '{excerpt}', '{read_more}', '{url}', '{content_type}'],
+						[Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_OVERRIDE_DESC'), Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP')]
+					); ?>
+				</div>
+			</details>
+
 		</div>
 		<?php echo HTMLHelper::_('uitab.endTab'); ?>
 

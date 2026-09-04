@@ -216,12 +216,15 @@ final class SubscriberController extends BaseController
 	private function saveTopics(int $subscriberId, array $requestedIds): void
 	{
 		$topics = ServiceFactory::topics();
+		$subscriber = ServiceFactory::subscribers()->findById($subscriberId);
+		$userId = $subscriber !== null && $subscriber->user_id !== null ? (int) $subscriber->user_id : null;
 		$visibleIds = array_map(static fn (object $topic): int => (int) $topic->id, $topics->availableForAdministration());
-		$selectedIds = array_values(array_intersect($visibleIds, array_map('intval', $requestedIds)));
+		$eligibleIds = $topics->eligibleIds($visibleIds, $userId, false);
+		$selectedIds = array_values(array_intersect($eligibleIds, array_map('intval', $requestedIds)));
 		$previousIds = $topics->getSubscriberTopicIds($subscriberId);
-		$topics->updateAdministratorTopics($subscriberId, $visibleIds, $selectedIds);
+		$topics->updateAdministratorTopics($subscriberId, $visibleIds, $selectedIds, $userId);
 
-		$currentVisibleIds = array_values(array_intersect($visibleIds, $previousIds));
+		$currentVisibleIds = array_values(array_intersect($eligibleIds, $previousIds));
 		sort($currentVisibleIds);
 		sort($selectedIds);
 

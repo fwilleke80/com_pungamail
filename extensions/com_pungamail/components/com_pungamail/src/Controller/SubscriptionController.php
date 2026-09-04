@@ -325,11 +325,12 @@ final class SubscriptionController extends BaseController
 	/** @return array<int,object> */
 	private function moduleTopics(int $moduleId): array
 	{
+		$user = Factory::getApplication()->getIdentity();
+		$userId = (int) $user->id > 0 ? (int) $user->id : null;
+
 		if ($moduleId <= 0)
 		{
-			// The standalone subscription menu page is not tied to a module and
-			// therefore exposes all published topics.
-			return ServiceFactory::topics()->active();
+			return ServiceFactory::topics()->activeForUser($userId);
 		}
 
 		$db = ServiceFactory::database();
@@ -353,7 +354,7 @@ final class SubscriptionController extends BaseController
 
 		$configured = array_map('intval', (array) (new Registry($params))->get('topic_ids', []));
 
-		return ServiceFactory::topics()->active($configured !== [] ? $configured : null);
+		return ServiceFactory::topics()->activeForUser($userId, $configured !== [] ? $configured : null);
 	}
 
 	/** @return string */
