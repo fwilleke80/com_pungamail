@@ -3,11 +3,13 @@
 
 defined('_JEXEC') or die;
 
+use Joomla\CMS\Factory;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 
+$siteTimezone = (string) Factory::getApplication()->get('offset', 'UTC');
 $data = $this->data;
 $subscribers = $data['subscribers'];
 $queue = $data['queue'];
@@ -99,7 +101,7 @@ foreach ($chart as $point)
 					<div class="pm-dashboard-kicker mb-2"><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_LAST_NEWSLETTER'); ?></div>
 					<?php if ($lastNewsletter) : ?>
 						<div class="fw-semibold text-truncate"><?php echo htmlspecialchars((string) $lastNewsletter->title, ENT_QUOTES, 'UTF-8'); ?></div>
-						<div class="small text-muted mt-2"><?php echo HTMLHelper::_('date', $lastNewsletter->sent_at, Text::_('DATE_FORMAT_LC5'), 'UTC'); ?> · <?php echo Text::sprintf('COM_PUNGAMAIL_DASHBOARD_RECIPIENT_COUNT', (int) $lastNewsletter->recipient_count); ?></div>
+						<div class="small text-muted mt-2"><?php echo HTMLHelper::_('date', $lastNewsletter->sent_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?> · <?php echo Text::sprintf('COM_PUNGAMAIL_DASHBOARD_RECIPIENT_COUNT', (int) $lastNewsletter->recipient_count); ?></div>
 					<?php else : ?>
 						<div class="text-muted"><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_NOT_SENT_YET'); ?></div>
 					<?php endif; ?>
@@ -112,7 +114,7 @@ foreach ($chart as $point)
 					<div class="pm-dashboard-kicker mb-2"><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_NEXT_AUTOMATIC'); ?></div>
 					<?php if ($nextAutomatic) : ?>
 						<div class="fw-semibold text-truncate"><?php echo htmlspecialchars((string) $nextAutomatic->title, ENT_QUOTES, 'UTF-8'); ?></div>
-						<div class="small text-muted mt-2"><?php echo HTMLHelper::_('date', $nextAutomatic->next_run_at, Text::_('DATE_FORMAT_LC5'), 'UTC'); ?></div>
+						<div class="small text-muted mt-2"><?php echo HTMLHelper::_('date', $nextAutomatic->next_run_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?></div>
 					<?php else : ?>
 						<div class="text-muted"><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_NO_AUTOMATIC'); ?></div>
 					<?php endif; ?>
@@ -177,7 +179,7 @@ foreach ($chart as $point)
 					<div class="d-grid gap-3">
 					<?php foreach ($activity as $entry) : ?>
 						<div class="pm-dashboard-activity">
-							<div class="small text-muted"><?php echo HTMLHelper::_('date', (string) $entry['at'], Text::_('DATE_FORMAT_LC5'), 'UTC'); ?></div>
+							<div class="small text-muted"><?php echo HTMLHelper::_('date', (string) $entry['at'], Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?></div>
 							<div>
 							<?php if ((string) $entry['type'] === 'sent') : ?>
 								<?php echo Text::sprintf('COM_PUNGAMAIL_DASHBOARD_ACTIVITY_SENT', htmlspecialchars((string) $entry['title'], ENT_QUOTES, 'UTF-8'), (int) $entry['count']); ?>
@@ -207,7 +209,7 @@ foreach ($chart as $point)
 					<?php foreach ($upcoming as $row) : ?>
 						<a class="list-group-item list-group-item-action px-0" href="<?php echo Route::_(AdministratorRoute::newsletter((int) $row->id)); ?>">
 							<div class="fw-semibold"><?php echo htmlspecialchars((string) $row->title, ENT_QUOTES, 'UTF-8'); ?></div>
-							<div class="small text-muted"><?php echo HTMLHelper::_('date', $row->scheduled_at, Text::_('DATE_FORMAT_LC5'), 'UTC'); ?></div>
+							<div class="small text-muted"><?php echo HTMLHelper::_('date', $row->scheduled_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?></div>
 						</a>
 					<?php endforeach; ?>
 					</div>
@@ -250,7 +252,7 @@ foreach ($chart as $point)
 		<div class="table-responsive">
 			<table class="table align-middle mb-0"><thead><tr><th><?php echo Text::_('JGLOBAL_TITLE'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_NEXT_RUN'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_DIGEST_MODE'); ?></th></tr></thead><tbody>
 			<?php if ($automatic === []) : ?><tr><td colspan="3" class="text-muted"><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_NO_AUTOMATIC'); ?></td></tr><?php endif; ?>
-			<?php foreach ($automatic as $row) : ?><tr><td><a href="<?php echo Route::_(AdministratorRoute::digest((int) $row->id)); ?>"><?php echo htmlspecialchars((string) $row->title, ENT_QUOTES, 'UTF-8'); ?></a></td><td><?php echo HTMLHelper::_('date', $row->next_run_at, Text::_('DATE_FORMAT_LC5'), 'UTC'); ?></td><td><?php echo Text::_((string) $row->generation_mode === 'auto' ? 'COM_PUNGAMAIL_DIGEST_AUTO' : 'COM_PUNGAMAIL_DIGEST_DRAFT'); ?></td></tr><?php endforeach; ?>
+			<?php foreach ($automatic as $row) : ?><tr><td><a href="<?php echo Route::_(AdministratorRoute::digest((int) $row->id)); ?>"><?php echo htmlspecialchars((string) $row->title, ENT_QUOTES, 'UTF-8'); ?></a></td><td><?php echo HTMLHelper::_('date', $row->next_run_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?></td><td><?php echo Text::_((string) $row->generation_mode === 'auto' ? 'COM_PUNGAMAIL_DIGEST_AUTO' : 'COM_PUNGAMAIL_DIGEST_DRAFT'); ?></td></tr><?php endforeach; ?>
 			</tbody></table>
 		</div>
 	</div>

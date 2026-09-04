@@ -124,49 +124,62 @@ final class TopicRepository
 		$groupIds = $audienceMode === self::AUDIENCE_GROUPS ? $this->normalizeGroupIds($groupIds) : [];
 		$now = (new Date('now', 'UTC'))->toSql();
 
-		if ($id <= 0)
+		$this->db->transactionStart();
+
+		try
 		{
-			$row = (object) [
-				'title' => $title,
-				'alias' => $alias,
-				'description' => trim($description) !== '' ? trim($description) : null,
-				'audience_mode' => $audienceMode,
-				'state' => 1,
-				'ordering' => $this->nextOrdering(),
-				'created' => $now,
-				'modified' => $now,
-				'created_by' => $userId,
-			];
-			$this->db->insertObject('#__pungamail_topics', $row, 'id');
-			$this->replaceTopicGroups((int) $row->id, $groupIds);
+			if ($id <= 0)
+			{
+				$row = (object) [
+					'title' => $title,
+					'alias' => $alias,
+					'description' => trim($description) !== '' ? trim($description) : null,
+					'audience_mode' => $audienceMode,
+					'state' => 1,
+					'ordering' => $this->nextOrdering(),
+					'created' => $now,
+					'modified' => $now,
+					'created_by' => $userId,
+				];
+				$this->db->insertObject('#__pungamail_topics', $row, 'id');
+				$this->replaceTopicGroups((int) $row->id, $groupIds);
+				$this->db->transactionCommit();
 
-			return (int) $row->id;
+				return (int) $row->id;
+			}
+
+			$descriptionValue = trim($description) !== '' ? trim($description) : null;
+			$update = $this->db->getQuery(true)
+				->update($this->db->quoteName('#__pungamail_topics'))
+				->set($this->db->quoteName('title') . ' = :title')
+				->set($this->db->quoteName('alias') . ' = :alias')
+				->set($this->db->quoteName('description') . ($descriptionValue === null ? ' = NULL' : ' = :description'))
+				->set($this->db->quoteName('audience_mode') . ' = :audienceMode')
+				->set($this->db->quoteName('modified') . ' = :modified')
+				->where($this->db->quoteName('id') . ' = :id')
+				->bind(':title', $title)
+				->bind(':alias', $alias)
+				->bind(':audienceMode', $audienceMode)
+				->bind(':modified', $now)
+				->bind(':id', $id, ParameterType::INTEGER);
+
+			if ($descriptionValue !== null)
+			{
+				$update->bind(':description', $descriptionValue);
+			}
+
+			$this->db->setQuery($update)->execute();
+			$this->replaceTopicGroups($id, $groupIds);
+			$this->db->transactionCommit();
+
+			return $id;
 		}
-
-		$descriptionValue = trim($description) !== '' ? trim($description) : null;
-		$update = $this->db->getQuery(true)
-			->update($this->db->quoteName('#__pungamail_topics'))
-			->set($this->db->quoteName('title') . ' = :title')
-			->set($this->db->quoteName('alias') . ' = :alias')
-			->set($this->db->quoteName('description') . ($descriptionValue === null ? ' = NULL' : ' = :description'))
-			->set($this->db->quoteName('audience_mode') . ' = :audienceMode')
-			->set($this->db->quoteName('modified') . ' = :modified')
-			->where($this->db->quoteName('id') . ' = :id')
-			->bind(':title', $title)
-			->bind(':alias', $alias)
-			->bind(':audienceMode', $audienceMode)
-			->bind(':modified', $now)
-			->bind(':id', $id, ParameterType::INTEGER);
-
-		if ($descriptionValue !== null)
+		catch (\Throwable $exception)
 		{
-			$update->bind(':description', $descriptionValue);
+			$this->db->transactionRollback();
+
+			throw $exception;
 		}
-
-		$this->db->setQuery($update)->execute();
-		$this->replaceTopicGroups($id, $groupIds);
-
-		return $id;
 	}
 
 	/**
@@ -650,7 +663,11 @@ final class TopicRepository
 
 		foreach ($this->normalizeGroupIds($groupIds) as $groupId)
 		{
-			$this->db->insertObject('#__pungamail_topic_groups', (object) ['topic_id' => $topicId, 'group_id' => $groupId]);
+			$row = (object) [
+				'topic_id' => $topicId,
+				'group_id' => $groupId,
+			];
+			$this->db->insertObject('#__pungamail_topic_groups', $row);
 		}
 	}
 

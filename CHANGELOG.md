@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.2 — 2026-09-04
+
+- Fixed Automatic Newsletter schedule times displaying as UTC in the Dashboard and Automatic Newsletters list while the editor used the Joomla site timezone.
+- Kept UTC as the canonical database representation while consistently converting schedule/status timestamps to the configured Joomla timezone for administrator display.
+- Replaced the Automatic Newsletter editor's browser `datetime-local` input with Joomla's native calendar control including a 24-hour time picker.
+- Applied the same administrator-timezone display rule to manually scheduled Newsletter status times.
+- Added release regression checks for the date/time picker and UTC-to-site-timezone display contract.
+
+## 0.4.1 — 2026-09-04
+
+- Fixed saving Channels restricted to selected Joomla user groups. Joomla database drivers require `insertObject()` objects to be passed by reference; the 0.4.0 Channel-group relation writer passed a temporary object expression, so the Channel row could be created while the selected groups failed to save.
+- Made Channel metadata and selected-group persistence transactional. If relation persistence fails, the Channel save is rolled back instead of leaving a partially saved Channel.
+- Added release regression checks for by-reference Channel-group inserts and transactional Channel saves. No database schema changes are required.
+
 ## 0.4.0 — 2026-09-04
 
 - Added a shared Punga Mail Markdown editor built on Joomla’s CodeMirror provider when available, with a plain textarea fallback, formatting toolbar, context-aware placeholder insertion, Edit/Preview mode, and collapsible detailed help. Preview uses Punga Mail’s own Markdown renderer.

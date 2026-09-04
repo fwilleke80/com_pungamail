@@ -1,0 +1,2 @@
+-- Punga Mail 0.4.2
+-- Time-zone display and Automatic Newsletter date/time picker maintenance release.

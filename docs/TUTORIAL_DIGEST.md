@@ -228,3 +228,8 @@ The generated newsletter has its own delivery status and statistics. Digest hist
 - Use permanent Delete only from the Trashed filter and only when its history/relationships allow it.
 
 For every field and task, see [Punga Mail Administrator Guide](USER_GUIDE.md).
+
+
+## Schedule time and timezone
+
+The **Next run** control includes both a calendar and a 24-hour time picker. Enter the date and time as they should occur in the Joomla site timezone shown below the field. Punga Mail converts that value to UTC for storage and task processing, then converts it back to the configured Joomla timezone wherever the schedule is shown in the editor, Automatic Newsletters list and Dashboard.

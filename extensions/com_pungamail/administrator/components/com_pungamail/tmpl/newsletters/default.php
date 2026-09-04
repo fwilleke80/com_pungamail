@@ -3,6 +3,7 @@
 
 defined('_JEXEC') or die;
 
+use Joomla\CMS\Factory;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Layout\LayoutHelper;
@@ -21,6 +22,7 @@ $statusLabels = [
 	NewsletterRepository::STATUS_FAILED => Text::_('COM_PUNGAMAIL_STATUS_FAILED'),
 	NewsletterRepository::STATUS_CANCELLED => Text::_('COM_PUNGAMAIL_STATUS_CANCELLED'),
 ];
+$siteTimezone=(string)Factory::getApplication()->get('offset','UTC');
 ?>
 <form action="<?php echo Route::_('index.php?option=com_pungamail&view=newsletters'); ?>" method="post" name="adminForm" id="adminForm">
 	<?php echo LayoutHelper::render('joomla.searchtools.default', ['view' => $this]); ?>
@@ -62,7 +64,7 @@ $statusLabels = [
 					<td class="text-end"><?php echo (int) $item->recipient_count; ?></td>
 					<td class="text-end"><?php echo (int) $item->sent_count; ?></td>
 					<td class="text-end"><?php echo (int) $item->failed_count; ?></td>
-					<td><?php if ((int) $item->status === NewsletterRepository::STATUS_SCHEDULED && $item->scheduled_at) : ?><span class="badge bg-info text-dark"><?php echo Text::_('COM_PUNGAMAIL_SCHEDULED_FOR'); ?></span><br><?php echo HTMLHelper::_('date', $item->scheduled_at, Text::_('DATE_FORMAT_LC5'), 'UTC'); ?><?php else : ?><?php echo $item->sent_at ? HTMLHelper::_('date', $item->sent_at, Text::_('DATE_FORMAT_LC5'), 'UTC') : Text::_('COM_PUNGAMAIL_NOT_YET'); ?><?php endif; ?></td>
+					<td><?php if ((int) $item->status === NewsletterRepository::STATUS_SCHEDULED && $item->scheduled_at) : ?><span class="badge bg-info text-dark"><?php echo Text::_('COM_PUNGAMAIL_SCHEDULED_FOR'); ?></span><br><?php echo HTMLHelper::_('date', $item->scheduled_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?><?php else : ?><?php echo $item->sent_at ? HTMLHelper::_('date', $item->sent_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone) : Text::_('COM_PUNGAMAIL_NOT_YET'); ?><?php endif; ?></td>
 					<td class="text-center"><?php echo (int) $item->id; ?></td>
 				</tr>
 			<?php endforeach; ?>

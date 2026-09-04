@@ -1,0 +1,2 @@
+-- Punga Mail 0.4.1
+-- Maintenance release: no schema changes.

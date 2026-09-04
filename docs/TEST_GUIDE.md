@@ -1709,6 +1709,21 @@ Complete this final checklist after all tests:
 
 ---
 
+
+### 0.4.1 focused acceptance — restricted Channel persistence
+
+1. Open **Punga Mail → Channels** and create a new Channel.
+2. Set **Who can subscribe?** to **Selected Joomla user groups**.
+3. Select at least **Manager**, **Administrator**, and **Super Users**.
+4. Save the Channel.
+5. Confirm Joomla reports a successful save with no database exception.
+6. Reopen the Channel and confirm all selected user groups are still checked.
+7. Change the selection (remove one group and add another), save, reopen, and verify the edited selection persists exactly.
+8. Change **Who can subscribe?** to **Everyone**, save, reopen, and confirm the old group relation no longer affects eligibility.
+9. Repeat with **Registered users**.
+
+**Expected:** Channel metadata and group restrictions save as one atomic operation. No partially saved Channel is left behind if relation persistence fails, and selected groups survive create/edit/reload correctly.
+
 ## Final live-site release gate
 
 Do not enable routine live sending until all of the following are true:
@@ -1733,3 +1748,15 @@ After approval, restore production-safe batch/rate/retry values, remove or unpub
 - [Templates Tutorial](TUTORIAL_TEMPLATES.md)
 - [Delivery Health Tutorial](TUTORIAL_DELIVERY_HEALTH.md)
 - [Import/Export Tutorial](TUTORIAL_IMPORT_EXPORT.md)
+
+
+### 0.4.2 focused acceptance — Automatic Newsletter timezone and time picker
+
+1. Set Joomla's site timezone to a zone that differs from UTC, for example **Europe/Berlin** during daylight-saving time.
+2. Create or edit an Automatic Newsletter and open **Next run**. Confirm Joomla's calendar control offers both date selection and a **24-hour time picker**.
+3. Choose a future date and set the time to **10:00**, then save.
+4. Reopen the Automatic Newsletter. Confirm the editor still shows **10:00**.
+5. Return to the **Automatic Newsletters** list. Confirm **Next run** shows **10:00**, not the corresponding UTC value (for example 08:00 during CEST).
+6. Open the Punga Mail Dashboard. Confirm the same Automatic Newsletter also shows **10:00** there.
+7. If a normal Newsletter is manually scheduled, confirm its scheduled time is likewise displayed in the Joomla site timezone in administrator views.
+8. Confirm the Scheduled Task still evaluates due Automatic Newsletters correctly; the database representation remains UTC.

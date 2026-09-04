@@ -3,6 +3,7 @@
 
 defined('_JEXEC') or die;
 
+use Joomla\CMS\Factory;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
@@ -37,6 +38,7 @@ $styleFields = [
 	'logo_width' => 'COM_PUNGAMAIL_STYLE_LOGO_WIDTH',
 	'footer_color' => 'COM_PUNGAMAIL_STYLE_FOOTER_COLOR',
 ];
+$siteTimezone=(string)Factory::getApplication()->get('offset','UTC');
 ?>
 <style>
 .pm-new-content-override > summary { list-style: none; }
@@ -59,7 +61,7 @@ $styleFields = [
 	<div class="card mt-3"><div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_FROZEN_RECIPIENTS'); ?></strong></div><div class="card-body p-0">
 		<table class="table table-striped mb-0"><thead><tr><th><?php echo Text::_('JGLOBAL_NAME'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_EMAIL'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_SOURCE'); ?></th><th><?php echo Text::_('JSTATUS'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_ATTEMPTS'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_SENT'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_ERROR'); ?></th></tr></thead><tbody>
 		<?php foreach ($this->queueRecipients as $recipient) : ?>
-		<tr><td><?php echo htmlspecialchars((string) (($recipient->recipient_name ?? '') !== '' ? $recipient->recipient_name : $recipient->email), ENT_QUOTES, 'UTF-8'); ?></td><td><code><?php echo htmlspecialchars((string) $recipient->email, ENT_QUOTES, 'UTF-8'); ?></code></td><td><?php echo htmlspecialchars((string) $recipient->source, ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo htmlspecialchars((string) $recipient->status, ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo (int) $recipient->attempts; ?></td><td><?php echo $recipient->sent_at ? HTMLHelper::_('date', $recipient->sent_at, Text::_('DATE_FORMAT_LC5'), 'UTC') : '—'; ?></td><td class="small text-danger"><?php echo htmlspecialchars((string) ($recipient->last_error ?? ''), ENT_QUOTES, 'UTF-8'); ?></td></tr>
+		<tr><td><?php echo htmlspecialchars((string) (($recipient->recipient_name ?? '') !== '' ? $recipient->recipient_name : $recipient->email), ENT_QUOTES, 'UTF-8'); ?></td><td><code><?php echo htmlspecialchars((string) $recipient->email, ENT_QUOTES, 'UTF-8'); ?></code></td><td><?php echo htmlspecialchars((string) $recipient->source, ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo htmlspecialchars((string) $recipient->status, ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo (int) $recipient->attempts; ?></td><td><?php echo $recipient->sent_at ? HTMLHelper::_('date', $recipient->sent_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone) : '—'; ?></td><td class="small text-danger"><?php echo htmlspecialchars((string) ($recipient->last_error ?? ''), ENT_QUOTES, 'UTF-8'); ?></td></tr>
 		<?php endforeach; ?>
 		</tbody></table>
 	</div></div>
@@ -67,7 +69,7 @@ $styleFields = [
 <?php else : ?>
 	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm">
 		<input type="hidden" name="id" value="<?php echo (int) ($item->id ?? 0); ?>">
-		<?php if ($item !== null && (int) $item->status === NewsletterRepository::STATUS_SCHEDULED) : ?><div class="alert alert-info"><?php echo Text::sprintf('COM_PUNGAMAIL_EDITING_SCHEDULED', HTMLHelper::_('date', $item->scheduled_at, Text::_('DATE_FORMAT_LC5'), 'UTC')); ?></div><?php endif; ?>
+		<?php if ($item !== null && (int) $item->status === NewsletterRepository::STATUS_SCHEDULED) : ?><div class="alert alert-info"><?php echo Text::sprintf('COM_PUNGAMAIL_EDITING_SCHEDULED', HTMLHelper::_('date', $item->scheduled_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone)); ?></div><?php endif; ?>
 		<?php echo HTMLHelper::_('uitab.startTabSet', 'pm-newsletter-tabs', ['active' => 'pm-settings', 'recall' => true, 'breakpoint' => 768]); ?>
 
 		<?php echo HTMLHelper::_('uitab.addTab', 'pm-newsletter-tabs', 'pm-settings', Text::_('COM_PUNGAMAIL_TAB_SETTINGS')); ?>

@@ -90,6 +90,8 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.12.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.13.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.0.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.1.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.2.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/MarkdownEditorHelper.php",
@@ -1660,6 +1662,75 @@ def check_release_ux_0400() -> None:
             if values.get(key, "").strip() == "":
                 fail(f"0.4.0 is missing {locale} UI copy: {key}")
 
+
+def check_release_fix_0401() -> None:
+    """Protect Channel group persistence against the 0.4.0 partial-save regression."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    topic_repo = (admin_root / "src/Service/TopicRepository.php").read_text(encoding="utf-8")
+    marker = (admin_root / "sql/updates/mysql/0.4.1.sql").read_text(encoding="utf-8")
+
+    if "insertObject('#__pungamail_topic_groups', (object)" in topic_repo:
+        fail("0.4.1 reintroduced a temporary object expression in the Channel group insert")
+    for token in (
+        "$row = (object) [",
+        "$this->db->insertObject('#__pungamail_topic_groups', $row)",
+        "$this->db->transactionStart()",
+        "$this->db->transactionCommit()",
+        "$this->db->transactionRollback()",
+    ):
+        if token not in topic_repo:
+            fail(f"0.4.1 Channel group persistence is missing {token!r}")
+
+    if any(token in marker.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.4.1 is a persistence-only fix; its version-marker migration must not change schema")
+
+def check_release_fix_0402() -> None:
+    """Protect Automatic Newsletter timezone presentation and date/time picking."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    digest_editor = (admin_root / "tmpl/digest/default.php").read_text(encoding="utf-8")
+    digest_list = (admin_root / "tmpl/digests/default.php").read_text(encoding="utf-8")
+    dashboard = (admin_root / "tmpl/dashboard/default.php").read_text(encoding="utf-8")
+    controller = (admin_root / "src/Controller/DigestController.php").read_text(encoding="utf-8")
+    marker = (admin_root / "sql/updates/mysql/0.4.2.sql").read_text(encoding="utf-8")
+
+    for token in (
+        "HTMLHelper::_('calendar'",
+        "'showTime'=>true",
+        "'timeFormat'=>24",
+        "$siteTimezone",
+    ):
+        if token not in digest_editor:
+            fail(f"0.4.2 Automatic Newsletter date/time editor is missing {token!r}")
+
+    if 'type="datetime-local" id="digest-next"' in digest_editor:
+        fail("0.4.2 reintroduced the browser-only Automatic Newsletter datetime-local control")
+
+    if "Factory::getApplication()->get('offset','UTC')" not in digest_list:
+        fail("0.4.2 Automatic Newsletters list does not resolve the Joomla site timezone")
+    if "HTMLHelper::_('date',$item->next_run_at,Text::_('DATE_FORMAT_LC5'),$siteTimezone)" not in digest_list:
+        fail("0.4.2 Automatic Newsletters list does not display next run in the Joomla site timezone")
+
+    for token in (
+        "$siteTimezone = (string) Factory::getApplication()->get('offset', 'UTC');",
+        "HTMLHelper::_('date', $nextAutomatic->next_run_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone)",
+        "HTMLHelper::_('date', $row->next_run_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone)",
+    ):
+        if token not in dashboard:
+            fail(f"0.4.2 Dashboard timezone display is missing {token!r}")
+
+    for token in (
+        "Factory::getDate($value, (string) Factory::getApplication()->get('offset', 'UTC'))",
+        "setTimezone(new DateTimeZone('UTC'))",
+    ):
+        if token not in controller:
+            fail(f"0.4.2 UTC storage contract is missing {token!r}")
+
+    if any(token in marker.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.4.2 is a timezone/UI maintenance release; its version-marker migration must not change schema")
+
+
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
 
@@ -1791,6 +1862,8 @@ def main() -> int:
         check_release_ux_0312,
         check_release_ux_0313,
         check_release_ux_0400,
+        check_release_fix_0401,
+        check_release_fix_0402,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,
