@@ -259,6 +259,7 @@ final class NewsletterRenderer
 		$link = htmlspecialchars((string) $style['link_color'], ENT_QUOTES, 'UTF-8');
 		$footer = htmlspecialchars((string) $style['footer_color'], ENT_QUOTES, 'UTF-8');
 		$headingBackground = htmlspecialchars((string) ($style['heading_background'] ?? ''), ENT_QUOTES, 'UTF-8');
+		$mailHeadingColor = htmlspecialchars((string) ($style['mail_heading_color'] ?? $style['heading_color']), ENT_QUOTES, 'UTF-8');
 		$font = htmlspecialchars((string) $style['font_family'], ENT_QUOTES, 'UTF-8');
 		$customCss = trim((string) ($style['custom_css'] ?? ''));
 		$headCss = $customCss !== '' ? '<style>' . $customCss . '</style>' : '';
@@ -275,7 +276,7 @@ final class NewsletterRenderer
 		{
 			$headingMargin = $logoUrl !== '' ? '16px 0 0' : '0';
 			$headingBackgroundStyle = $headingBackground !== '' ? ';background:' . $headingBackground . ';padding:16px 20px' : '';
-			$headerParts[] = '<h1 style="display:block;width:100%;box-sizing:border-box;margin:' . $headingMargin . ';color:' . htmlspecialchars((string) $style['heading_color'], ENT_QUOTES, 'UTF-8') . ';line-height:1.2' . $headingBackgroundStyle . '">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h1>';
+			$headerParts[] = '<h1 style="display:block;width:100%;box-sizing:border-box;margin:' . $headingMargin . ';color:' . $mailHeadingColor . ';line-height:1.2' . $headingBackgroundStyle . '">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h1>';
 		}
 
 		$header = implode('', $headerParts);

@@ -13,7 +13,7 @@ A digest definition periodically:
 5. either leaves it as a Draft or places it into the normal send queue;
 6. records the outcome in digest history.
 
-The recurring Joomla task wakes Punga Mail up. Each Automatic Newsletter’s own **Next run** and **Create every … days** settings determine whether it is actually due.
+The recurring Joomla task wakes Punga Mail up. Each Automatic Newsletter’s own **Next run** and **Repeat every** settings determine whether it is actually due.
 
 ## 1. Prepare the template
 
@@ -42,11 +42,11 @@ Create and publish any Punga Mail Channels under **Channels**. Confirm that subs
 Decide whether the digest should target:
 
 - every confirmed subscriber;
-- members of selected topics;
+- members of selected Channels;
 - selected Joomla groups;
 - the union of multiple sources.
 
-For a topic-only digest, plan to clear **All globally subscribed recipients, regardless of topic** in the digest editor.
+For a Channel-only Automatic Newsletter, plan to clear **All globally subscribed recipients, regardless of topic** in the digest editor.
 
 ## 3. Create the digest
 
@@ -73,7 +73,7 @@ If the field is empty, the template subject is used.
 
 ## 4. Select content sources
 
-Under **Digest content**, check one or more registered Joomla content types.
+Under **Digest content**, check one or more registered Joomla content types. Punga Mail displays the translated component label when Joomla provides one for the current administrator language.
 
 To limit one source to categories, enter comma-separated numeric category IDs beside that source, for example:
 
@@ -104,15 +104,18 @@ Overlapping rolling windows can include the same item more than once. Choose thi
 Enter:
 
 - **Next run** in the Joomla site timezone shown on the form;
-- **Create every … days**, minimum 1 day.
+- **Repeat every** with a positive number and one of **days**, **weeks**, or **months**.
 
 Useful intervals include:
 
-| Schedule | Days |
-| --- | ---: |
-| Daily | 1 |
-| Weekly | 7 |
-| Roughly monthly | 30 |
+| Schedule | Setting |
+| --- | --- |
+| Daily | 1 day |
+| Weekly | 1 week |
+| Every two weeks | 2 weeks |
+| Monthly | 1 month |
+
+Month intervals use calendar-month arithmetic. A newsletter anchored near the end of a month uses the last valid day in a shorter month and returns to its intended day when possible, rather than drifting by a fixed 30-day interval.
 
 The task’s own frequency should be shorter than the Automatic Newsletter recurrence. Running the task every 5 or 15 minutes is normally enough.
 
@@ -130,7 +133,7 @@ Use the same audience rules as a normal newsletter:
 
 - select **All globally subscribed recipients, regardless of topic** only for a site-wide digest;
 - clear it for topic-only targeting;
-- select one or more topics as an either/or group;
+- select one or more Channels as an either/or group;
 - select Joomla groups only when their eligible members should be added.
 
 Addresses are deduplicated. Unsubscribed, invalid, and suppressed addresses are excluded.

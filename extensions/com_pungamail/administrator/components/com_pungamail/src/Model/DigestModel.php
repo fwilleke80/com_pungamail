@@ -43,7 +43,7 @@ final class DigestModel extends BaseDatabaseModel
 			$item = $this->item ?? (object) [];
 
 			foreach ([
-				'title', 'state', 'template_id', 'subject_pattern', 'recurrence_minutes', 'next_run_at',
+				'title', 'state', 'template_id', 'subject_pattern', 'recurrence_value', 'recurrence_unit', 'recurrence_minutes', 'next_run_at',
 				'cutoff_mode', 'rolling_hours', 'include_subscribers', 'generation_mode', 'empty_action', 'confirm_auto_send',
 			] as $key)
 			{

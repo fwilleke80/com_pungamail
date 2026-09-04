@@ -15,6 +15,7 @@ use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
+use Punga\Component\PungaMail\Administrator\Service\DigestSchedule;
 use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
@@ -90,12 +91,17 @@ final class DigestController extends BaseController
 			$categories[(string) $sourceKey] = array_map('intval', preg_split('/\s*,\s*/', (string) $value) ?: []);
 		}
 
+		$recurrenceValue = DigestSchedule::normalizeValue($input->post->getInt('recurrence_value', 1));
+		$recurrenceUnit = DigestSchedule::normalizeUnit($input->post->getCmd('recurrence_unit', DigestSchedule::UNIT_WEEKS));
+
 		return [
 			'title' => $input->post->getString('title'),
 			'state' => $input->post->getInt('state', 1),
 			'template_id' => $input->post->getInt('template_id', 0),
 			'subject_pattern' => $input->post->getString('subject_pattern'),
-			'recurrence_minutes' => max(1, $input->post->getInt('recurrence_days', 7)) * 1440,
+			'recurrence_value' => $recurrenceValue,
+			'recurrence_unit' => $recurrenceUnit,
+			'recurrence_minutes' => DigestSchedule::legacyMinutes($recurrenceValue, $recurrenceUnit),
 			'next_run_at' => $this->utcDate($input->post->getString('next_run_at')),
 			'cutoff_mode' => $input->post->getCmd('cutoff_mode', 'since_last'),
 			'rolling_hours' => max(1, $input->post->getInt('rolling_days', 7)) * 24,

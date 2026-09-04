@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.13 — 2026-09-04
+
+- Automatic Newsletters can now repeat in days, weeks, or true calendar months; monthly schedules preserve their intended day-of-month instead of drifting by fixed 30-day intervals.
+- Existing Automatic Newsletter intervals are migrated without changing their cadence: whole-week and whole-day intervals use the new units directly, while older custom minute intervals keep their legacy cadence until explicitly resaved.
+- Registered content-source names are resolved through the current Joomla administrator language where a component language key is available.
+- Newsletter content-selection titles now link to the corresponding frontend item and open in a new browser tab.
+- The Template editor now uses Joomla-native Settings, Mail content, and Design tabs.
+- Component Options > Newsletter reminder now includes a plain-language explanation and complete help-toggle descriptions.
+- Component Options now renders **Mail heading background** as a Joomla colour picker instead of a plain text field.
+- Added an independent **Mail heading text colour** with Component Options → Template → Newsletter inheritance. Existing installations fall back to the previous content-heading colour until a separate mail-heading colour is chosen.
+
 ## 0.3.12 — 2026-09-04
 
 - Moved the Newsletter **Template** selector and **Apply template** action into the **Mail content** tab, next to the content they affect.

@@ -137,6 +137,7 @@ A blank template or newsletter design field means “inherit.”
 | Text color | Default body-text color. |
 | Heading color | Default heading color. |
 | Mail heading background | Optional background for the first mail heading. Leave empty for no background; when set, the heading spans the full mail content width. |
+| Mail heading text colour | Optional text colour for that full-width mail heading. Leave empty to reuse the content-heading colour. |
 | Link color | Default link color. |
 | Font family | Email-safe CSS font list, for example `Arial, Helvetica, sans-serif`. |
 | Font size | Base text size in pixels. Default: 16; allowed range: 10–28. |
@@ -194,7 +195,7 @@ Punga Mail marks processed or unparseable unseen messages as seen. Use a dedicat
 
 ### Newsletter reminder
 
-This optional feature alerts an administrator when no newsletter has been sent for a chosen period.
+This optional feature alerts an administrator when no newsletter has been sent for a chosen period. The Component Options tab now begins with the same plain-language explanation shown here, and every reminder setting has Joomla inline-help text.
 
 | Setting | What it controls |
 | --- | --- |
@@ -331,7 +332,7 @@ Every global design property can be overridden: content width, backgrounds, text
 
 Template custom CSS is added after the global custom CSS. Newsletter custom CSS can add another layer.
 
-**Preview** renders the template. **Save**, **Save & Close**, and **Cancel** behave like standard Joomla editor actions.
+**Preview** renders the template. The editor is divided into **Settings**, **Mail content**, and **Design** tabs, matching the structure of the Newsletter editor without showing a content-selection tab that templates do not need. **Save**, **Save & Close**, and **Cancel** behave like standard Joomla editor actions.
 
 Applying a template in a newsletter **copies** its values. Later template edits do not alter an existing draft and can never alter a sent snapshot.
 
@@ -384,6 +385,7 @@ The picker reads content types registered with Joomla, including compatible thir
 | Apply filters | Reloads the candidates using the selected date and content types. Save the draft as part of the action. |
 | Content types | Chooses which registered content sources are searched. |
 | Search | Filters the currently displayed candidate rows by source/title in the browser. It does not change stored content. |
+| Item title | Opens the current frontend page for that content item in a new browser tab, so you can inspect it without leaving the Newsletter editor. |
 | Item checkbox | Includes or removes that item from the newsletter selection. |
 | Ordering | Controls where the item appears inside `{new_content}`. |
 | Title override | Changes the title in this newsletter only. |
@@ -515,9 +517,9 @@ Keep a published Punga Mail subscription menu item so Joomla can produce a clean
 
 ## Automatic Newsletters
 
-A digest is a recurring definition that creates newsletters from newly published registered Joomla content.
+An Automatic Newsletter is a recurring definition that creates newsletters from newly published registered Joomla content.
 
-The Digests list supports search, enabled/disabled filtering, sorting, pagination, enable, disable, trash, restore, and delete. It shows the chosen template, generation mode, next run, and status.
+The Automatic Newsletters list supports search, enabled/disabled filtering, sorting, pagination, enable, disable, trash, restore, and delete. It shows the chosen template, generation mode, next run, and status.
 
 ### Automatic Newsletter fields
 
@@ -531,7 +533,7 @@ The Digests list supports search, enabled/disabled filtering, sorting, paginatio
 
 #### Content
 
-Select one or more registered content types. For each source, optional **Category IDs** may contain comma-separated numeric Joomla category IDs, for example `1, 4, 12`. Leave it blank to include all categories from that content source.
+Select one or more registered content types. Their names follow the current Joomla administrator language when the registered component provides a matching language string. For each source, optional **Category IDs** may contain comma-separated numeric Joomla category IDs, for example `1, 4, 12`. Leave it blank to include all categories from that content source.
 
 Category filters are applied only where the registered content provides a category ID.
 
@@ -540,7 +542,7 @@ Category filters are applied only where the registered content provides a catego
 | Field | What it means |
 | --- | --- |
 | Next run | Earliest date/time at which the digest task should run this definition, displayed in Joomla's site timezone. |
-| Create every … days | Number of days between automatic-newsletter runs. Use 1 for daily, 7 for weekly, or 30 for roughly monthly. Punga Mail stores the interval internally but the administrator works in days. |
+| Repeat every | Number plus unit for the recurrence: days, weeks, or calendar months. Months are real calendar months rather than a fixed 30-day approximation, so monthly schedules do not drift. |
 | Content cutoff: Since last | Uses the previous successful automatic-newsletter cutoff so the same item is not intentionally repeated. For the first run, it looks back one recurrence interval. |
 | Content from a recent time period | Uses a fixed recent window on every run. Selecting it reveals **Look back … days**. Overlapping windows can intentionally repeat content. |
 | Look back … days | Shown only for the fixed recent-period mode. Default: 7 days. |

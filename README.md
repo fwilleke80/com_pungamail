@@ -2,13 +2,13 @@
 
 Punga Mail is a focused, self-hosted newsletter extension for **Joomla! 6**.
 
-Version: **0.3.12**
+Version: **0.3.13**
 
 Its core workflow is deliberately small:
 
 **subscribe → choose Channels → confirm your email → compose or automate → check → schedule or send → handle delivery problems**
 
-Version 0.3.12 refines the Newsletter/Template editing workflow, adds an optional full-width mail-heading background, strips unresolved Joomla plugin commands from selected-content excerpts without executing plugins, and adds Markdown horizontal rules with `---`.
+Version 0.3.13 improves Automatic Newsletter scheduling with day/week/calendar-month intervals, adds translated content-source labels and clearer reminder guidance, makes selected content titles open their frontend pages, and gives the Template editor the same compact tabbed structure as the Newsletter editor.
 
 Automatic newsletters enforce website visibility before generation. Punga Mail resolves the intended recipients and includes a content item only when every recipient would normally be authorized to view it through Joomla access levels and, where applicable, category access. This conservative shared-content rule prevents restricted website content from leaking through email.
 

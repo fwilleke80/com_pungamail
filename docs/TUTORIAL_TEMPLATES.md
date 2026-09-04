@@ -22,7 +22,9 @@ Templates should override only what is different. Blank template fields inherit 
 
 ## 2. Create a template
 
-Go to **Templates**, select **New**, and enter:
+Go to **Templates** and select **New**. The editor uses three tabs: **Settings**, **Mail content**, and **Design**. Start with Settings and Mail content, then use Design only for properties that should differ from the component defaults.
+
+Enter:
 
 - **Title**: an internal name such as `Monthly news`;
 - **Email subject**: a useful default, if the subject is predictable;

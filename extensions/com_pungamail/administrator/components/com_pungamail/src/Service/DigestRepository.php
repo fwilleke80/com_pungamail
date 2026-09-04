@@ -93,11 +93,30 @@ final class DigestRepository
 		$emptyAction = in_array((string) ($data['empty_action'] ?? 'skip'), ['skip', 'create_draft'], true) ? (string) $data['empty_action'] : 'skip';
 		$now = (new Date('now', 'UTC'))->toSql();
 		$nextRun = trim((string) ($data['next_run_at'] ?? '')) ?: $now;
+		$recurrenceValue = DigestSchedule::normalizeValue((int) ($data['recurrence_value'] ?? 1));
+		$recurrenceUnit = DigestSchedule::normalizeUnit((string) ($data['recurrence_unit'] ?? DigestSchedule::UNIT_WEEKS));
+		$existing = $id > 0 ? $this->find($id) : null;
+		$recurrenceAnchorDay = null;
+
+		if ($recurrenceUnit === DigestSchedule::UNIT_MONTHS)
+		{
+			$canKeepAnchor = $existing !== null
+				&& (string) ($existing->recurrence_unit ?? '') === DigestSchedule::UNIT_MONTHS
+				&& (string) ($existing->next_run_at ?? '') === $nextRun
+				&& (int) ($existing->recurrence_anchor_day ?? 0) > 0;
+			$recurrenceAnchorDay = $canKeepAnchor
+				? (int) $existing->recurrence_anchor_day
+				: DigestSchedule::anchorDay($nextRun);
+		}
+
 		$values = [
 			'title' => $title,
 			'template_id' => $templateId,
 			'subject_pattern' => trim((string) ($data['subject_pattern'] ?? '')),
-			'recurrence_minutes' => max(15, min(525600, (int) ($data['recurrence_minutes'] ?? 10080))),
+			'recurrence_value' => $recurrenceValue,
+			'recurrence_unit' => $recurrenceUnit,
+			'recurrence_anchor_day' => $recurrenceAnchorDay,
+			'recurrence_minutes' => DigestSchedule::legacyMinutes($recurrenceValue, $recurrenceUnit),
 			'next_run_at' => $nextRun,
 			'cutoff_mode' => $cutoffMode,
 			'rolling_hours' => max(1, min(8760, (int) ($data['rolling_hours'] ?? 168))),
@@ -126,6 +145,9 @@ final class DigestRepository
 			{
 				$subjectPattern = (string) $values['subject_pattern'];
 				$recurrence = (int) $values['recurrence_minutes'];
+				$recurrenceValue = (int) $values['recurrence_value'];
+				$recurrenceUnit = (string) $values['recurrence_unit'];
+				$recurrenceAnchorDay = $values['recurrence_anchor_day'];
 				$cutoff = (string) $values['cutoff_mode'];
 				$rollingHours = (int) $values['rolling_hours'];
 				$includeSubscribers = (int) $values['include_subscribers'];
@@ -137,6 +159,9 @@ final class DigestRepository
 					->set($this->db->quoteName('template_id') . ' = :templateId')
 					->set($this->db->quoteName('subject_pattern') . ' = :subjectPattern')
 					->set($this->db->quoteName('recurrence_minutes') . ' = :recurrence')
+					->set($this->db->quoteName('recurrence_value') . ' = :recurrenceValue')
+					->set($this->db->quoteName('recurrence_unit') . ' = :recurrenceUnit')
+					->set($this->db->quoteName('recurrence_anchor_day') . ($recurrenceAnchorDay === null ? ' = NULL' : ' = :recurrenceAnchorDay'))
 					->set($this->db->quoteName('next_run_at') . ' = :nextRun')
 					->set($this->db->quoteName('cutoff_mode') . ' = :cutoffMode')
 					->set($this->db->quoteName('rolling_hours') . ' = :rollingHours')
@@ -149,6 +174,8 @@ final class DigestRepository
 					->bind(':templateId', $templateId, ParameterType::INTEGER)
 					->bind(':subjectPattern', $subjectPattern)
 					->bind(':recurrence', $recurrence, ParameterType::INTEGER)
+					->bind(':recurrenceValue', $recurrenceValue, ParameterType::INTEGER)
+					->bind(':recurrenceUnit', $recurrenceUnit)
 					->bind(':nextRun', $nextRun)
 					->bind(':cutoffMode', $cutoff)
 					->bind(':rollingHours', $rollingHours, ParameterType::INTEGER)
@@ -157,6 +184,12 @@ final class DigestRepository
 					->bind(':emptyAction', $empty)
 					->bind(':modified', $now)
 					->bind(':id', $id, ParameterType::INTEGER);
+
+				if ($recurrenceAnchorDay !== null)
+				{
+					$update->bind(':recurrenceAnchorDay', $recurrenceAnchorDay, ParameterType::INTEGER);
+				}
+
 				$this->db->setQuery($update)->execute();
 			}
 
@@ -252,14 +285,27 @@ final class DigestRepository
 		}
 
 		$now = (new Date('now', 'UTC'))->toSql();
-		$next = new Date((string) $digest->next_run_at, 'UTC');
-		$minutes = max(15, (int) $digest->recurrence_minutes);
+		$nextRunAt = (string) $digest->next_run_at;
+		$storedUnit = (string) ($digest->recurrence_unit ?? '');
+		$recurrenceValue = DigestSchedule::normalizeValue((int) ($digest->recurrence_value ?? 1));
+		$recurrenceUnit = DigestSchedule::normalizeUnit($storedUnit);
+		$anchorDay = (int) ($digest->recurrence_anchor_day ?? 0);
+		$legacyMinutes = max(15, (int) ($digest->recurrence_minutes ?? 10080));
 
 		do
 		{
-			$next->modify('+' . $minutes . ' minutes');
+			if ($storedUnit === 'legacy')
+			{
+				$legacyNext = new Date($nextRunAt, 'UTC');
+				$legacyNext->modify('+' . $legacyMinutes . ' minutes');
+				$nextRunAt = $legacyNext->toSql();
+			}
+			else
+			{
+				$nextRunAt = DigestSchedule::advance($nextRunAt, $recurrenceValue, $recurrenceUnit, $anchorDay);
+			}
 		}
-		while ($next->toSql() <= $now);
+		while ($nextRunAt <= $now);
 
 		$this->db->transactionStart();
 
@@ -291,7 +337,6 @@ final class DigestRepository
 			}
 
 			$this->db->setQuery($updateRun)->execute();
-			$nextRunAt = $next->toSql();
 			$updateDigest = $this->db->getQuery(true)
 				->update($this->db->quoteName('#__pungamail_digests'))
 				->set($this->db->quoteName('last_run_at') . ' = :lastRunAt')

@@ -208,9 +208,18 @@ final class DigestService
 			return (string) $digest->last_cutoff_at;
 		}
 
-		$date = clone $now;
-		$date->modify('-' . max(15, (int) $digest->recurrence_minutes) . ' minutes');
+		if ((string) ($digest->recurrence_unit ?? '') === 'legacy')
+		{
+			$date = clone $now;
+			$date->modify('-' . max(15, (int) ($digest->recurrence_minutes ?? 10080)) . ' minutes');
 
-		return $date->toSql();
+			return $date->toSql();
+		}
+
+		return DigestSchedule::subtract(
+			$now->toSql(),
+			DigestSchedule::normalizeValue((int) ($digest->recurrence_value ?? 1)),
+			DigestSchedule::normalizeUnit((string) ($digest->recurrence_unit ?? DigestSchedule::UNIT_WEEKS))
+		);
 	}
 }

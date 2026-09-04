@@ -27,6 +27,7 @@ $styleFields = [
 	'text_color' => 'COM_PUNGAMAIL_STYLE_TEXT_COLOR',
 	'heading_color' => 'COM_PUNGAMAIL_STYLE_HEADING_COLOR',
 	'heading_background' => 'COM_PUNGAMAIL_STYLE_HEADING_BACKGROUND',
+	'mail_heading_color' => 'COM_PUNGAMAIL_STYLE_MAIL_HEADING_COLOR',
 	'link_color' => 'COM_PUNGAMAIL_STYLE_LINK_COLOR',
 	'font_family' => 'COM_PUNGAMAIL_STYLE_FONT_FAMILY',
 	'font_size' => 'COM_PUNGAMAIL_STYLE_FONT_SIZE',
@@ -251,7 +252,7 @@ $styleFields = [
 					<div class="border-bottom p-3 pm-content-row" data-search="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>">
 						<input type="hidden" name="item_source[<?php echo $token; ?>]" value="<?php echo htmlspecialchars((string) $content->source_key, ENT_QUOTES, 'UTF-8'); ?>">
 						<input type="hidden" name="item_id[<?php echo $token; ?>]" value="<?php echo htmlspecialchars((string) $content->id, ENT_QUOTES, 'UTF-8'); ?>">
-						<div class="form-check mb-2"><input class="form-check-input pm-content-check" type="checkbox" name="selected_items[]" value="<?php echo $token; ?>" id="content-<?php echo $token; ?>" <?php echo $selected ? 'checked' : ''; ?>><label class="form-check-label fw-semibold" for="content-<?php echo $token; ?>"><?php echo htmlspecialchars((string) $content->title, ENT_QUOTES, 'UTF-8'); ?></label></div>
+						<div class="form-check mb-2"><input class="form-check-input pm-content-check" type="checkbox" name="selected_items[]" value="<?php echo $token; ?>" id="content-<?php echo $token; ?>" <?php echo $selected ? 'checked' : ''; ?>><label class="form-check-label fw-semibold" for="content-<?php echo $token; ?>"><?php if (trim((string) ($content->url ?? '')) !== '') : ?><a href="<?php echo htmlspecialchars((string) $content->url, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_OPEN_CONTENT_NEW_TAB'), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) $content->title, ENT_QUOTES, 'UTF-8'); ?></a><?php else : ?><?php echo htmlspecialchars((string) $content->title, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></label></div>
 						<div class="small text-muted mb-2"><span class="badge text-bg-secondary me-2"><?php echo htmlspecialchars((string) $content->source_label, ENT_QUOTES, 'UTF-8'); ?></span><?php echo htmlspecialchars((string) $content->published, ENT_QUOTES, 'UTF-8'); ?></div>
 						<div class="row g-2"><div class="col-md-2"><label class="form-label small"><?php echo Text::_('JGRID_HEADING_ORDERING'); ?></label><input type="number" class="form-control form-control-sm" name="item_ordering[<?php echo $token; ?>]" value="<?php echo (int) ($selected->ordering ?? $defaultOrder++); ?>"></div><div class="col-md-10"><label class="form-label small"><?php echo Text::_('COM_PUNGAMAIL_TITLE_OVERRIDE'); ?></label><input class="form-control form-control-sm" name="title_override[<?php echo $token; ?>]" value="<?php echo htmlspecialchars((string) ($selected->title_override ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div><div class="col-12"><label class="form-label small"><?php echo Text::_('COM_PUNGAMAIL_EXCERPT_OVERRIDE'); ?></label><textarea class="form-control form-control-sm" rows="2" name="excerpt_override[<?php echo $token; ?>]"><?php echo htmlspecialchars((string) ($selected->excerpt_override ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea></div></div>
 					</div>

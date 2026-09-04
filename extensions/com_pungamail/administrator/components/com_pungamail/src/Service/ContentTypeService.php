@@ -10,6 +10,7 @@ namespace Punga\Component\PungaMail\Administrator\Service;
 
 use Joomla\CMS\Access\Access;
 use Joomla\CMS\Date\Date;
+use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Joomla\Database\DatabaseInterface;
@@ -299,7 +300,7 @@ final class ContentTypeService
 			return null;
 		}
 
-		$label = Text::_((string) $row->type_title);
+		$label = $this->translatedTypeLabel((string) $row->type_title, $key);
 
 		return (object) [
 			'key' => $key,
@@ -316,6 +317,44 @@ final class ContentTypeService
 			'alias' => $this->column((string) ($common['core_alias'] ?? '')),
 			'access' => $this->column((string) ($common['core_access'] ?? '')),
 		];
+	}
+
+
+	/**
+	 * Resolves a registered content type to the current administrator language.
+	 * Joomla's content-type registry commonly stores English type titles, so we
+	 * first try the conventional component language key derived from type_alias.
+	 * Third-party types that do not provide such a key safely fall back to the
+	 * registry title.
+	 *
+	 * @param string $typeTitle Registry type title.
+	 * @param string $typeAlias Registered type alias.
+	 *
+	 * @return string Translated display label.
+	 */
+	private function translatedTypeLabel(string $typeTitle, string $typeAlias): string
+	{
+		$parts = explode('.', $typeAlias, 2);
+		$component = $parts[0] ?? '';
+
+		if (preg_match('/^com_[a-z0-9_]+$/i', $component) === 1)
+		{
+			$language = Factory::getApplication()->getLanguage();
+			$language->load($component, JPATH_ADMINISTRATOR);
+			$language->load($component, JPATH_SITE);
+		}
+
+		$key = strtoupper(str_replace('.', '_', $typeAlias));
+		$translated = Text::_($key);
+
+		if ($translated !== $key)
+		{
+			return $translated;
+		}
+
+		$translatedTitle = Text::_($typeTitle);
+
+		return $translatedTitle !== $typeTitle ? $translatedTitle : $typeTitle;
 	}
 
 	/**

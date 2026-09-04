@@ -273,11 +273,13 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Steps:**
 
-1. Enable the reminder and set days, recipient email, subject, and Markdown using `{days}`, `{last_newsletter}`, `{last_sent_date}`, and `{site_name}`.
-2. Save and run PM-275 later.
-3. Disable the reminder and run the task again.
+1. Open **Options → Newsletter reminder** and verify the explanatory note appears above the settings.
+2. Use Joomla’s inline-help toggle and verify Enable reminder, days, recipient email, subject, and Markdown all have useful help text.
+3. Enable the reminder and set days, recipient email, subject, and Markdown using `{days}`, `{last_newsletter}`, `{last_sent_date}`, and `{site_name}`.
+4. Save and run PM-275 later.
+5. Disable the reminder and run the task again.
 
-**Expected:** Settings persist; placeholders resolve; disabled means no reminder is sent.
+**Expected:** The tab explains the feature before configuration, every relevant field participates in inline help, settings persist, placeholders resolve, and disabled means no reminder is sent.
 
 ### PM-021 — Mail diagnostics
 
@@ -664,11 +666,12 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Steps:**
 
-1. Open **Templates → New**.
-2. Enter a title, default subject, and Markdown body containing headings, emphasis, a list, a link, an image, a pipe table, `{recipient}`, and `{new_content}`.
-3. Click Save, Preview, and Save & Close.
+1. Open **Templates → New** and verify the editor has **Settings**, **Mail content**, and **Design** tabs.
+2. Confirm Title is in Settings; subject/body/message options/selected-content layout are in Mail content; visual overrides/custom CSS are in Design.
+3. Enter a title, default subject, and Markdown body containing headings, emphasis, a list, a link, an image, a pipe table, `{recipient}`, and `{new_content}`.
+4. Click Save, Preview, and Save & Close.
 
-**Expected:** All toolbar actions work. Preview renders supported Markdown in HTML, produces readable plain text, replaces `{recipient}` with the administrator's display name, and places selected-content output only at `{new_content}`.
+**Expected:** The Template editor uses the same Joomla-native tab pattern as the Newsletter editor without an unnecessary content-selection tab. All toolbar actions work. Preview renders supported Markdown in HTML, produces readable plain text, replaces `{recipient}` with the administrator's display name, and places selected-content output only at `{new_content}`.
 
 ### PM-101 — Template placeholders and image URL forms
 
@@ -769,19 +772,21 @@ Keep the global queue paused except where a test explicitly says to resume it.
 1. Set **Content published since** to include the prepared content.
 2. Select each offered registered content type and apply filters.
 3. Use the candidate search and inspect item metadata.
+4. Switch the Joomla administrator language where a translation is installed and reopen the content-source controls.
 
-**Expected:** Joomla registered content types with usable metadata are offered generically. Date, type, category/filter where supported, and search narrow the list correctly. No deprecated UCM-specific copy or third-party-specific coupling is visible.
+**Expected:** Joomla registered content types with usable metadata are offered generically. Their display names follow the administrator language when the originating component provides a language string. Date, type, category/filter where supported, and search narrow the list correctly. No deprecated UCM-specific copy or third-party-specific coupling is visible.
 
-### PM-122 — Select, order, and override content
+### PM-122 — Select, order, inspect, and override content
 
 **Steps:**
 
-1. Select three content items.
-2. Reorder them and give one a newsletter-only title and excerpt override.
-3. Save, close, reopen, and preview.
-4. Open the original website content item.
+1. Click a candidate content title and verify the corresponding frontend page opens in a new browser tab while the Newsletter editor remains open.
+2. Select three content items.
+3. Reorder them and give one a newsletter-only title and excerpt override.
+4. Save, close, reopen, and preview.
+5. Open the original website content item again.
 
-**Expected:** Selection, order, source identity, and overrides persist. Preview uses the overridden values. The source content is unchanged.
+**Expected:** Candidate titles are safe frontend links with new-tab behavior. Selection, order, source identity, and overrides persist. Preview uses the overridden values. The source content is unchanged.
 
 ### PM-123 — Removed, missing, and legacy content references
 
@@ -1141,11 +1146,11 @@ Keep the global queue paused except where a test explicitly says to resume it.
 **Steps:**
 
 1. Open **Automatic Newsletters → New**, change several non-required settings, then press Save once with Title and Template still empty. Verify the editor remains open and the changed settings are still present.
-2. Confirm recurrence is entered in **days**, not minutes. Choose **Content since the previous automatic newsletter** and verify the look-back field is hidden; choose **Content from a recent time period** and verify **Look back … days** appears.
-3. Enter a title, recurrence/next run, template, subject pattern, cutoff, content type/filter, target audience, **Create draft**, and empty-content behaviour.
+2. Confirm recurrence is entered as a number plus **days**, **weeks**, or **months**. Verify a monthly choice remains a calendar-month schedule rather than becoming 30 days. Choose **Content since the previous automatic newsletter** and verify the look-back field is hidden; choose **Content from a recent time period** and verify **Look back … days** appears.
+3. Verify registered content-source names follow the current administrator language where Joomla provides a translation; then enter a title, recurrence/next run, template, subject pattern, cutoff, content type/filter, target audience, **Create draft**, and empty-content behaviour.
 4. Save and reopen it, then confirm or set its Enabled state in the Automatic Newsletters list.
 
-**Expected:** Failed validation stays in the editor, shows the error, and preserves submitted values. Recurrence/look-back use days and irrelevant fields stay hidden. After a valid save, all fields persist, next run is clear in site timezone, and Create draft is the safe/default generation mode. Editing does not run the automatic newsletter immediately.
+**Expected:** Failed validation stays in the editor, shows the error, and preserves submitted values. Recurrence offers days/weeks/months, look-back remains day-based, and irrelevant fields stay hidden. After a valid save, all fields persist, next run is clear in site timezone, and Create draft is the safe/default generation mode. Editing does not run the automatic newsletter immediately.
 
 ### PM-201 — Digest subject placeholders and template placement
 
@@ -1270,11 +1275,12 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Steps:**
 
-1. Set a recurrence at or above the documented minimum and next run in site timezone.
-2. Trigger two task executions as close together as the staging system allows.
-3. Inspect newsletters and history.
+1. Test a daily or weekly recurrence and set the next run in site timezone.
+2. Test a monthly recurrence anchored on the 31st (or another end-of-month date), including a shorter following month.
+3. Trigger two task executions as close together as the staging system allows.
+4. Inspect newsletters and history.
 
-**Expected:** One due occurrence produces at most one result. Overlapping workers do not duplicate a digest/newsletter. Next-run time advances predictably.
+**Expected:** One due occurrence produces at most one result. Overlapping workers do not duplicate an automatic newsletter/newsletter. Daily and weekly schedules advance predictably. A monthly schedule uses the last valid day in a shorter month and returns to its stored anchor day in later months instead of drifting.
 
 ### PM-214 — Digest history and failure recovery
 

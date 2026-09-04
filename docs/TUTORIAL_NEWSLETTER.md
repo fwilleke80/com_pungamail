@@ -119,7 +119,7 @@ Use **Custom** if replies should go somewhere other than the inherited setting. 
 
 Leave a style field blank to inherit from the template or Component Options. Override only the properties this newsletter needs.
 
-The available properties cover width, backgrounds, text/heading/link colors, an optional full-width mail-heading background, font, base size, padding, logo, and footer color. Custom CSS is optional and should be treated as an enhancement because mail clients vary.
+The available properties cover width, backgrounds, text/content-heading/link colors, an optional full-width mail-heading background and independent mail-heading text color, font, base size, padding, logo, and footer color. Custom CSS is optional and should be treated as an enhancement because mail clients vary.
 
 ## 7. Select recipients
 

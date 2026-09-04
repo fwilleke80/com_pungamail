@@ -236,7 +236,7 @@ namespace
 
 
 	$pluginNewsletter = clone $newsletter;
-	$pluginNewsletter->style_overrides = json_encode(['heading_background' => '#ffeecc']);
+	$pluginNewsletter->style_overrides = json_encode(['heading_background' => '#ffeecc', 'mail_heading_color' => '#123456']);
 	$pluginItems = [
 		(object) [
 			'source_key' => 'com_example.item',
@@ -263,6 +263,11 @@ namespace
 	if (!str_contains($pluginResult['html'], 'width:100%') || !str_contains($pluginResult['html'], 'background:#ffeecc'))
 	{
 		failNewsletterRendererTest('Mail heading is not a full-width block with the configured background colour.');
+	}
+
+	if (!str_contains($pluginResult['html'], 'color:#123456'))
+	{
+		failNewsletterRendererTest('Mail heading does not use its independently configured text colour.');
 	}
 
 	fwrite(STDOUT, "[OK] Newsletter renderer new-content/recipient regression test passed\n");

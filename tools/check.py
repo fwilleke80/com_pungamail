@@ -87,9 +87,12 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.9.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.10.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.11.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.12.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.3.13.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/NewcontenttemplateField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/BounceService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestService.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestSchedule.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/CheckoutService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/PreflightService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/TopicRepository.php",
@@ -101,6 +104,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "tools/test_markdown.php",
     "tools/test_newsletter_renderer.php",
     "tools/test_mail_language.php",
+    "tools/test_digest_schedule.php",
     "extensions/mod_pungamail_signup/mod_pungamail_signup.xml",
     "extensions/plg_user_pungamail/pungamail.xml",
     "extensions/plg_task_pungamail/pungamail.xml",
@@ -528,7 +532,7 @@ def check_renderer_regressions() -> None:
         print("[skip] php executable not found; renderer regression tests not run")
         return
 
-    for script in ("test_markdown.php", "test_newsletter_renderer.php", "test_mail_language.php"):
+    for script in ("test_markdown.php", "test_newsletter_renderer.php", "test_mail_language.php", "test_digest_schedule.php"):
         result = subprocess.run(
             [php, str(ROOT / "tools" / script)],
             check=False,
@@ -1239,11 +1243,11 @@ def check_automatic_newsletter_ux_039() -> None:
     task_de = (ROOT / "extensions/plg_task_pungamail/language/de-DE/plg_task_pungamail.ini").read_text(encoding="utf-8")
 
     required = (
-        (digest_layout, 'name="recurrence_days"', "day-based recurrence input"),
+        (digest_layout, 'name="recurrence_value"', "human-readable recurrence input"),
         (digest_layout, 'name="rolling_days"', "day-based rolling input"),
         (digest_layout, "rollingPeriod.hidden", "conditional rolling-period field"),
         (digest_layout, "autoConfirm.hidden", "conditional unattended-send confirmation"),
-        (digest_controller, "getInt('recurrence_days', 7)) * 1440", "day-to-minute persistence conversion"),
+        (digest_controller, "DigestSchedule::legacyMinutes", "human-readable recurrence persistence conversion"),
         (digest_controller, "getInt('rolling_days', 7)) * 24", "day-to-hour persistence conversion"),
         (renderer, "{publish_date}", "publish-date selected-content placeholder"),
         (renderer, "{title_link}", "linked-title selected-content placeholder"),
@@ -1413,6 +1417,130 @@ def check_release_ux_0312() -> None:
         if "---" not in values.get("COM_PUNGAMAIL_MARKDOWN_HELP", ""):
             fail(f"0.3.12 {locale} Markdown help does not mention horizontal rules")
 
+
+
+def check_release_ux_0313() -> None:
+    """Protect the 0.3.13 scheduling, editor, content-link, and reminder UX changes."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    newsletter = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    template = (admin_root / "tmpl/template/default.php").read_text(encoding="utf-8")
+    digest = (admin_root / "tmpl/digest/default.php").read_text(encoding="utf-8")
+    digest_controller = (admin_root / "src/Controller/DigestController.php").read_text(encoding="utf-8")
+    digest_repository = (admin_root / "src/Service/DigestRepository.php").read_text(encoding="utf-8")
+    digest_service = (admin_root / "src/Service/DigestService.php").read_text(encoding="utf-8")
+    digest_schedule = (admin_root / "src/Service/DigestSchedule.php").read_text(encoding="utf-8")
+    content_types = (admin_root / "src/Service/ContentTypeService.php").read_text(encoding="utf-8")
+    config = (admin_root / "config.xml").read_text(encoding="utf-8")
+    install = (admin_root / "sql/install.mysql.sql").read_text(encoding="utf-8")
+    migration = (admin_root / "sql/updates/mysql/0.3.13.sql").read_text(encoding="utf-8")
+    mail_style = (admin_root / "src/Service/MailStyleService.php").read_text(encoding="utf-8")
+    renderer = (admin_root / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+
+    for token in ('target="_blank"', 'rel="noopener noreferrer"', '$content->url'):
+        if token not in newsletter:
+            fail(f"0.3.13 content-selection frontend links are missing: {token}")
+
+    for token in (
+        "HTMLHelper::_('uitab.startTabSet', 'pm-template-tabs'",
+        "'pm-template-settings'",
+        "'pm-template-mail-content'",
+        "'pm-template-design'",
+    ):
+        if token not in template:
+            fail(f"0.3.13 Template editor tab layout is missing: {token}")
+
+    if template.count("HTMLHelper::_('uitab.addTab', 'pm-template-tabs'") != 3:
+        fail("0.3.13 Template editor must contain exactly three Joomla tabs")
+
+    recurrence_tokens = (
+        'name="recurrence_value"',
+        'name="recurrence_unit"',
+        'value="days"',
+        'value="weeks"',
+        'value="months"',
+        "DigestSchedule::legacyMinutes",
+    )
+    for token in recurrence_tokens:
+        if token not in digest + digest_controller:
+            fail(f"0.3.13 Automatic Newsletter recurrence UI/save path is missing: {token}")
+
+    for token in (
+        "UNIT_MONTHS",
+        "shiftMonths",
+        "anchorDay",
+        "DigestSchedule::advance",
+        "DigestSchedule::subtract",
+        "recurrence_anchor_day",
+        "storedUnit === 'legacy'",
+    ):
+        if token not in digest_schedule + digest_repository + digest_service:
+            fail(f"0.3.13 calendar-aware scheduling contract is missing: {token}")
+
+    for token in (
+        "`recurrence_value` SMALLINT UNSIGNED",
+        "`recurrence_unit` VARCHAR(10)",
+        "`recurrence_anchor_day` TINYINT UNSIGNED",
+    ):
+        if token not in install or token not in migration:
+            fail(f"0.3.13 recurrence schema is missing: {token}")
+
+    if "ELSE 'legacy'" not in migration:
+        fail("0.3.13 migration does not preserve older minute-based recurrence cadences")
+
+    for token in (
+        "translatedTypeLabel",
+        "getLanguage()",
+        "strtoupper(str_replace('.', '_', $typeAlias))",
+    ):
+        if token not in content_types:
+            fail(f"0.3.13 translated content-type labels are missing: {token}")
+
+    for token in (
+        'name="reminder_note" type="note"',
+        'description="COM_PUNGAMAIL_CONFIG_REMINDER_ENABLED_DESC"',
+        'description="COM_PUNGAMAIL_CONFIG_REMINDER_DAYS_DESC"',
+        'description="COM_PUNGAMAIL_CONFIG_REMINDER_SUBJECT_DESC"',
+    ):
+        if token not in config:
+            fail(f"0.3.13 Newsletter reminder guidance is missing: {token}")
+
+    for token in (
+        'name="design_heading_background" type="color"',
+        'name="design_mail_heading_color" type="color"',
+    ):
+        if token not in config:
+            fail(f"0.3.13 mail-heading colour picker is missing: {token}")
+
+    for token in (
+        "'mail_heading_color' => $mailHeadingColor",
+        "'mail_heading_color',",
+        "'heading_color', 'mail_heading_color', 'link_color'",
+    ):
+        if token not in mail_style:
+            fail(f"0.3.13 mail-heading text-colour inheritance is missing: {token}")
+
+    if "$style['mail_heading_color'] ?? $style['heading_color']" not in renderer:
+        fail("0.3.13 renderer does not use the dedicated mail-heading text colour")
+
+    required_language = (
+        "COM_PUNGAMAIL_CONFIG_REMINDER_NOTE",
+        "COM_PUNGAMAIL_CONFIG_REMINDER_ENABLED_DESC",
+        "COM_PUNGAMAIL_CONFIG_REMINDER_DAYS_DESC",
+        "COM_PUNGAMAIL_CONFIG_REMINDER_SUBJECT_DESC",
+        "COM_PUNGAMAIL_RECURRENCE",
+        "COM_PUNGAMAIL_WEEKS",
+        "COM_PUNGAMAIL_MONTHS",
+        "COM_PUNGAMAIL_OPEN_CONTENT_NEW_TAB",
+        "COM_PUNGAMAIL_STYLE_MAIL_HEADING_COLOR",
+        "COM_PUNGAMAIL_STYLE_MAIL_HEADING_COLOR_DESC",
+    )
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in required_language:
+            if values.get(key, "").strip() == "":
+                fail(f"0.3.13 is missing {locale} UI copy: {key}")
+
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
 
@@ -1542,6 +1670,7 @@ def main() -> int:
         check_newsletter_editor_ux_0310,
         check_markdown_and_override_ux_0311,
         check_release_ux_0312,
+        check_release_ux_0313,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

@@ -24,14 +24,17 @@ final class MailStyleService
 	public function defaults(): array
 	{
 		$params = ComponentHelper::getParams('com_pungamail');
+		$headingColor = $this->color((string) $params->get('design_heading_color', '#111111'), '#111111');
+		$mailHeadingColor = $this->optionalColor((string) $params->get('design_mail_heading_color', ''), $headingColor);
 
 		return [
 			'content_width' => $this->integer($params->get('design_content_width', 680), 320, 1200, 680),
 			'outer_background' => $this->color((string) $params->get('design_outer_background', '#f4f4f4'), '#f4f4f4'),
 			'content_background' => $this->color((string) $params->get('design_content_background', '#ffffff'), '#ffffff'),
 			'text_color' => $this->color((string) $params->get('design_text_color', '#222222'), '#222222'),
-			'heading_color' => $this->color((string) $params->get('design_heading_color', '#111111'), '#111111'),
+			'heading_color' => $headingColor,
 			'heading_background' => $this->optionalColor((string) $params->get('design_heading_background', '')),
+			'mail_heading_color' => $mailHeadingColor,
 			'link_color' => $this->color((string) $params->get('design_link_color', '#2457a6'), '#2457a6'),
 			'font_family' => $this->fontFamily((string) $params->get('design_font_family', 'Arial, Helvetica, sans-serif')),
 			'font_size' => $this->integer($params->get('design_font_size', 16), 10, 28, 16),
@@ -133,6 +136,7 @@ final class MailStyleService
 			'text_color',
 			'heading_color',
 			'heading_background',
+			'mail_heading_color',
 			'link_color',
 			'font_family',
 			'font_size',
@@ -250,7 +254,7 @@ final class MailStyleService
 			'font_size' => $this->integer($value, 10, 28, (int) $fallback),
 			'content_padding' => $this->integer($value, 0, 96, (int) $fallback),
 			'logo_width' => $this->integer($value, 40, 600, (int) $fallback),
-			'outer_background', 'content_background', 'text_color', 'heading_color', 'link_color', 'footer_color' => $this->color((string) $value, (string) $fallback),
+			'outer_background', 'content_background', 'text_color', 'heading_color', 'mail_heading_color', 'link_color', 'footer_color' => $this->color((string) $value, (string) $fallback),
 			'heading_background' => strtolower(trim((string) $value)) === 'none' ? '' : $this->optionalColor((string) $value, (string) $fallback),
 			'font_family' => $this->fontFamily((string) $value),
 			'logo_url' => $this->url((string) $value),
