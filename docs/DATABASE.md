@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.4.2 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.4.3 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -101,3 +101,5 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 
 - `0.4.1.sql` — version marker only; 0.4.1 fixes Channel/group persistence logic and does not change the schema.
 - `0.4.2.sql` — version marker only; 0.4.2 fixes administrator timezone presentation and the Automatic Newsletter date/time control without changing the schema.
+
+- `0.4.3.sql` — version marker only; 0.4.3 fixes plugin bootstrap and unsubscribe routing without changing the schema.

@@ -276,7 +276,7 @@ final class SubscriptionController extends BaseController
 	}
 
 	/**
-	 * Implements the RFC 8058 one-click unsubscribe POST endpoint.
+	 * Handles the List-Unsubscribe URI for manual GET and RFC 8058 POST requests.
 	 *
 	 * This endpoint intentionally does not use a Joomla session CSRF token:
 	 * mailbox providers invoke it server-to-server. Authenticity is established
@@ -289,15 +289,9 @@ final class SubscriptionController extends BaseController
 		$app = Factory::getApplication();
 		$input = $app->getInput();
 		$method = strtoupper($input->server->getString('REQUEST_METHOD'));
-		$postMarker = $input->post->getString('List-Unsubscribe');
-
-		if ($method !== 'POST' || $postMarker !== 'One-Click')
-		{
-			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_ONE_CLICK_REQUEST'), 400);
-		}
-
 		$id = $input->getInt('id');
 		$token = $input->getString('token');
+		$newsletterId = $input->getInt('mid');
 		$repo = ServiceFactory::subscribers();
 		$subscriber = $repo->findById($id);
 
@@ -306,8 +300,31 @@ final class SubscriptionController extends BaseController
 			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_UNSUBSCRIBE_TOKEN'), 403);
 		}
 
+		// The HTTPS URI advertised in List-Unsubscribe serves two purposes:
+		// mail clients POST to it for RFC 8058 one-click unsubscribe, while a
+		// human following the same URI with GET must receive the normal manual
+		// confirmation flow instead of an error page.
+		if ($method === 'GET')
+		{
+			$link = 'index.php?option=com_pungamail&view=unsubscribe&id=' . $id . '&token=' . rawurlencode($token);
+
+			if ($newsletterId > 0)
+			{
+				$link .= '&mid=' . $newsletterId;
+			}
+
+			$this->setRedirect(Route::_($link, false));
+			return;
+		}
+
+		$postMarker = $input->post->getString('List-Unsubscribe');
+
+		if ($method !== 'POST' || $postMarker !== 'One-Click')
+		{
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_ONE_CLICK_REQUEST'), 400);
+		}
+
 		$repo->unsubscribe($id, 'one-click');
-		$newsletterId = $input->getInt('mid');
 		$repo->recordEvent($id, 'one_click_unsubscribe', $input->server->getString('REMOTE_ADDR'), $input->server->getString('HTTP_USER_AGENT'), ['newsletter_id' => $newsletterId]);
 		$app->setHeader('Status', '204 No Content', true);
 		$app->close();

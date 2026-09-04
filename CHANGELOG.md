@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.3 — 2026-09-04
+
+- Fixed Joomla Scheduled Tasks plugin bootstrap by constructing Punga Mail plugins with Joomla's event dispatcher through the documented dependency-injection contract.
+- Applied the same Joomla 6 plugin bootstrap correction to the Punga Mail user plugin.
+- Fixed the RFC 8058 unsubscribe endpoint so a human opening the `List-Unsubscribe` HTTPS URL with GET is taken to the normal unsubscribe confirmation page instead of receiving HTTP 400. One-click POST requests remain token-authenticated and complete without redirects.
+- Replaced the oversized technical README with a concise project overview; detailed operational and implementation documentation remains under `docs/`.
+
 ## 0.4.2 — 2026-09-04
 
 - Fixed Automatic Newsletter schedule times displaying as UTC in the Dashboard and Automatic Newsletters list while the editor used the Joomla site timezone.

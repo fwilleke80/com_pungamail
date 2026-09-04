@@ -13,6 +13,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Plugin\PluginHelper;
 use Joomla\DI\Container;
 use Joomla\DI\ServiceProviderInterface;
+use Joomla\Event\DispatcherInterface;
 use Punga\Plugin\Task\PungaMail\Extension\PungaMail;
 
 return new class implements ServiceProviderInterface
@@ -30,7 +31,10 @@ return new class implements ServiceProviderInterface
 			PluginInterface::class,
 			static function (Container $container): PluginInterface
 			{
-				$plugin = new PungaMail((array) PluginHelper::getPlugin('task', 'pungamail'));
+				$plugin = new PungaMail(
+					$container->get(DispatcherInterface::class),
+					(array) PluginHelper::getPlugin('task', 'pungamail')
+				);
 				$plugin->setApplication(Factory::getApplication());
 
 				return $plugin;

@@ -1760,3 +1760,14 @@ After approval, restore production-safe batch/rate/retry values, remove or unpub
 6. Open the Punga Mail Dashboard. Confirm the same Automatic Newsletter also shows **10:00** there.
 7. If a normal Newsletter is manually scheduled, confirm its scheduled time is likewise displayed in the Joomla site timezone in administrator views.
 8. Confirm the Scheduled Task still evaluates due Automatic Newsletters correctly; the database representation remains UTC.
+
+
+### 0.4.3 focused acceptance — Scheduled Tasks and unsubscribe
+
+1. Open Joomla **System → Scheduled Tasks** and verify **Punga Mail — Send pending newsletters** exists and is enabled/configured.
+2. Queue a small newsletter, wait for the task to run, and verify at least one pending recipient is delivered without using **Send pending mail now**.
+3. Run the task manually from Joomla Scheduled Tasks and verify its execution status is successful and no plugin-construction/type error is logged.
+4. Open the HTTPS URL from the newsletter's `List-Unsubscribe` header in a normal browser using GET. Verify it opens the normal unsubscribe confirmation page and does **not** unsubscribe immediately.
+5. Submit that confirmation form and verify the recipient is unsubscribed.
+6. With a standards-capable mail client/provider, trigger its one-click unsubscribe action and verify the RFC 8058 POST returns successfully without a redirect.
+7. Verify an invalid unsubscribe token is rejected and cannot unsubscribe a recipient.

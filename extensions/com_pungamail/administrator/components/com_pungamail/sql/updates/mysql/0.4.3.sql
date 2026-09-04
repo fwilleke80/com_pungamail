@@ -1,0 +1,2 @@
+-- Punga Mail 0.4.3
+-- Maintenance release: Scheduled Tasks plugin bootstrap and unsubscribe endpoint fixes.

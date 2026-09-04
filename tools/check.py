@@ -92,6 +92,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.0.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.1.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.2.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.3.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/MarkdownEditorHelper.php",
@@ -203,7 +204,7 @@ def check_administrator_documentation() -> None:
         if token not in test_guide:
             fail(f"Test guide is missing required coverage: {token!r}")
 
-    if "[`docs/TEST_GUIDE.md`](docs/TEST_GUIDE.md)" not in readme:
+    if "(docs/TEST_GUIDE.md)" not in readme:
         fail("README does not link the live acceptance test guide")
 
     if "](TEST_GUIDE.md)" not in guide:
@@ -1731,6 +1732,44 @@ def check_release_fix_0402() -> None:
         fail("0.4.2 is a timezone/UI maintenance release; its version-marker migration must not change schema")
 
 
+
+def check_release_fix_0403() -> None:
+    """Protect Scheduled Tasks bootstrap and dual-mode unsubscribe URI handling."""
+
+    root = ROOT / "extensions"
+    task_provider = (root / "plg_task_pungamail/services/provider.php").read_text(encoding="utf-8")
+    user_provider = (root / "plg_user_pungamail/services/provider.php").read_text(encoding="utf-8")
+    subscription = (root / "com_pungamail/components/com_pungamail/src/Controller/SubscriptionController.php").read_text(encoding="utf-8")
+    marker = (root / "com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.3.sql").read_text(encoding="utf-8")
+
+    for label, provider in (("task", task_provider), ("user", user_provider)):
+        for token in (
+            "use Joomla\\Event\\DispatcherInterface;",
+            "$container->get(DispatcherInterface::class)",
+            "(array) PluginHelper::getPlugin",
+        ):
+            if token not in provider:
+                fail(f"0.4.3 {label} plugin provider is missing Joomla dispatcher bootstrap: {token!r}")
+        if "new PungaMail((array) PluginHelper::getPlugin" in provider:
+            fail(f"0.4.3 {label} plugin provider reintroduced config-only CMSPlugin construction")
+
+    for token in (
+        "if ($method === 'GET')",
+        "view=unsubscribe&id=",
+        "$method !== 'POST' || $postMarker !== 'One-Click'",
+        "$app->setHeader('Status', '204 No Content', true)",
+    ):
+        if token not in subscription:
+            fail(f"0.4.3 unsubscribe endpoint is missing dual GET/POST behavior: {token!r}")
+
+    get_pos = subscription.find("if ($method === 'GET')")
+    unsubscribe_pos = subscription.find("$repo->unsubscribe($id, 'one-click')")
+    if get_pos < 0 or unsubscribe_pos < 0 or get_pos > unsubscribe_pos:
+        fail("0.4.3 manual GET handling must occur before one-click unsubscribe mutation")
+
+    if any(token in marker.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.4.3 is a runtime maintenance release; its version-marker migration must not change schema")
+
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
 
@@ -1864,6 +1903,7 @@ def main() -> int:
         check_release_ux_0400,
         check_release_fix_0401,
         check_release_fix_0402,
+        check_release_fix_0403,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,
