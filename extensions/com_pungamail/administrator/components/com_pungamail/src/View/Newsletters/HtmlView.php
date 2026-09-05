@@ -55,8 +55,8 @@ final class HtmlView extends BaseHtmlView
 		if ($user->authorise('core.create', 'com_pungamail'))
 		{
 			ToolbarHelper::addNew('newsletter.add');
+			ToolbarHelper::custom('newsletters.duplicate', 'copy', '', Text::_('COM_PUNGAMAIL_DUPLICATE_AS_DRAFT'), true);
 		}
-
 
 		if ((string) $this->state->get('filter.state') === '-2')
 		{

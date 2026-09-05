@@ -103,3 +103,6 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 - `0.4.2.sql` — version marker only; 0.4.2 fixes administrator timezone presentation and the Automatic Newsletter date/time control without changing the schema.
 
 - `0.4.3.sql` — version marker only; 0.4.3 fixes plugin bootstrap and unsubscribe routing without changing the schema.
+
+- `0.4.4.sql` — version marker only; 0.4.4 changes administrator workflows and presentation without changing the schema.
+- `0.4.5.sql` — version marker only; 0.4.5 refines administrator authoring and delivery-health presentation without changing the schema.

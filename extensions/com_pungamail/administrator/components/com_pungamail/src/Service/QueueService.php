@@ -126,4 +126,131 @@ final class QueueService
 
 		return count($recipients);
 	}
+	/**
+	 * Resets failed queue entries so the queue processor can try them again.
+	 *
+	 * @param array<int,int> $ids Queue row IDs.
+	 *
+	 * @return int Number of entries reset.
+	 */
+	public function retryFailed(array $ids): int
+	{
+		return $this->updateQueueRows($ids, 'failed', 'pending', true);
+	}
+
+	/**
+	 * Cancels pending or failed queue entries without touching already delivered mail.
+	 *
+	 * @param array<int,int> $ids Queue row IDs.
+	 *
+	 * @return int Number of entries cancelled.
+	 */
+	public function cancel(array $ids): int
+	{
+		$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+		if ($ids === [])
+		{
+			return 0;
+		}
+
+		$statuses = ['pending', 'failed'];
+		$select = $this->db->getQuery(true)
+			->select([$this->db->quoteName('id'), $this->db->quoteName('newsletter_id')])
+			->from($this->db->quoteName('#__pungamail_send_queue'))
+			->whereIn($this->db->quoteName('id'), $ids)
+			->whereIn($this->db->quoteName('status'), $statuses, ParameterType::STRING);
+		$rows = $this->db->setQuery($select)->loadObjectList();
+
+		if ($rows === [])
+		{
+			return 0;
+		}
+
+		$queueIds = array_map(static fn (object $row): int => (int) $row->id, $rows);
+		$newsletterIds = array_values(array_unique(array_map(static fn (object $row): int => (int) $row->newsletter_id, $rows)));
+		$now = (new Date('now', 'UTC'))->toSql();
+		$query = $this->db->getQuery(true)
+			->update($this->db->quoteName('#__pungamail_send_queue'))
+			->set($this->db->quoteName('status') . ' = ' . $this->db->quote('cancelled'))
+			->set($this->db->quoteName('cancelled_at') . ' = :cancelledAt')
+			->set($this->db->quoteName('modified') . ' = :modified')
+			->whereIn($this->db->quoteName('id'), $queueIds)
+			->bind(':cancelledAt', $now)
+			->bind(':modified', $now);
+		$this->db->setQuery($query)->execute();
+		$count = $this->db->getAffectedRows();
+
+		foreach ($newsletterIds as $newsletterId)
+		{
+			$this->newsletters->refreshQueueCounters($newsletterId);
+		}
+
+		return $count;
+	}
+
+	/**
+	 * Changes queue rows from one state to another and refreshes parent counters.
+	 *
+	 * @param array<int,int> $ids           Queue row IDs.
+	 * @param string         $requiredStatus Required current status.
+	 * @param string         $newStatus      New queue status.
+	 * @param bool           $resetAttempts  Whether retry metadata should be reset.
+	 *
+	 * @return int Number of changed rows.
+	 */
+	private function updateQueueRows(array $ids, string $requiredStatus, string $newStatus, bool $resetAttempts): int
+	{
+		$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+		if ($ids === [])
+		{
+			return 0;
+		}
+
+		$select = $this->db->getQuery(true)
+			->select([$this->db->quoteName('id'), $this->db->quoteName('newsletter_id')])
+			->from($this->db->quoteName('#__pungamail_send_queue'))
+			->whereIn($this->db->quoteName('id'), $ids)
+			->where($this->db->quoteName('status') . ' = :status')
+			->bind(':status', $requiredStatus);
+		$rows = $this->db->setQuery($select)->loadObjectList();
+
+		if ($rows === [])
+		{
+			return 0;
+		}
+
+		$queueIds = array_map(static fn (object $row): int => (int) $row->id, $rows);
+		$newsletterIds = array_values(array_unique(array_map(static fn (object $row): int => (int) $row->newsletter_id, $rows)));
+		$now = (new Date('now', 'UTC'))->toSql();
+		$query = $this->db->getQuery(true)
+			->update($this->db->quoteName('#__pungamail_send_queue'))
+			->set($this->db->quoteName('status') . ' = :newStatus')
+			->set($this->db->quoteName('modified') . ' = :modified')
+			->set($this->db->quoteName('next_attempt_at') . ' = :nextAttempt')
+			->set($this->db->quoteName('last_error') . ' = NULL')
+			->set($this->db->quoteName('failure_class') . ' = NULL')
+			->set($this->db->quoteName('cancelled_at') . ' = NULL')
+			->whereIn($this->db->quoteName('id'), $queueIds)
+			->bind(':newStatus', $newStatus)
+			->bind(':modified', $now)
+			->bind(':nextAttempt', $now);
+
+		if ($resetAttempts)
+		{
+			$query->set($this->db->quoteName('attempts') . ' = 0');
+		}
+
+		$this->db->setQuery($query)->execute();
+		$count = $this->db->getAffectedRows();
+
+		foreach ($newsletterIds as $newsletterId)
+		{
+			$this->newsletters->refreshQueueCounters($newsletterId);
+		}
+
+		return $count;
+	}
+
 }

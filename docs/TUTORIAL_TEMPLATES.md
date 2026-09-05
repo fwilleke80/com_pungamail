@@ -22,7 +22,7 @@ Templates should override only what is different. Blank template fields inherit 
 
 ## 2. Create a template
 
-Go to **Templates** and select **New**. The editor uses three tabs: **Settings**, **Mail content**, and **Design**. Start with Settings and Mail content, then use Design only for properties that should differ from the component defaults.
+Go to **Templates** and select **New**. The editor follows Joomla's main-content plus right-sidebar pattern. Use **Mail content** for the reusable subject/body, **Design** for visual overrides, and the right sidebar for message behavior such as heading, browser view, and Reply-To.
 
 Enter:
 

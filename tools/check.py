@@ -93,6 +93,8 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.1.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.2.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.3.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.4.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.5.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/MarkdownEditorHelper.php",
@@ -1044,7 +1046,7 @@ def check_audience_clarity_036() -> None:
         (newsletter_layout, 'id="pm-audience-summary"', "newsletter live audience summary"),
         (newsletter_layout, "COM_PUNGAMAIL_AUDIENCE_ALL_TOPICS_WARNING", "newsletter all/topic warning"),
         (digest_layout, 'id="pm-digest-audience-summary"', "digest live audience summary"),
-        (subscriber_layout, "COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_HEALTH", "subscriber delivery-health section"),
+        (subscriber_layout, "COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_PROBLEMS", "subscriber delivery-health section"),
         (subscription_layout, "COM_PUNGAMAIL_SUBSCRIPTION_MASTER_HELP", "public master-permission explanation"),
         (subscription_layout, "pm-subscription-topic-summary", "public topic-consequence summary"),
         (module_layout, "MOD_PUNGAMAIL_SIGNUP_TOPIC_NONE_HELP", "module no-topic consequence"),
@@ -1459,15 +1461,16 @@ def check_release_ux_0313() -> None:
 
     for token in (
         "HTMLHelper::_('uitab.startTabSet', 'pm-template-tabs'",
-        "'pm-template-settings'",
         "'pm-template-mail-content'",
         "'pm-template-design'",
+        'class="col-12 col-xl-3"',
+        "COM_PUNGAMAIL_TEMPLATE_SETTINGS",
     ):
         if token not in template:
-            fail(f"0.3.13 Template editor tab layout is missing: {token}")
+            fail(f"Template editor layout is missing: {token}")
 
-    if template.count("HTMLHelper::_('uitab.addTab', 'pm-template-tabs'") != 3:
-        fail("0.3.13 Template editor must contain exactly three Joomla tabs")
+    if template.count("HTMLHelper::_('uitab.addTab', 'pm-template-tabs'") != 2:
+        fail("Template editor must contain the Mail content and Design Joomla tabs")
 
     recurrence_tokens = (
         'name="recurrence_value"',
@@ -1624,11 +1627,11 @@ def check_release_ux_0400() -> None:
         if f'name="{field}" type="markdown"' not in config:
             fail(f"0.4.0 Component Options field {field} does not use the shared Markdown editor")
 
-    settings_pos = template.find("'pm-template-settings'")
-    mail_pos = template.find("'pm-template-mail-content'")
-    options_pos = template.find("COM_PUNGAMAIL_MESSAGE_OPTIONS")
-    if min(settings_pos, mail_pos, options_pos) < 0 or not (settings_pos < options_pos < mail_pos):
-        fail("0.4.0 Template message settings are not grouped into the Settings tab")
+    if 'class="col-12 col-xl-3"' not in template or "COM_PUNGAMAIL_TEMPLATE_SETTINGS" not in template:
+        fail("Template message settings are not grouped into the Joomla-style sidebar")
+    for token in ('name="heading_mode"', 'name="browser_view"', 'name="reply_to_mode"'):
+        if token not in template:
+            fail(f"Template settings sidebar is missing {token!r}")
 
     for token in ("pm-dashboard-value", "COM_PUNGAMAIL_DASHBOARD_ATTENTION", "COM_PUNGAMAIL_QUICK_ACTIONS", "COM_PUNGAMAIL_DASHBOARD_RECENT_ACTIVITY", "COM_PUNGAMAIL_DASHBOARD_DELIVERY_30_DAYS", "COM_PUNGAMAIL_DASHBOARD_AUTOMATIC"):
         if token not in dashboard:
@@ -1770,6 +1773,122 @@ def check_release_fix_0403() -> None:
     if any(token in marker.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
         fail("0.4.3 is a runtime maintenance release; its version-marker migration must not change schema")
 
+def check_release_ux_0404() -> None:
+    """Protect the 0.4.4 administrator workflow update."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    newsletter = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    template = (admin_root / "tmpl/template/default.php").read_text(encoding="utf-8")
+    newsletters = (admin_root / "tmpl/newsletters/default.php").read_text(encoding="utf-8")
+    templates = (admin_root / "tmpl/templates/default.php").read_text(encoding="utf-8")
+    subscriber = (admin_root / "tmpl/subscriber/default.php").read_text(encoding="utf-8")
+    delivery = (admin_root / "tmpl/delivery/default.php").read_text(encoding="utf-8")
+    dashboard = (admin_root / "tmpl/dashboard/default.php").read_text(encoding="utf-8")
+    markdown = (admin_root / "src/Helper/MarkdownEditorHelper.php").read_text(encoding="utf-8")
+    newsletter_controller = (admin_root / "src/Controller/NewsletterController.php").read_text(encoding="utf-8")
+    newsletters_controller = (admin_root / "src/Controller/NewslettersController.php").read_text(encoding="utf-8")
+    newsletter_view = (admin_root / "src/View/Newsletter/HtmlView.php").read_text(encoding="utf-8")
+    newsletters_view = (admin_root / "src/View/Newsletters/HtmlView.php").read_text(encoding="utf-8")
+    repository = (admin_root / "src/Service/NewsletterRepository.php").read_text(encoding="utf-8")
+    queue_service = (admin_root / "src/Service/QueueService.php").read_text(encoding="utf-8")
+    marker = (admin_root / "sql/updates/mysql/0.4.4.sql").read_text(encoding="utf-8")
+
+    required = (
+        (newsletter, 'class="col-12 col-xl-3"', "Newsletter Joomla-style sidebar"),
+        (newsletter, 'name="schedule_from_editor" value="1"', "editor-side scheduling marker"),
+        (newsletter, "newsletter.schedule", "editor-side scheduling action"),
+        (template, "COM_PUNGAMAIL_TEMPLATE_SETTINGS", "Template settings sidebar"),
+        (dashboard, "COM_PUNGAMAIL_DASHBOARD_NEXT_NEWSLETTERS", "scheduled/automatic Dashboard summary"),
+        (subscriber, 'id="pm-subscriber-no-topics"', "subscriber Channel selection note"),
+        (delivery, "COM_PUNGAMAIL_MAIL_QUEUE", "Delivery-page mail queue"),
+        (delivery, 'name="queue_ids[]"', "queue selection controls"),
+        (queue_service, "retryFailed", "safe failed-delivery retry"),
+        (queue_service, "public function cancel", "safe queue cancellation"),
+        (markdown, ".cm-gutters{display:none!important}", "hidden Markdown line-number gutter"),
+        (markdown, "button('table'", "Markdown table toolbar action"),
+        (markdown, "renderMediaPicker", "Joomla media image picker"),
+        (newsletter_controller, "duplicateAsDraft", "single Newsletter duplication"),
+        (newsletters_controller, "duplicateAsDraft", "bulk Newsletter duplication"),
+        (newsletter_view, "newsletter.duplicate", "editor duplicate toolbar button"),
+        (newsletters_view, "newsletters.duplicate", "list duplicate toolbar button"),
+        (repository, "STATUS_DRAFT", "schedule cancellation returns to Draft"),
+    )
+    for contents, token, label in required:
+        if token not in contents:
+            fail(f"0.4.4 is missing {label}: {token!r}")
+
+    if "Text::_('JSTATUS')" in newsletters:
+        fail("0.4.4 Newsletter list still exposes the record-state Status column")
+    if "Text::_('JSTATUS')" in templates:
+        fail("0.4.4 Template list still exposes the record-state Status column")
+    if "STATUS_CANCELLED" in repository[repository.find("public function cancelScheduled"):repository.find("public function dueScheduled")]:
+        fail("0.4.4 cancelling a schedule still makes the Newsletter terminally Cancelled")
+    if any(token in marker.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.4.4 is an administrator workflow release; its version-marker migration must not change schema")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_DASHBOARD_NEXT_NEWSLETTERS",
+            "COM_PUNGAMAIL_MARKDOWN_INSERT_TABLE",
+            "COM_PUNGAMAIL_MARKDOWN_INSERT_IMAGE",
+            "COM_PUNGAMAIL_QUEUE_STATUS_PENDING",
+            "COM_PUNGAMAIL_TEMPLATE_SETTINGS",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.4.4 is missing {locale} UI copy: {key}")
+
+
+def check_release_ux_0405() -> None:
+    """Protect the 0.4.5 authoring and administrator-UI maintenance update."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    newsletter = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    preflight = (admin_root / "tmpl/preflight/default.php").read_text(encoding="utf-8")
+    dashboard = (admin_root / "tmpl/dashboard/default.php").read_text(encoding="utf-8")
+    subscriber = (admin_root / "tmpl/subscriber/default.php").read_text(encoding="utf-8")
+    markdown = (admin_root / "src/Helper/MarkdownEditorHelper.php").read_text(encoding="utf-8")
+    marker = (admin_root / "sql/updates/mysql/0.4.5.sql").read_text(encoding="utf-8")
+
+    mail_tab = newsletter[newsletter.find("pm-mail-content"):newsletter.find("pm-content-selection")]
+    sidebar = newsletter[newsletter.find('<aside class="col-12 col-xl-3">'):newsletter.find('name="schedule_from_editor"')]
+
+    required = (
+        (mail_tab, 'id="pm-template"', "Template selector on Mail content tab"),
+        (mail_tab, "newsletter.applyTemplate", "Apply template action on Mail content tab"),
+        (preflight, 'value="<?php echo htmlspecialchars($scheduledInputValue', "Preflight scheduled date/time prefill"),
+        (dashboard, "AdministratorRoute::templates()", "Dashboard Templates quick action"),
+        (subscriber, "COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_PROBLEMS", "conditional Subscriber delivery-problem card"),
+        (subscriber, "subscriber.clearBounceSuppression", "Subscriber delivery recovery action"),
+        (markdown, 'fa fa-table', "distinct Markdown table icon"),
+        (markdown, 'fa fa-image', "distinct Markdown image icon"),
+        (markdown, "watchMediaSelection", "Media Manager value watcher"),
+        (markdown, "insertSelectedImage", "Media Manager Markdown insertion"),
+    )
+    for contents, token, label in required:
+        if token not in contents:
+            fail(f"0.4.5 is missing {label}: {token!r}")
+
+    if 'id="pm-template"' in sidebar or "newsletter.applyTemplate" in sidebar:
+        fail("0.4.5 Newsletter sidebar still contains Template selection/application controls")
+    if "COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_HEALTH_OK" in subscriber:
+        fail("0.4.5 Subscriber editor still renders the no-problem Delivery health message")
+    if any(token in marker.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.4.5 is an administrator maintenance release; its version-marker migration must not change schema")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_PROBLEMS",
+            "COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_STOPPED_PERMANENT",
+            "COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_STOPPED_REPEATED",
+            "COM_PUNGAMAIL_BOUNCE_CLASS_PERMANENT",
+            "COM_PUNGAMAIL_BOUNCE_CLASS_TEMPORARY",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.4.5 is missing {locale} UI copy: {key}")
+
+
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
 
@@ -1904,6 +2023,8 @@ def main() -> int:
         check_release_fix_0401,
         check_release_fix_0402,
         check_release_fix_0403,
+        check_release_ux_0404,
+        check_release_ux_0405,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

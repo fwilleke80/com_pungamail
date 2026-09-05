@@ -666,12 +666,12 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Steps:**
 
-1. Open **Templates → New** and verify the editor has **Settings**, **Mail content**, and **Design** tabs.
-2. Confirm Title is in Settings; subject/body/message options/selected-content layout are in Mail content; visual overrides/custom CSS are in Design.
+1. Open **Templates → New** and verify the editor uses a main content area plus a Joomla-style right sidebar.
+2. Confirm title/subject/body/selected-content layout are in the main content area, visual overrides/custom CSS are under **Design**, and message options are in the right sidebar. Confirm there is no fake Published/Unpublished status.
 3. Enter a title, default subject, and Markdown body containing headings, emphasis, a list, a link, an image, a pipe table, `{recipient}`, and `{new_content}`.
 4. Click Save, Preview, and Save & Close.
 
-**Expected:** The Template editor uses the same Joomla-native tab pattern as the Newsletter editor without an unnecessary content-selection tab. All toolbar actions work. Preview renders supported Markdown in HTML, produces readable plain text, replaces `{recipient}` with the administrator's display name, and places selected-content output only at `{new_content}`.
+**Expected:** The Template editor follows Joomla's main-content/sidebar editing pattern without inventing an active/inactive state. All toolbar actions work. Preview renders supported Markdown in HTML, produces readable plain text, replaces `{recipient}` with the administrator's display name, and places selected-content output only at `{new_content}`.
 
 ### PM-101 — Template placeholders and image URL forms
 
@@ -739,13 +739,14 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 ## G. Newsletter composition and selected content
 
-### PM-119a — Newsletter editor tabs
+### PM-119a — Newsletter editor layout
 
 1. Open a draft Newsletter in the administrator.
-2. Switch through **Settings**, **Mail content**, **Content selection**, and **Design**.
-3. Change at least one field on each tab and save.
+2. Switch through **Settings**, **Mail content**, **Content selection**, and **Design** in the main area.
+3. Confirm the right sidebar shows the real Newsletter lifecycle status, Template selector/application, and Schedule controls.
+4. Change at least one field on each tab and save.
 
-**Expected:** The tabs use Joomla administrator styling, all values save normally, toolbar actions remain available, and the Content selection list/search behavior still works.
+**Expected:** The editor follows Joomla's main-content/sidebar pattern, all values save normally, toolbar actions remain available, and the Content selection list/search behavior still works.
 
 ### PM-119b — `{new_content}` item-template editor presentation
 
@@ -885,17 +886,19 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 1. Prepare newsletters in Draft, Scheduled, Queued/Sending, Sent, Failed/Cancelled, and Trashed states where practical.
 2. Test search, filters, sorting, pagination, and displayed scheduled time.
+3. Confirm the list does not contain a redundant record-state column that always says Active; delivery status remains visible.
 
-**Expected:** Delivery status is distinct from Joomla record state. Scheduled time is clearly shown in site timezone. Filters and list controls are accurate.
+**Expected:** Delivery status is distinct from Joomla trash/restore record state. Scheduled time is clearly shown in site timezone. Filters and list controls are accurate.
 
-### PM-132 — Duplicate as draft
+### PM-132 — Duplicate as new draft
 
 **Steps:**
 
-1. Duplicate a draft and a sent newsletter.
-2. Open the duplicates and compare them with their sources.
+1. Open a draft Newsletter and a sent Newsletter separately and use **Duplicate as new draft** from the top toolbar.
+2. In the Newsletters list, select two or more rows and use the bulk duplicate action.
+3. Open the duplicates and compare them with their sources.
 
-**Expected:** Each duplicate is a new editable Draft with a new ID. Original sent snapshots, statistics, and queue rows are unchanged; no recipient is queued automatically.
+**Expected:** The toolbar action is available for every saved Newsletter. Each duplicate is a new editable Draft with a new ID. Bulk duplication creates one Draft per selected source. Original snapshots, statistics, and queue rows are unchanged; no recipient is queued automatically.
 
 ### PM-133 — Newsletter checkout and safe editing
 
@@ -1071,11 +1074,12 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Steps:**
 
-1. From valid preflight choose **Send at a specific date/time**.
-2. Schedule it several minutes ahead in the displayed site timezone.
+1. In a valid Draft Newsletter, enter a future date/time directly in the right-hand Schedule sidebar without opening Preflight first.
+2. Select **Schedule** and confirm the Newsletter becomes Scheduled. Change the date and use **Reschedule**.
 3. Compare the editor, list, dashboard, database/task timing if available, and current UTC offset.
+4. Repeat with a deliberately invalid Newsletter (for example, no effective audience) and confirm scheduling is rejected with the same blocking validation used by Preflight.
 
-**Expected:** Status becomes Scheduled; displayed time and timezone are unambiguous. No queue snapshot starts before the due scheduling task.
+**Expected:** Valid mail becomes Scheduled; displayed time and timezone are unambiguous. Invalid mail cannot be scheduled. No queue snapshot starts before the due scheduling task.
 
 ### PM-178 — Cancel and edit a scheduled newsletter
 
@@ -1085,7 +1089,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 2. Run the scheduling task after the original due time.
 3. Separately edit a scheduled newsletter using the allowed workflow and confirm/reschedule it.
 
-**Expected:** Cancelled mail never queues. Cancellation state/time is clear. Editing cannot accidentally keep an obsolete hidden schedule or enable immediate sending.
+**Expected:** Removing the schedule returns the Newsletter to Draft and clears its scheduled time; the old due time never queues it. Editing cannot accidentally keep an obsolete hidden schedule or enable immediate sending.
 
 ### PM-179 — Scheduled newsletter task
 
@@ -1771,3 +1775,28 @@ After approval, restore production-safe batch/rate/retry values, remove or unpub
 5. Submit that confirmation form and verify the recipient is unsubscribed.
 6. With a standards-capable mail client/provider, trigger its one-click unsubscribe action and verify the RFC 8058 POST returns successfully without a redirect.
 7. Verify an invalid unsubscribe token is rejected and cannot unsubscribe a recipient.
+
+### 0.4.4 focused acceptance — editor workflow, queue visibility, and Markdown controls
+
+1. Open the Dashboard with at least one manually Scheduled Newsletter and one enabled Automatic Newsletter. Confirm both appear distinctly in the upcoming summary with their correct site-timezone dates.
+2. Open a Subscriber with one or more Channels selected. Confirm the “no Channels selected” note is hidden; clear all Channel checkboxes and confirm it appears immediately, then select one and confirm it disappears again.
+3. Open **Delivery / Bounces** with queued, failed, and sent test rows. Filter by state, Newsletter, and recipient search; verify attempts/timestamps/errors match the underlying queue.
+4. Select a failed row and use **Retry selected**. Confirm it returns to the normal pending/retry path. Select a pending/failed unsent row and use **Cancel selected**. Confirm processing/sent rows cannot be cancelled by that action.
+5. Open a Template and Newsletter Markdown editor. Confirm no CodeMirror line-number gutter is shown. Use **Table** and confirm a starter Markdown pipe table is inserted. Use **Image**, select an image through Joomla's media picker, and confirm Markdown image syntax is inserted.
+6. Open Newsletters and Templates lists and confirm neither displays a meaningless always-Active Status column.
+7. Open a Template and confirm its message settings appear in the right sidebar without an artificial publish state. Open a Newsletter and confirm lifecycle status, Template selection, and scheduling controls appear in its right sidebar.
+8. Schedule a valid Draft directly from the Newsletter sidebar, reschedule it, then cancel the schedule. Confirm the state returns to Draft. Try scheduling an invalid Newsletter and confirm blocking Preflight/sendability validation prevents it.
+9. Duplicate a Draft and a sent Newsletter from the top toolbar, then bulk-duplicate multiple selected rows in the Newsletters list. Confirm all copies are independent Drafts and sources remain untouched.
+
+**Expected:** The 0.4.4 administrator workflow behaves consistently with Joomla conventions, exposes the real queue safely, and preserves Punga Mail's existing validation and immutable-send semantics.
+
+### 0.4.5 focused acceptance — Markdown media insertion and authoring layout
+
+1. Open a Newsletter and confirm **Template** plus **Apply template** appear on **Mail content**, not in the right sidebar. Apply a Template while on that tab and verify subject/body changes are immediately visible.
+2. In any Punga Mail Markdown editor, verify the **Insert table** and **Insert image** toolbar buttons are visually distinguishable by icon and label. Insert a table and confirm the starter Markdown table is written at the cursor.
+3. Click **Insert image**, choose an image in Joomla Media Manager, click **Select**, provide or accept alt text, and verify `![alt](images/...)` is inserted at the current editor cursor/selection. Repeat with the same image to ensure the hidden media field is reset after insertion.
+4. Schedule a Newsletter, open Preflight, and verify the **Schedule send** date/time field contains the existing scheduled time in the Joomla site timezone.
+5. On the Dashboard, verify **Templates** appears next to **Channels** in Quick Actions and opens the Templates list.
+6. Open a Subscriber with no bounce history or active delivery suppression and verify no delivery-health card is shown. Open a Subscriber with bounce history and verify the card is shown with plain-language permanent/temporary failure wording. For an active bounce-based suppression, verify **Allow delivery again** is available.
+
+**Expected:** The 0.4.5 changes make Template application contextual, Media Manager image insertion reliable, scheduling state consistent between editor and Preflight, and Subscriber diagnostics visible only when useful.

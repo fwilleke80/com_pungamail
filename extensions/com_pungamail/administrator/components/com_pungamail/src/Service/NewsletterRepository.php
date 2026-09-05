@@ -675,9 +675,73 @@ final class NewsletterRepository
 		}
 	}
 
+	/**
+	 * Creates an independent draft copy of an existing newsletter.
+	 *
+	 * @param int $newsletterId Source newsletter ID.
+	 * @param int $userId       User creating the copy.
+	 *
+	 * @return int New newsletter ID.
+	 */
+	public function duplicateAsDraft(int $newsletterId, int $userId): int
+	{
+		$newsletter = $this->find($newsletterId);
+
+		if ($newsletter === null)
+		{
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_NEWSLETTER_NOT_FOUND'));
+		}
+
+		$items = [];
+
+		foreach ($this->getItems($newsletterId) as $item)
+		{
+			$items[] = [
+				'source_key' => (string) $item->source_key,
+				'source_item_id' => (string) $item->source_item_id,
+				'title_override' => (string) ($item->title_override ?? ''),
+				'excerpt_override' => (string) ($item->excerpt_override ?? ''),
+				'ordering' => (int) $item->ordering,
+			];
+		}
+
+		return $this->saveDraft(
+			0,
+			Text::sprintf('COM_PUNGAMAIL_COPY_TITLE', (string) $newsletter->title),
+			(string) $newsletter->subject,
+			(string) $newsletter->body_markdown,
+			(bool) $newsletter->include_subscribers,
+			$newsletter->content_cutoff_start !== null ? (string) $newsletter->content_cutoff_start : null,
+			$items,
+			$this->getGroupIds($newsletterId),
+			$userId,
+			$this->getSourceKeys($newsletterId),
+			$newsletter->template_id !== null ? (int) $newsletter->template_id : null,
+			$newsletter->style_overrides !== null ? (string) $newsletter->style_overrides : null,
+			(string) ($newsletter->custom_css ?? ''),
+			[
+				'topic_ids' => $this->getTopicIds($newsletterId),
+				'heading_mode' => (string) ($newsletter->heading_mode ?? 'inherit'),
+				'mail_heading' => (string) ($newsletter->mail_heading ?? ''),
+				'browser_view' => (int) ($newsletter->browser_view ?? -1),
+				'reply_to_mode' => (string) ($newsletter->reply_to_mode ?? 'inherit'),
+				'reply_to_email' => (string) ($newsletter->reply_to_email ?? ''),
+				'reply_to_name' => (string) ($newsletter->reply_to_name ?? ''),
+				'new_content_item_template' => (string) ($newsletter->new_content_item_template ?? ''),
+			]
+		);
+	}
+
 	/** @return void */
 	public function schedule(int $newsletterId, string $scheduledAt): void
 	{
+		$newsletter = $this->find($newsletterId);
+
+		if ($newsletter === null || !in_array((int) $newsletter->status, [self::STATUS_DRAFT, self::STATUS_SCHEDULED], true))
+		{
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_SCHEDULE_DRAFT_ONLY'));
+		}
+
 		$status = self::STATUS_SCHEDULED;
 		$draft = self::STATUS_DRAFT;
 		$scheduled = self::STATUS_SCHEDULED;
@@ -695,28 +759,23 @@ final class NewsletterRepository
 			->bind(':modified', $now)
 			->bind(':id', $newsletterId, ParameterType::INTEGER);
 		$this->db->setQuery($query)->execute();
-
-		if ($this->db->getAffectedRows() !== 1)
-		{
-			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_SCHEDULE_DRAFT_ONLY'));
-		}
 	}
 
 	/** @return void */
 	public function cancelScheduled(int $newsletterId): void
 	{
-		$status = self::STATUS_CANCELLED;
+		$status = self::STATUS_DRAFT;
 		$scheduled = self::STATUS_SCHEDULED;
 		$now = (new Date('now', 'UTC'))->toSql();
 		$query = $this->db->getQuery(true)
 			->update($this->db->quoteName('#__pungamail_newsletters'))
 			->set($this->db->quoteName('status') . ' = :status')
-			->set($this->db->quoteName('cancelled_at') . ' = :cancelledAt')
+			->set($this->db->quoteName('scheduled_at') . ' = NULL')
+			->set($this->db->quoteName('cancelled_at') . ' = NULL')
 			->set($this->db->quoteName('modified') . ' = :modified')
 			->where($this->db->quoteName('id') . ' = :id')
 			->where($this->db->quoteName('status') . ' = :scheduled')
 			->bind(':status', $status, ParameterType::INTEGER)
-			->bind(':cancelledAt', $now)
 			->bind(':modified', $now)
 			->bind(':id', $newsletterId, ParameterType::INTEGER)
 			->bind(':scheduled', $scheduled, ParameterType::INTEGER);

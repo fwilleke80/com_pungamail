@@ -54,6 +54,33 @@ final class NewslettersController extends BaseController
 		}
 	}
 
+	/** @return void */
+	public function duplicate(): void
+	{
+		$this->requirePermission('core.create');
+		$this->requireToken();
+		$application = Factory::getApplication();
+		$count = 0;
+
+		try
+		{
+			foreach ($this->selectedIds() as $id)
+			{
+				ServiceFactory::newsletters()->duplicateAsDraft($id, (int) $application->getIdentity()->id);
+				$count++;
+			}
+
+			$this->setRedirect(
+				Route::_('index.php?option=com_pungamail&view=newsletters', false),
+				Text::plural('COM_PUNGAMAIL_NEWSLETTERS_DUPLICATED', $count)
+			);
+		}
+		catch (\Throwable $e)
+		{
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
+		}
+	}
+
 	/**
 	 * Applies a Joomla record state to selected newsletter rows.
 	 *

@@ -44,62 +44,15 @@ $styleFields = [
 <div class="container-fluid">
 	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm">
 		<input type="hidden" name="id" value="<?php echo (int) ($item->id ?? 0); ?>">
-		<?php echo HTMLHelper::_('uitab.startTabSet', 'pm-template-tabs', ['active' => 'pm-template-settings', 'recall' => true, 'breakpoint' => 768]); ?>
-
-		<?php echo HTMLHelper::_('uitab.addTab', 'pm-template-tabs', 'pm-template-settings', Text::_('COM_PUNGAMAIL_TAB_SETTINGS')); ?>
-		<div class="pt-3">
-			<div class="card mb-3">
-				<div class="card-body">
-					<label class="form-label" for="pt-title"><?php echo Text::_('JGLOBAL_TITLE'); ?></label>
-					<input class="form-control" id="pt-title" required name="title" value="<?php echo htmlspecialchars((string) ($item->title ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-				</div>
-			</div>
-			<div class="card mb-3">
-				<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_MESSAGE_OPTIONS'); ?></strong></div>
-				<div class="card-body">
-					<div class="row g-3">
-						<div class="col-md-6">
-							<label class="form-label" for="heading-mode"><?php echo Text::_('COM_PUNGAMAIL_MAIL_BODY_HEADING'); ?></label>
-							<select class="form-select" id="heading-mode" name="heading_mode">
-								<option value="inherit" <?php echo (string) ($item->heading_mode ?? 'inherit') === 'inherit' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_INHERIT'); ?></option>
-								<option value="custom" <?php echo (string) ($item->heading_mode ?? '') === 'custom' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_CUSTOM'); ?></option>
-								<option value="site" <?php echo (string) ($item->heading_mode ?? '') === 'site' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_USE_SITE_NAME'); ?></option>
-								<option value="none" <?php echo (string) ($item->heading_mode ?? '') === 'none' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_NO_HEADING'); ?></option>
-							</select>
-						</div>
-						<div class="col-md-6">
-							<label class="form-label" for="mail-heading"><?php echo Text::_('COM_PUNGAMAIL_CUSTOM_HEADING'); ?></label>
-							<input class="form-control" id="mail-heading" name="mail_heading" value="<?php echo htmlspecialchars((string) ($item->mail_heading ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-						</div>
-						<div class="col-md-6">
-							<label class="form-label" for="browser-view"><?php echo Text::_('COM_PUNGAMAIL_BROWSER_VIEW'); ?></label>
-							<select class="form-select" id="browser-view" name="browser_view">
-								<option value="-1" <?php echo (int) ($item->browser_view ?? -1) === -1 ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_INHERIT'); ?></option>
-								<option value="1" <?php echo (int) ($item->browser_view ?? -1) === 1 ? 'selected' : ''; ?>><?php echo Text::_('JENABLED'); ?></option>
-								<option value="0" <?php echo (int) ($item->browser_view ?? -1) === 0 ? 'selected' : ''; ?>><?php echo Text::_('JDISABLED'); ?></option>
-							</select>
-						</div>
-						<div class="col-md-6">
-							<label class="form-label" for="reply-mode"><?php echo Text::_('COM_PUNGAMAIL_REPLY_TO'); ?></label>
-							<select class="form-select" id="reply-mode" name="reply_to_mode">
-								<option value="inherit" <?php echo (string) ($item->reply_to_mode ?? 'inherit') === 'inherit' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_INHERIT'); ?></option>
-								<option value="custom" <?php echo (string) ($item->reply_to_mode ?? '') === 'custom' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_CUSTOM'); ?></option>
-								<option value="none" <?php echo (string) ($item->reply_to_mode ?? '') === 'none' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_REPLY_TO_NONE'); ?></option>
-							</select>
-						</div>
-						<div class="col-md-6">
-							<label class="form-label" for="reply-email"><?php echo Text::_('COM_PUNGAMAIL_REPLY_TO_EMAIL'); ?></label>
-							<input class="form-control" type="email" id="reply-email" name="reply_to_email" value="<?php echo htmlspecialchars((string) ($item->reply_to_email ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-						</div>
-						<div class="col-md-6">
-							<label class="form-label" for="reply-name"><?php echo Text::_('COM_PUNGAMAIL_REPLY_TO_NAME'); ?></label>
-							<input class="form-control" id="reply-name" name="reply_to_name" value="<?php echo htmlspecialchars((string) ($item->reply_to_name ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-						</div>
+		<div class="row g-4 align-items-start">
+			<div class="col-12 col-xl-9">
+				<div class="card mb-3">
+					<div class="card-body">
+						<label class="form-label" for="pt-title"><?php echo Text::_('JGLOBAL_TITLE'); ?></label>
+						<input class="form-control" id="pt-title" required name="title" value="<?php echo htmlspecialchars((string) ($item->title ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
 					</div>
 				</div>
-			</div>
-		</div>
-		<?php echo HTMLHelper::_('uitab.endTab'); ?>
+				<?php echo HTMLHelper::_('uitab.startTabSet', 'pm-template-tabs', ['active' => 'pm-template-mail-content', 'recall' => true, 'breakpoint' => 768]); ?>
 
 		<?php echo HTMLHelper::_('uitab.addTab', 'pm-template-tabs', 'pm-template-mail-content', Text::_('COM_PUNGAMAIL_TAB_MAIL_CONTENT')); ?>
 		<div class="pt-3">
@@ -171,6 +124,52 @@ $styleFields = [
 		<?php echo HTMLHelper::_('uitab.endTab'); ?>
 
 		<?php echo HTMLHelper::_('uitab.endTabSet'); ?>
+			</div>
+			<aside class="col-12 col-xl-3">
+				<div class="card mb-3">
+					<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_TEMPLATE_SETTINGS'); ?></strong></div>
+					<div class="card-body">
+						<div class="mb-3">
+							<label class="form-label" for="heading-mode"><?php echo Text::_('COM_PUNGAMAIL_MAIL_BODY_HEADING'); ?></label>
+							<select class="form-select" id="heading-mode" name="heading_mode">
+								<option value="inherit" <?php echo (string) ($item->heading_mode ?? 'inherit') === 'inherit' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_INHERIT'); ?></option>
+								<option value="custom" <?php echo (string) ($item->heading_mode ?? '') === 'custom' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_CUSTOM'); ?></option>
+								<option value="site" <?php echo (string) ($item->heading_mode ?? '') === 'site' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_USE_SITE_NAME'); ?></option>
+								<option value="none" <?php echo (string) ($item->heading_mode ?? '') === 'none' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_NO_HEADING'); ?></option>
+							</select>
+						</div>
+						<div class="mb-3">
+							<label class="form-label" for="mail-heading"><?php echo Text::_('COM_PUNGAMAIL_CUSTOM_HEADING'); ?></label>
+							<input class="form-control" id="mail-heading" name="mail_heading" value="<?php echo htmlspecialchars((string) ($item->mail_heading ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+						</div>
+						<div class="mb-3">
+							<label class="form-label" for="browser-view"><?php echo Text::_('COM_PUNGAMAIL_BROWSER_VIEW'); ?></label>
+							<select class="form-select" id="browser-view" name="browser_view">
+								<option value="-1" <?php echo (int) ($item->browser_view ?? -1) === -1 ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_INHERIT'); ?></option>
+								<option value="1" <?php echo (int) ($item->browser_view ?? -1) === 1 ? 'selected' : ''; ?>><?php echo Text::_('JENABLED'); ?></option>
+								<option value="0" <?php echo (int) ($item->browser_view ?? -1) === 0 ? 'selected' : ''; ?>><?php echo Text::_('JDISABLED'); ?></option>
+							</select>
+						</div>
+						<div class="mb-3">
+							<label class="form-label" for="reply-mode"><?php echo Text::_('COM_PUNGAMAIL_REPLY_TO'); ?></label>
+							<select class="form-select" id="reply-mode" name="reply_to_mode">
+								<option value="inherit" <?php echo (string) ($item->reply_to_mode ?? 'inherit') === 'inherit' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_INHERIT'); ?></option>
+								<option value="custom" <?php echo (string) ($item->reply_to_mode ?? '') === 'custom' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_CUSTOM'); ?></option>
+								<option value="none" <?php echo (string) ($item->reply_to_mode ?? '') === 'none' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_REPLY_TO_NONE'); ?></option>
+							</select>
+						</div>
+						<div class="mb-3">
+							<label class="form-label" for="reply-email"><?php echo Text::_('COM_PUNGAMAIL_REPLY_TO_EMAIL'); ?></label>
+							<input class="form-control" type="email" id="reply-email" name="reply_to_email" value="<?php echo htmlspecialchars((string) ($item->reply_to_email ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+						</div>
+						<div>
+							<label class="form-label" for="reply-name"><?php echo Text::_('COM_PUNGAMAIL_REPLY_TO_NAME'); ?></label>
+							<input class="form-control" id="reply-name" name="reply_to_name" value="<?php echo htmlspecialchars((string) ($item->reply_to_name ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+						</div>
+					</div>
+				</div>
+			</aside>
+		</div>
 		<input type="hidden" name="task" value="">
 		<?php echo HTMLHelper::_('form.token'); ?>
 	</form>

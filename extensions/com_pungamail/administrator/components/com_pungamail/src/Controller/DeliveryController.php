@@ -101,6 +101,38 @@ final class DeliveryController extends BaseController
 	}
 
 	/** @return void */
+	public function retryQueue(): void
+	{
+		$this->guard();
+
+		try
+		{
+			$count = ServiceFactory::queue()->retryFailed($this->selectedQueueIds());
+			$this->redirectToDelivery(Text::plural('COM_PUNGAMAIL_QUEUE_RETRIED', $count));
+		}
+		catch (\Throwable $e)
+		{
+			$this->redirectToDelivery(ErrorMessage::sanitize($e), 'error');
+		}
+	}
+
+	/** @return void */
+	public function cancelQueue(): void
+	{
+		$this->guard();
+
+		try
+		{
+			$count = ServiceFactory::queue()->cancel($this->selectedQueueIds());
+			$this->redirectToDelivery(Text::plural('COM_PUNGAMAIL_QUEUE_ENTRIES_CANCELLED', $count));
+		}
+		catch (\Throwable $e)
+		{
+			$this->redirectToDelivery(ErrorMessage::sanitize($e), 'error');
+		}
+	}
+
+	/** @return void */
 	public function toggleQueue(): void
 	{
 		$this->guard();
@@ -130,6 +162,22 @@ final class DeliveryController extends BaseController
 		$this->redirectToDelivery(Text::_($paused ? 'COM_PUNGAMAIL_QUEUE_PAUSED_NOTICE' : 'COM_PUNGAMAIL_QUEUE_RESUMED'));
 	}
 
+	/** @return array<int,int> */
+	private function selectedQueueIds(): array
+	{
+		$ids = array_values(array_unique(array_filter(array_map(
+			'intval',
+			(array) Factory::getApplication()->getInput()->post->get('queue_ids', [], 'array')
+		))));
+
+		if ($ids === [])
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_QUEUE_SELECT_ENTRIES'));
+		}
+
+		return $ids;
+	}
+
 	/** @return void */
 	private function guard(): void
 	{
@@ -151,6 +199,25 @@ final class DeliveryController extends BaseController
 		$url = $return === 'options'
 			? 'index.php?option=com_config&view=component&component=com_pungamail'
 			: 'index.php?option=com_pungamail&view=delivery';
+
+		if ($return !== 'options')
+		{
+			$input = Factory::getApplication()->getInput();
+			$filters = [
+				'queue_status' => $input->post->getCmd('queue_status'),
+				'queue_newsletter' => $input->post->getInt('queue_newsletter'),
+				'queue_search' => trim($input->post->getString('queue_search')),
+			];
+
+			foreach ($filters as $key => $value)
+			{
+				if ($value !== '' && $value !== 0)
+				{
+					$url .= '&' . rawurlencode($key) . '=' . rawurlencode((string) $value);
+				}
+			}
+		}
+
 		$this->setRedirect(Route::_($url, false), $message, $type);
 	}
 }

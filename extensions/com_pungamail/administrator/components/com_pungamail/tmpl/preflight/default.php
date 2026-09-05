@@ -3,6 +3,7 @@
 
 defined('_JEXEC') or die;
 
+use Joomla\CMS\Factory;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
@@ -34,6 +35,10 @@ $previewHtml = str_replace(
 	(string) $rendered['html']
 );
 $previewText = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, '[' . Text::_('COM_PUNGAMAIL_PERSONAL_UNSUBSCRIBE_URL') . ']', (string) $rendered['text']);
+$siteTimezone = (string) Factory::getApplication()->get('offset', 'UTC');
+$scheduledInputValue = !empty($newsletter->scheduled_at)
+	? HTMLHelper::_('date', (string) $newsletter->scheduled_at, 'Y-m-d\TH:i', $siteTimezone)
+	: '';
 ?>
 <div class="container-fluid">
 	<div class="alert <?php echo $data['can_send'] ? 'alert-info' : 'alert-danger'; ?>"><strong><?php echo Text::_('COM_PUNGAMAIL_PREFLIGHT'); ?>.</strong> <?php echo Text::_($data['can_send'] ? 'COM_PUNGAMAIL_PREFLIGHT_HELP' : 'COM_PUNGAMAIL_PREFLIGHT_BLOCKED'); ?></div>
@@ -69,7 +74,7 @@ $previewText = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, '[' . Te
 					<button class="btn btn-success" type="submit"><?php echo Text::plural('COM_PUNGAMAIL_QUEUE_EMAILS', count($recipients)); ?></button>
 					<?php echo HTMLHelper::_('form.token'); ?>
 				</form>
-				<form action="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.schedule'); ?>" method="post"><input type="hidden" name="id" value="<?php echo (int) $newsletter->id; ?>"><div class="input-group"><input required class="form-control" type="datetime-local" name="scheduled_at" aria-label="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_SCHEDULE_AT'), ENT_QUOTES, 'UTF-8'); ?>"><button class="btn btn-outline-success" type="submit"><?php echo Text::_('COM_PUNGAMAIL_SCHEDULE_SEND'); ?></button></div><div class="form-text"><?php echo Text::sprintf('COM_PUNGAMAIL_SITE_TIMEZONE_HELP', (string) Joomla\CMS\Factory::getApplication()->get('offset', 'UTC')); ?></div><?php echo HTMLHelper::_('form.token'); ?></form>
+				<form action="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.schedule'); ?>" method="post"><input type="hidden" name="id" value="<?php echo (int) $newsletter->id; ?>"><div class="input-group"><input required class="form-control" type="datetime-local" name="scheduled_at" value="<?php echo htmlspecialchars($scheduledInputValue, ENT_QUOTES, 'UTF-8'); ?>" aria-label="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_SCHEDULE_AT'), ENT_QUOTES, 'UTF-8'); ?>"><button class="btn btn-outline-success" type="submit"><?php echo Text::_('COM_PUNGAMAIL_SCHEDULE_SEND'); ?></button></div><div class="form-text"><?php echo Text::sprintf('COM_PUNGAMAIL_SITE_TIMEZONE_HELP', $siteTimezone); ?></div><?php echo HTMLHelper::_('form.token'); ?></form>
 				<?php endif; ?>
 			</div>
 		</div>

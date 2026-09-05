@@ -190,15 +190,15 @@ Punga Mail freezes the final message and audience, then adds recipient rows to t
 
 ## 11B. Schedule delivery
 
-Instead of Queue emails:
+You can schedule directly from the Newsletter editor without opening Preflight first:
 
-1. enter the desired date/time on Preflight;
+1. enter the desired date/time in the right-hand **Schedule** sidebar;
 2. note the displayed Joomla site timezone;
-3. select **Schedule send**.
+3. select **Schedule** (or **Reschedule** for an existing schedule).
 
-The newsletter becomes Scheduled and remains editable until the scheduled task freezes it. If you edit it, run Preflight again so you understand the current result.
+Punga Mail runs the same blocking sendability checks used by Preflight before accepting the schedule, and validates again when the scheduled task creates the immutable queue. The Newsletter remains editable while Scheduled.
 
-Use **Cancel schedule** in the editor to return it to Draft before queueing begins.
+Use **Cancel schedule** in the sidebar to return it to Draft before queueing begins.
 
 ## 12. Monitor delivery
 
@@ -212,7 +212,7 @@ While it is Queued or Sending, you can:
 
 After completion, review the operational statistics. “Transport accepted” is the accurate term for messages Joomla handed successfully to the mail system. Later bounce processing may move an accepted recipient into a bounced state.
 
-If you want to reuse the content, choose **Duplicate as draft**. The original sent snapshot remains unchanged.
+If you want to reuse the content, choose **Duplicate as new draft** in the top toolbar. The same action is available for unsent Newsletters, and the Newsletters list can duplicate multiple selected rows at once. The original remains unchanged.
 
 ## A reliable final checklist
 

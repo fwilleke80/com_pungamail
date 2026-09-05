@@ -34,7 +34,6 @@ $siteTimezone=(string)Factory::getApplication()->get('offset','UTC');
 					<td class="w-1 text-center"><?php echo HTMLHelper::_('grid.checkall'); ?></td>
 					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('JGLOBAL_TITLE'), 'a.title', $listDirn, $listOrder); ?></th>
 					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_SUBJECT'), 'a.subject', $listDirn, $listOrder); ?></th>
-					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('JSTATUS'), 'a.state', $listDirn, $listOrder); ?></th>
 					<th scope="col"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_DELIVERY_STATUS'), 'a.status', $listDirn, $listOrder); ?></th>
 					<th scope="col" class="text-end"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_RECIPIENTS'), 'a.recipient_count', $listDirn, $listOrder); ?></th>
 					<th scope="col" class="text-end"><?php echo HTMLHelper::_('searchtools.sort', Text::_('COM_PUNGAMAIL_SENT'), 'a.sent_count', $listDirn, $listOrder); ?></th>
@@ -53,13 +52,6 @@ $siteTimezone=(string)Factory::getApplication()->get('offset','UTC');
 						</a>
 					</th>
 					<td><?php echo htmlspecialchars((string) $item->subject, ENT_QUOTES, 'UTF-8'); ?></td>
-					<td>
-						<?php if ((int) $item->state === -2) : ?>
-							<span class="badge bg-secondary"><?php echo Text::_('JTRASHED'); ?></span>
-						<?php else : ?>
-							<span class="badge bg-success"><?php echo Text::_('COM_PUNGAMAIL_STATE_ACTIVE'); ?></span>
-						<?php endif; ?>
-					</td>
 					<td><?php echo htmlspecialchars($statusLabels[(int) $item->status] ?? Text::_('COM_PUNGAMAIL_STATUS_UNKNOWN'), ENT_QUOTES, 'UTF-8'); ?></td>
 					<td class="text-end"><?php echo (int) $item->recipient_count; ?></td>
 					<td class="text-end"><?php echo (int) $item->sent_count; ?></td>
@@ -69,7 +61,7 @@ $siteTimezone=(string)Factory::getApplication()->get('offset','UTC');
 				</tr>
 			<?php endforeach; ?>
 			<?php if ($this->items === []) : ?>
-				<tr><td colspan="10" class="text-center text-muted py-4"><?php echo Text::_('COM_PUNGAMAIL_NO_NEWSLETTERS'); ?></td></tr>
+				<tr><td colspan="9" class="text-center text-muted py-4"><?php echo Text::_('COM_PUNGAMAIL_NO_NEWSLETTERS'); ?></td></tr>
 			<?php endif; ?>
 			</tbody>
 		</table>

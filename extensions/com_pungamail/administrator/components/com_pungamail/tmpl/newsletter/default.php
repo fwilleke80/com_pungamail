@@ -38,7 +38,25 @@ $styleFields = [
 	'logo_width' => 'COM_PUNGAMAIL_STYLE_LOGO_WIDTH',
 	'footer_color' => 'COM_PUNGAMAIL_STYLE_FOOTER_COLOR',
 ];
-$siteTimezone=(string)Factory::getApplication()->get('offset','UTC');
+$siteTimezone = (string) Factory::getApplication()->get('offset', 'UTC');
+$statusKey = match ((int) ($item->status ?? NewsletterRepository::STATUS_DRAFT))
+{
+	NewsletterRepository::STATUS_DRAFT => 'COM_PUNGAMAIL_STATUS_DRAFT',
+	NewsletterRepository::STATUS_QUEUED => 'COM_PUNGAMAIL_STATUS_QUEUED',
+	NewsletterRepository::STATUS_SENDING => 'COM_PUNGAMAIL_STATUS_SENDING',
+	NewsletterRepository::STATUS_SENT => 'COM_PUNGAMAIL_STATUS_SENT',
+	NewsletterRepository::STATUS_SENT_WITH_FAILURES => 'COM_PUNGAMAIL_STATUS_SENT_WITH_FAILURES',
+	NewsletterRepository::STATUS_SCHEDULED => 'COM_PUNGAMAIL_STATUS_SCHEDULED',
+	NewsletterRepository::STATUS_FAILED => 'COM_PUNGAMAIL_STATUS_FAILED',
+	NewsletterRepository::STATUS_CANCELLED => 'COM_PUNGAMAIL_STATUS_CANCELLED',
+	default => 'COM_PUNGAMAIL_STATUS_UNKNOWN',
+};
+$scheduledInputValue = '';
+
+if ($item !== null && !empty($item->scheduled_at))
+{
+	$scheduledInputValue = HTMLHelper::_('date', (string) $item->scheduled_at, 'Y-m-d\TH:i', $siteTimezone);
+}
 ?>
 <style>
 .pm-new-content-override > summary { list-style: none; }
@@ -48,6 +66,11 @@ $siteTimezone=(string)Factory::getApplication()->get('offset','UTC');
 </style>
 <div class="container-fluid">
 <?php if (!$isDraft && $item !== null) : ?>
+	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm">
+		<input type="hidden" name="id" value="<?php echo (int) $item->id; ?>">
+		<input type="hidden" name="task" value="">
+		<?php echo HTMLHelper::_('form.token'); ?>
+	</form>
 	<div class="card mb-3"><div class="card-body">
 		<h2 class="h5 mb-2"><?php echo htmlspecialchars((string) $item->title, ENT_QUOTES, 'UTF-8'); ?></h2>
 		<p><strong><?php echo Text::_('COM_PUNGAMAIL_SUBJECT'); ?>:</strong> <?php echo htmlspecialchars((string) ($this->snapshotPreview['subject'] ?? $item->snapshot_subject), ENT_QUOTES, 'UTF-8'); ?></p>
@@ -65,11 +88,13 @@ $siteTimezone=(string)Factory::getApplication()->get('offset','UTC');
 		<?php endforeach; ?>
 		</tbody></table>
 	</div></div>
-	<form class="mt-3 d-flex flex-wrap gap-2" action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post"><input type="hidden" name="id" value="<?php echo (int) $item->id; ?>"><button class="btn btn-primary" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.duplicate'); ?>" type="submit"><?php echo Text::_('COM_PUNGAMAIL_DUPLICATE_AS_DRAFT'); ?></button><?php if (in_array((int) $item->status, [NewsletterRepository::STATUS_QUEUED, NewsletterRepository::STATUS_SENDING], true)) : ?><input type="hidden" name="paused" value="<?php echo (int) $item->queue_paused === 1 ? 0 : 1; ?>"><button class="btn btn-outline-warning" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.toggleMailingPause'); ?>" type="submit"><?php echo Text::_((int) $item->queue_paused === 1 ? 'COM_PUNGAMAIL_RESUME_MAILING' : 'COM_PUNGAMAIL_PAUSE_MAILING'); ?></button><button class="btn btn-danger" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.cancelRemaining'); ?>" type="submit" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CANCEL_REMAINING_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CANCEL_REMAINING'); ?></button><?php endif; ?><a class="btn btn-outline-secondary" href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletters'); ?>"><?php echo Text::_('JTOOLBAR_BACK'); ?></a><?php echo HTMLHelper::_('form.token'); ?></form>
+	<form class="mt-3 d-flex flex-wrap gap-2" action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post"><input type="hidden" name="id" value="<?php echo (int) $item->id; ?>"><?php if (in_array((int) $item->status, [NewsletterRepository::STATUS_QUEUED, NewsletterRepository::STATUS_SENDING], true)) : ?><input type="hidden" name="paused" value="<?php echo (int) $item->queue_paused === 1 ? 0 : 1; ?>"><button class="btn btn-outline-warning" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.toggleMailingPause'); ?>" type="submit"><?php echo Text::_((int) $item->queue_paused === 1 ? 'COM_PUNGAMAIL_RESUME_MAILING' : 'COM_PUNGAMAIL_PAUSE_MAILING'); ?></button><button class="btn btn-danger" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.cancelRemaining'); ?>" type="submit" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CANCEL_REMAINING_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CANCEL_REMAINING'); ?></button><?php endif; ?><a class="btn btn-outline-secondary" href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletters'); ?>"><?php echo Text::_('JTOOLBAR_BACK'); ?></a><?php echo HTMLHelper::_('form.token'); ?></form>
 <?php else : ?>
 	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm">
 		<input type="hidden" name="id" value="<?php echo (int) ($item->id ?? 0); ?>">
 		<?php if ($item !== null && (int) $item->status === NewsletterRepository::STATUS_SCHEDULED) : ?><div class="alert alert-info"><?php echo Text::sprintf('COM_PUNGAMAIL_EDITING_SCHEDULED', HTMLHelper::_('date', $item->scheduled_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone)); ?></div><?php endif; ?>
+		<div class="row g-4 align-items-start">
+			<div class="col-12 col-xl-9">
 		<?php echo HTMLHelper::_('uitab.startTabSet', 'pm-newsletter-tabs', ['active' => 'pm-settings', 'recall' => true, 'breakpoint' => 768]); ?>
 
 		<?php echo HTMLHelper::_('uitab.addTab', 'pm-newsletter-tabs', 'pm-settings', Text::_('COM_PUNGAMAIL_TAB_SETTINGS')); ?>
@@ -171,22 +196,21 @@ $siteTimezone=(string)Factory::getApplication()->get('offset','UTC');
 		<div class="pt-3">
 			<div class="card mb-3">
 				<div class="card-body">
-					<label class="form-label" for="pm-template"><?php echo Text::_('COM_PUNGAMAIL_TEMPLATE'); ?></label>
-					<div class="input-group">
-						<select class="form-select" id="pm-template" name="template_id">
-							<option value="0"><?php echo Text::_('COM_PUNGAMAIL_NO_TEMPLATE'); ?></option>
-							<?php foreach ($this->templates as $template) : ?>
-								<option value="<?php echo (int) $template->id; ?>" <?php echo (int) ($item->template_id ?? 0) === (int) $template->id ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $template->title, ENT_QUOTES, 'UTF-8'); ?></option>
-							<?php endforeach; ?>
-						</select>
-						<button class="btn btn-outline-secondary" type="button" onclick="Joomla.submitbutton('newsletter.applyTemplate');"><?php echo Text::_('COM_PUNGAMAIL_APPLY_TEMPLATE'); ?></button>
+					<div class="row g-2 align-items-end mb-3">
+						<div class="col-md">
+							<label class="form-label" for="pm-template"><?php echo Text::_('COM_PUNGAMAIL_TEMPLATE'); ?></label>
+							<select class="form-select" id="pm-template" name="template_id">
+								<option value="0"><?php echo Text::_('COM_PUNGAMAIL_NO_TEMPLATE'); ?></option>
+								<?php foreach ($this->templates as $template) : ?>
+									<option value="<?php echo (int) $template->id; ?>" <?php echo (int) ($item->template_id ?? 0) === (int) $template->id ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $template->title, ENT_QUOTES, 'UTF-8'); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</div>
+						<div class="col-md-auto">
+							<button class="btn btn-outline-secondary" type="button" onclick="Joomla.submitbutton('newsletter.applyTemplate');"><?php echo Text::_('COM_PUNGAMAIL_APPLY_TEMPLATE'); ?></button>
+						</div>
 					</div>
-					<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_TEMPLATE_COPY_HELP'); ?></div>
-				</div>
-			</div>
-
-			<div class="card mb-3">
-				<div class="card-body">
+					<div class="form-text mb-3"><?php echo Text::_('COM_PUNGAMAIL_TEMPLATE_COPY_HELP'); ?></div>
 					<div class="mb-3">
 						<label class="form-label" for="pm-subject"><?php echo Text::_('COM_PUNGAMAIL_EMAIL_SUBJECT'); ?></label>
 						<input class="form-control" id="pm-subject" name="subject" required value="<?php echo htmlspecialchars((string) ($item->subject ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
@@ -299,6 +323,32 @@ $siteTimezone=(string)Factory::getApplication()->get('offset','UTC');
 		<?php echo HTMLHelper::_('uitab.endTab'); ?>
 
 		<?php echo HTMLHelper::_('uitab.endTabSet'); ?>
+			</div>
+			<aside class="col-12 col-xl-3">
+				<div class="card mb-3">
+					<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_NEWSLETTER_DETAILS'); ?></strong></div>
+					<div class="card-body">
+						<div class="mb-3">
+							<div class="small text-muted"><?php echo Text::_('JSTATUS'); ?></div>
+							<div class="fw-semibold"><?php echo Text::_($statusKey); ?></div>
+						</div>
+					</div>
+				</div>
+				<div class="card mb-3">
+					<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_SCHEDULE_SEND'); ?></strong></div>
+					<div class="card-body">
+						<label class="form-label" for="pm-scheduled-at"><?php echo Text::_('COM_PUNGAMAIL_SCHEDULE_DATE'); ?></label>
+						<input class="form-control" type="datetime-local" id="pm-scheduled-at" name="scheduled_at" value="<?php echo htmlspecialchars($scheduledInputValue, ENT_QUOTES, 'UTF-8'); ?>">
+						<div class="form-text mb-3"><?php echo Text::_('COM_PUNGAMAIL_SCHEDULE_SIDEBAR_HELP'); ?></div>
+						<button class="btn btn-primary w-100" type="button" onclick="Joomla.submitbutton('newsletter.schedule');"><?php echo Text::_($item !== null && (int) $item->status === NewsletterRepository::STATUS_SCHEDULED ? 'COM_PUNGAMAIL_RESCHEDULE_SEND' : 'COM_PUNGAMAIL_SCHEDULE_SEND'); ?></button>
+						<?php if ($item !== null && (int) $item->status === NewsletterRepository::STATUS_SCHEDULED) : ?>
+							<button class="btn btn-outline-danger w-100 mt-2" type="button" onclick="Joomla.submitbutton('newsletter.cancelScheduled');"><?php echo Text::_('COM_PUNGAMAIL_CANCEL_SCHEDULE'); ?></button>
+						<?php endif; ?>
+					</div>
+				</div>
+			</aside>
+		</div>
+		<input type="hidden" name="schedule_from_editor" value="1">
 		<input type="hidden" name="task" value="">
 		<?php echo HTMLHelper::_('form.token'); ?>
 	</form>

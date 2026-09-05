@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.5 — 2026-09-05
+
+- Moved Newsletter Template selection and **Apply template** back into the **Mail content** tab so applying a Template happens next to the content it changes; the Joomla-style sidebar now remains focused on lifecycle state and scheduling.
+- Made Markdown **Table** and **Insert image** actions visually distinct with explicit Joomla/Font Awesome icons and text labels.
+- Fixed Markdown image insertion from Joomla Media Manager by observing the media field value itself instead of depending on Joomla's unreliable `change` event; selecting an image now inserts Markdown at the current editor selection/cursor and prompts for useful alt text.
+- Kept the Preflight scheduling controls and prefilled their date/time field when the Newsletter is already scheduled, using the configured Joomla site timezone.
+- Added **Templates** to Dashboard Quick Actions next to **Channels**.
+- Simplified Subscriber delivery diagnostics: the section is hidden when there is nothing to report, uses clearer delivery-failure wording when shown, labels permanent/temporary failures plainly, and exposes the existing **Allow delivery again** recovery action for bounce-based blocks.
+- Added release regression coverage for the 0.4.5 authoring and administrator-UI fixes. No database schema changes are required.
+
+## 0.4.4 — 2026-09-05
+
+- Redesigned Newsletter and Template editors around Joomla's familiar main-content plus right-sidebar layout. Newsletter lifecycle state, template selection, and scheduling now live in the sidebar; Template message behavior lives in its sidebar without inventing a publish state.
+- Added direct Newsletter scheduling and rescheduling from the editor. Punga Mail still runs the same blocking Preflight validation before accepting a schedule and revalidates again when the due newsletter is queued. Cancelling a schedule now returns the Newsletter to Draft.
+- Made **Duplicate as new draft** a normal Newsletter toolbar action for every saved Newsletter and added bulk duplication for selected rows in the Newsletters list.
+- Added the actual recipient delivery queue to the Delivery page with state/newsletter/recipient filters, delivery and retry details, safe retry of failed rows, and cancellation limited to unsent pending/failed rows.
+- Expanded the Dashboard's upcoming-mail summary so manually Scheduled Newsletters and recurring Automatic Newsletters are shown distinctly.
+- Fixed the Subscriber editor's "no Channels selected" note so it follows the actual checkbox selection instead of remaining visible after Channels are selected.
+- Improved the shared Markdown editor by hiding CodeMirror line numbers and adding Table and Image toolbar actions. Image insertion uses Joomla's media picker when available and writes the selected image as Markdown.
+- Removed the misleading always-Active record-state column from the Newsletters and Templates list tables while retaining Joomla trash/restore behavior internally.
+- Added release regression coverage for the new editor layout, scheduling semantics, queue administration, Markdown controls, duplication workflow, Dashboard summary, Subscriber help state, and list cleanup. No database schema changes are required.
+
 ## 0.4.3 — 2026-09-04
 
 - Fixed Joomla Scheduled Tasks plugin bootstrap by constructing Punga Mail plugins with Joomla's event dispatcher through the documented dependency-injection contract.

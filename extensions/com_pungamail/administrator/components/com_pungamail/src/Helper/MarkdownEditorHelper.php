@@ -10,6 +10,7 @@ namespace Punga\Component\PungaMail\Administrator\Helper;
 
 use Joomla\CMS\Editor\EditorsRegistry;
 use Joomla\CMS\Factory;
+use Joomla\CMS\Form\Form;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
@@ -35,6 +36,7 @@ final class MarkdownEditorHelper
 	{
 		self::loadAssets();
 		$editor = self::renderSourceEditor($name, $id, $value, $rows);
+		$mediaPicker = self::renderMediaPicker($id);
 		$placeholderOptions = '';
 
 		foreach ($placeholders as $placeholder)
@@ -81,6 +83,8 @@ final class MarkdownEditorHelper
 			. self::button('ol', '1.', Text::_('COM_PUNGAMAIL_MARKDOWN_NUMBERED_LIST'))
 			. self::button('quote', '❯', Text::_('COM_PUNGAMAIL_MARKDOWN_QUOTE'))
 			. self::button('hr', '—', Text::_('COM_PUNGAMAIL_MARKDOWN_HORIZONTAL_RULE'))
+			. self::button('table', '<span class="fa fa-table me-1" aria-hidden="true"></span><span>' . htmlspecialchars(Text::_('COM_PUNGAMAIL_MARKDOWN_INSERT_TABLE'), ENT_QUOTES, 'UTF-8') . '</span>', Text::_('COM_PUNGAMAIL_MARKDOWN_INSERT_TABLE'))
+			. self::button('image', '<span class="fa fa-image me-1" aria-hidden="true"></span><span>' . htmlspecialchars(Text::_('COM_PUNGAMAIL_MARKDOWN_INSERT_IMAGE'), ENT_QUOTES, 'UTF-8') . '</span>', Text::_('COM_PUNGAMAIL_MARKDOWN_INSERT_IMAGE'))
 			. $placeholderSelect
 			. '<span class="ms-auto btn-group btn-group-sm" role="group">'
 			. '<button type="button" class="btn btn-secondary active pm-md-mode" data-mode="edit">' . htmlspecialchars(Text::_('COM_PUNGAMAIL_MARKDOWN_EDIT'), ENT_QUOTES, 'UTF-8') . '</button>'
@@ -88,6 +92,7 @@ final class MarkdownEditorHelper
 			. '</span></div>'
 			. '<div class="pm-md-source">' . $editor . '</div>'
 			. '<div class="pm-md-preview border rounded p-3 d-none" aria-live="polite"></div>'
+			. $mediaPicker
 			. $helpHtml
 			. '</div>';
 	}
@@ -122,6 +127,32 @@ final class MarkdownEditorHelper
 	}
 
 	/** @return string */
+	private static function renderMediaPicker(string $id): string
+	{
+		try
+		{
+			$suffix = substr(sha1($id), 0, 12);
+			$fieldName = 'pm_markdown_image_' . $suffix;
+			$form = new Form('pm_markdown_' . $suffix);
+			$form->load(
+				'<form><field name="' . $fieldName . '" type="media" types="images" preview="false" /></form>'
+			);
+			$field = $form->getField($fieldName);
+
+			if ($field !== null)
+			{
+				return '<div class="pm-md-media-picker visually-hidden" aria-hidden="true">' . $field->input . '</div>';
+			}
+		}
+		catch (\Throwable)
+		{
+			// Image insertion falls back to Markdown syntax when Joomla's media field is unavailable.
+		}
+
+		return '';
+	}
+
+	/** @return string */
 	private static function button(string $action, string $content, string $title): string
 	{
 		return '<button type="button" class="btn btn-outline-secondary btn-sm pm-md-action" data-action="' . $action
@@ -146,8 +177,9 @@ final class MarkdownEditorHelper
 			'previewUrl' => $previewUrl,
 			'token' => $token,
 			'previewError' => Text::_('COM_PUNGAMAIL_MARKDOWN_PREVIEW_ERROR'),
+			'imageAltPrompt' => Text::_('COM_PUNGAMAIL_MARKDOWN_IMAGE_ALT_PROMPT'),
 		]);
-		$wa->addInlineStyle('.pm-markdown-editor .pm-md-placeholder{width:auto;min-width:11rem}.pm-md-preview{min-height:10rem;background:var(--body-bg,#fff)}.pm-md-help>summary{cursor:pointer;list-style:none}.pm-md-help>summary::-webkit-details-marker{display:none}.pm-md-chevron{display:inline-block;transition:transform .15s ease}.pm-md-help[open] .pm-md-chevron{transform:rotate(90deg)}.pm-markdown-editor joomla-editor-codemirror{display:block}.pm-markdown-editor .cm-editor{font-family:var(--font-monospace,monospace)}');
+		$wa->addInlineStyle('.pm-markdown-editor .pm-md-placeholder{width:auto;min-width:11rem}.pm-md-preview{min-height:10rem;background:var(--body-bg,#fff)}.pm-md-help>summary{cursor:pointer;list-style:none}.pm-md-help>summary::-webkit-details-marker{display:none}.pm-md-chevron{display:inline-block;transition:transform .15s ease}.pm-md-help[open] .pm-md-chevron{transform:rotate(90deg)}.pm-markdown-editor joomla-editor-codemirror{display:block}.pm-markdown-editor .cm-editor{font-family:var(--font-monospace,monospace)}.pm-markdown-editor .cm-gutters{display:none!important}');
 		$wa->addInlineScript(<<<'JS'
 (() => {
 	const options = Joomla.getOptions('com_pungamail.markdownEditor', {});
@@ -175,6 +207,40 @@ final class MarkdownEditorHelper
 		textarea.focus();
 	};
 	const prefixLines = (text, prefix) => (text || 'text').split('\n').map((line) => `${prefix}${line}`).join('\n');
+	const mediaWatches = new WeakMap();
+	const stopMediaWatch = (mediaInput) => {
+		const timer = mediaWatches.get(mediaInput);
+		if (timer) {
+			window.clearInterval(timer);
+			mediaWatches.delete(mediaInput);
+		}
+	};
+	const insertSelectedImage = (root, mediaInput) => {
+		if (!root || !mediaInput || !mediaInput.value) return false;
+		stopMediaWatch(mediaInput);
+		const url = mediaInput.value.split('#')[0];
+		if (!url) return false;
+		const filename = url.split('/').pop() || '';
+		const suggestedAlt = filename.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim();
+		const alt = window.prompt(options.imageAltPrompt || 'Alternative text for this image:', suggestedAlt) ?? suggestedAlt;
+		replaceSelection(root, () => `![${alt.replace(/]/g, '\\]')}](${url})`);
+		mediaInput.value = '';
+		return true;
+	};
+	const watchMediaSelection = (root, mediaInput) => {
+		stopMediaWatch(mediaInput);
+		const initialValue = mediaInput.value;
+		let checks = 0;
+		const timer = window.setInterval(() => {
+			checks += 1;
+			if (mediaInput.value && mediaInput.value !== initialValue) {
+				insertSelectedImage(root, mediaInput);
+				return;
+			}
+			if (checks >= 600) stopMediaWatch(mediaInput);
+		}, 100);
+		mediaWatches.set(mediaInput, timer);
+	};
 	const transforms = {
 		bold: (s) => `**${s || 'text'}**`,
 		italic: (s) => `*${s || 'text'}*`,
@@ -184,7 +250,8 @@ final class MarkdownEditorHelper
 		ul: (s) => prefixLines(s, '- '),
 		ol: (s) => (s || 'text').split('\n').map((line, i) => `${i + 1}. ${line}`).join('\n'),
 		quote: (s) => prefixLines(s, '> '),
-		hr: () => '\n---\n'
+		hr: () => '\n---\n',
+		table: () => '\n| Column 1 | Column 2 |\n| --- | --- |\n| Value 1 | Value 2 |\n'
 	};
 	const showEdit = (root) => {
 		root.querySelector('.pm-md-source')?.classList.remove('d-none');
@@ -213,8 +280,20 @@ final class MarkdownEditorHelper
 		const action = event.target.closest('.pm-md-action');
 		if (action) {
 			const root = action.closest('.pm-markdown-editor');
+			if (!root) return;
+			if (action.dataset.action === 'image') {
+				const mediaButton = root.querySelector('.pm-md-media-picker .button-select');
+				const mediaInput = root.querySelector('.pm-md-media-picker .field-media-input');
+				if (mediaButton && mediaInput) {
+					watchMediaSelection(root, mediaInput);
+					mediaButton.click();
+				} else {
+					replaceSelection(root, (selected) => `![${selected || 'Alt text'}](images/)`);
+				}
+				return;
+			}
 			const transform = transforms[action.dataset.action];
-			if (root && transform) replaceSelection(root, transform);
+			if (transform) replaceSelection(root, transform);
 			return;
 		}
 		const mode = event.target.closest('.pm-md-mode');
@@ -225,6 +304,11 @@ final class MarkdownEditorHelper
 		}
 	});
 	document.addEventListener('change', (event) => {
+		const mediaInput = event.target.closest('.pm-md-media-picker .field-media-input');
+		if (mediaInput && mediaInput.value) {
+			const root = mediaInput.closest('.pm-markdown-editor');
+			if (root && insertSelectedImage(root, mediaInput)) return;
+		}
 		const select = event.target.closest('.pm-md-placeholder');
 		if (!select || !select.value) return;
 		const root = select.closest('.pm-markdown-editor');

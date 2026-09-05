@@ -217,19 +217,33 @@ final class NewsletterController extends BaseController
 		$this->requireManage();
 		$this->requireToken();
 		$input = Factory::getApplication()->getInput();
+		$fromEditor = $input->post->getInt('schedule_from_editor', 0) === 1;
 		$id = $input->post->getInt('id');
 
 		try
 		{
+			if ($fromEditor)
+			{
+				$id = $this->saveFromInput();
+			}
+
 			$scheduledAt = $this->parseScheduledDate($input->post->getString('scheduled_at'));
 			ServiceFactory::preflight()->assertSendable($id);
 			ServiceFactory::newsletters()->schedule($id, $scheduledAt);
+
+			if ($fromEditor)
+			{
+				$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), Text::_('COM_PUNGAMAIL_NEWSLETTER_SCHEDULED'));
+				return;
+			}
+
 			$this->checkin($id);
 			$this->setRedirect(Route::_(AdministratorRoute::newsletters(), false), Text::_('COM_PUNGAMAIL_NEWSLETTER_SCHEDULED'));
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_(AdministratorRoute::preflight($id), false), ErrorMessage::sanitize($e), 'error');
+			$return = $fromEditor && $id > 0 ? AdministratorRoute::newsletter($id) : AdministratorRoute::preflight($id);
+			$this->setRedirect(Route::_($return, false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -238,10 +252,33 @@ final class NewsletterController extends BaseController
 	{
 		$this->requireManage();
 		$this->requireToken();
-		$id = Factory::getApplication()->getInput()->getInt('id');
-		ServiceFactory::newsletters()->cancelScheduled($id);
-		$this->checkin($id);
-		$this->setRedirect(Route::_(AdministratorRoute::newsletters(), false), Text::_('COM_PUNGAMAIL_SCHEDULE_CANCELLED'));
+		$input = Factory::getApplication()->getInput();
+		$fromEditor = $input->post->getInt('schedule_from_editor', 0) === 1;
+		$id = $input->post->getInt('id');
+
+		try
+		{
+			if ($fromEditor)
+			{
+				$id = $this->saveFromInput();
+			}
+
+			ServiceFactory::newsletters()->cancelScheduled($id);
+
+			if ($fromEditor)
+			{
+				$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), Text::_('COM_PUNGAMAIL_SCHEDULE_REMOVED'));
+				return;
+			}
+
+			$this->checkin($id);
+			$this->setRedirect(Route::_(AdministratorRoute::newsletters(), false), Text::_('COM_PUNGAMAIL_SCHEDULE_REMOVED'));
+		}
+		catch (\Throwable $e)
+		{
+			$return = $fromEditor && $id > 0 ? AdministratorRoute::newsletter($id) : AdministratorRoute::newsletters();
+			$this->setRedirect(Route::_($return, false), ErrorMessage::sanitize($e), 'error');
+		}
 	}
 
 	/** @return void */
@@ -292,54 +329,25 @@ final class NewsletterController extends BaseController
 	{
 		$this->requireManage();
 		$this->requireToken();
-		$id = Factory::getApplication()->getInput()->getInt('id');
-		$repo = ServiceFactory::newsletters();
-		$newsletter = $repo->find($id);
+		$application = Factory::getApplication();
 
-		if ($newsletter === null)
+		if (!$application->getIdentity()->authorise('core.create', 'com_pungamail'))
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), Text::_('COM_PUNGAMAIL_ERROR_NEWSLETTER_NOT_FOUND'), 'error');
-			return;
+			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
 
-		$items = [];
-		foreach ($repo->getItems($id) as $item)
+		try
 		{
-			$items[] = [
-				'source_key' => (string) $item->source_key,
-				'source_item_id' => (string) $item->source_item_id,
-				'title_override' => (string) ($item->title_override ?? ''),
-				'excerpt_override' => (string) ($item->excerpt_override ?? ''),
-				'ordering' => (int) $item->ordering,
-			];
+			$newId = ServiceFactory::newsletters()->duplicateAsDraft(
+				$application->getInput()->getInt('id'),
+				(int) $application->getIdentity()->id
+			);
+			$this->setRedirect(Route::_(AdministratorRoute::newsletter($newId), false), Text::_('COM_PUNGAMAIL_NEWSLETTER_DUPLICATED'));
 		}
-
-		$newId = $repo->saveDraft(
-			0,
-			Text::sprintf('COM_PUNGAMAIL_COPY_TITLE', (string) $newsletter->title),
-			(string) $newsletter->subject,
-			(string) $newsletter->body_markdown,
-			(bool) $newsletter->include_subscribers,
-			$repo->getLastContentCutoff(),
-			$items,
-			$repo->getGroupIds($id),
-			(int) Factory::getApplication()->getIdentity()->id,
-			$repo->getSourceKeys($id),
-			$newsletter->template_id !== null ? (int) $newsletter->template_id : null,
-			$newsletter->style_overrides !== null ? (string) $newsletter->style_overrides : null,
-			(string) ($newsletter->custom_css ?? ''),
-			[
-				'topic_ids' => $repo->getTopicIds($id),
-				'heading_mode' => (string) ($newsletter->heading_mode ?? 'inherit'),
-				'mail_heading' => (string) ($newsletter->mail_heading ?? ''),
-				'browser_view' => (int) ($newsletter->browser_view ?? -1),
-				'reply_to_mode' => (string) ($newsletter->reply_to_mode ?? 'inherit'),
-				'reply_to_email' => (string) ($newsletter->reply_to_email ?? ''),
-				'reply_to_name' => (string) ($newsletter->reply_to_name ?? ''),
-				'new_content_item_template' => (string) ($newsletter->new_content_item_template ?? ''),
-			]
-		);
-		$this->setRedirect(Route::_(AdministratorRoute::newsletter($newId), false), Text::_('COM_PUNGAMAIL_NEWSLETTER_DUPLICATED'));
+		catch (\Throwable $e)
+		{
+			$this->setRedirect(Route::_(AdministratorRoute::newsletters(), false), ErrorMessage::sanitize($e), 'error');
+		}
 	}
 
 	/** @return void */

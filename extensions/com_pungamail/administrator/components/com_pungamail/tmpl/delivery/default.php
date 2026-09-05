@@ -7,11 +7,122 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
+use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 
 $settings = $this->settings;
 $diagnostics = $this->diagnostics;
 $identity = Factory::getApplication()->getIdentity();
+$siteTimezone = (string) Factory::getApplication()->get('offset', 'UTC');
+$queueStatusKeys = [
+	'pending' => 'COM_PUNGAMAIL_QUEUE_STATUS_PENDING',
+	'processing' => 'COM_PUNGAMAIL_QUEUE_STATUS_PROCESSING',
+	'sent' => 'COM_PUNGAMAIL_QUEUE_STATUS_SENT',
+	'failed' => 'COM_PUNGAMAIL_QUEUE_STATUS_FAILED',
+	'cancelled' => 'COM_PUNGAMAIL_QUEUE_STATUS_CANCELLED',
+	'bounced' => 'COM_PUNGAMAIL_QUEUE_STATUS_BOUNCED',
+];
 ?>
+<div class="card mb-3">
+	<div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+		<strong><?php echo Text::_('COM_PUNGAMAIL_MAIL_QUEUE'); ?></strong>
+		<span class="small text-muted"><?php echo Text::sprintf('COM_PUNGAMAIL_QUEUE_SHOWING', count($this->queue)); ?></span>
+	</div>
+	<div class="card-body border-bottom">
+		<form class="row g-2 align-items-end" action="<?php echo Route::_('index.php'); ?>" method="get">
+			<input type="hidden" name="option" value="com_pungamail">
+			<input type="hidden" name="view" value="delivery">
+			<div class="col-12 col-md-3">
+				<label class="form-label" for="queue-status"><?php echo Text::_('JSTATUS'); ?></label>
+				<select class="form-select" id="queue-status" name="queue_status">
+					<option value=""><?php echo Text::_('COM_PUNGAMAIL_QUEUE_STATUS_ALL'); ?></option>
+					<?php foreach ($queueStatusKeys as $status => $labelKey) : ?>
+						<option value="<?php echo $status; ?>" <?php echo ($this->queueFilters['status'] ?? '') === $status ? 'selected' : ''; ?>><?php echo Text::_($labelKey); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</div>
+			<div class="col-12 col-md-3">
+				<label class="form-label" for="queue-newsletter"><?php echo Text::_('COM_PUNGAMAIL_NEWSLETTER'); ?></label>
+				<select class="form-select" id="queue-newsletter" name="queue_newsletter">
+					<option value="0"><?php echo Text::_('COM_PUNGAMAIL_QUEUE_NEWSLETTER_ALL'); ?></option>
+					<?php foreach ($this->queueNewsletters as $newsletter) : ?>
+						<option value="<?php echo (int) $newsletter->id; ?>" <?php echo (int) ($this->queueFilters['newsletter_id'] ?? 0) === (int) $newsletter->id ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $newsletter->title, ENT_QUOTES, 'UTF-8'); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</div>
+			<div class="col-12 col-md-4">
+				<label class="form-label" for="queue-search"><?php echo Text::_('JSEARCH_FILTER'); ?></label>
+				<input class="form-control" id="queue-search" name="queue_search" type="search" value="<?php echo htmlspecialchars((string) ($this->queueFilters['search'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_QUEUE_SEARCH_PLACEHOLDER'), ENT_QUOTES, 'UTF-8'); ?>">
+			</div>
+			<div class="col-12 col-md-2 d-flex gap-2">
+				<button class="btn btn-primary" type="submit"><?php echo Text::_('JSEARCH_FILTER_SUBMIT'); ?></button>
+				<a class="btn btn-outline-secondary" href="<?php echo Route::_('index.php?option=com_pungamail&view=delivery'); ?>"><?php echo Text::_('JSEARCH_FILTER_CLEAR'); ?></a>
+			</div>
+		</form>
+	</div>
+	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post">
+		<div class="table-responsive">
+			<table class="table table-striped align-middle mb-0">
+				<thead><tr>
+					<th class="text-center" style="width:1%"><input class="form-check-input" type="checkbox" id="queue-check-all" aria-label="<?php echo htmlspecialchars(Text::_('JGLOBAL_CHECK_ALL'), ENT_QUOTES, 'UTF-8'); ?>"></th>
+					<th><?php echo Text::_('COM_PUNGAMAIL_NEWSLETTER'); ?></th>
+					<th><?php echo Text::_('COM_PUNGAMAIL_RECIPIENT'); ?></th>
+					<th><?php echo Text::_('JSTATUS'); ?></th>
+					<th class="text-end"><?php echo Text::_('COM_PUNGAMAIL_ATTEMPTS'); ?></th>
+					<th><?php echo Text::_('COM_PUNGAMAIL_QUEUE_NEXT_ATTEMPT'); ?></th>
+					<th><?php echo Text::_('COM_PUNGAMAIL_QUEUE_CREATED'); ?></th>
+					<th><?php echo Text::_('COM_PUNGAMAIL_QUEUE_MODIFIED'); ?></th>
+					<th><?php echo Text::_('COM_PUNGAMAIL_SENT'); ?></th>
+					<th><?php echo Text::_('COM_PUNGAMAIL_QUEUE_LAST_ERROR'); ?></th>
+				</tr></thead>
+				<tbody>
+				<?php foreach ($this->queue as $entry) : ?>
+					<?php $statusKey = $queueStatusKeys[(string) $entry->status] ?? 'COM_PUNGAMAIL_STATUS_UNKNOWN'; ?>
+					<tr>
+						<td class="text-center"><input class="form-check-input pm-queue-check" type="checkbox" name="queue_ids[]" value="<?php echo (int) $entry->id; ?>" aria-label="<?php echo (int) $entry->id; ?>"></td>
+						<td><a href="<?php echo Route::_(AdministratorRoute::newsletter((int) $entry->newsletter_id)); ?>"><?php echo htmlspecialchars((string) ($entry->newsletter_title ?: ('#' . $entry->newsletter_id)), ENT_QUOTES, 'UTF-8'); ?></a></td>
+						<td><div><?php echo htmlspecialchars((string) (($entry->recipient_name ?? '') ?: $entry->email), ENT_QUOTES, 'UTF-8'); ?></div><code class="small"><?php echo htmlspecialchars((string) $entry->email, ENT_QUOTES, 'UTF-8'); ?></code></td>
+						<td><?php echo Text::_($statusKey); ?></td>
+						<td class="text-end"><?php echo (int) $entry->attempts; ?></td>
+						<td><?php echo $entry->next_attempt_at ? HTMLHelper::_('date', $entry->next_attempt_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone) : '—'; ?></td>
+						<td><?php echo HTMLHelper::_('date', $entry->created, Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?></td>
+						<td><?php echo HTMLHelper::_('date', $entry->modified, Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?></td>
+						<td><?php echo $entry->sent_at ? HTMLHelper::_('date', $entry->sent_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone) : '—'; ?></td>
+						<td class="small text-danger" style="max-width:24rem;white-space:normal"><?php echo htmlspecialchars((string) ($entry->last_error ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+					</tr>
+				<?php endforeach; ?>
+				<?php if ($this->queue === []) : ?><tr><td colspan="10" class="text-center text-muted py-4"><?php echo Text::_('COM_PUNGAMAIL_QUEUE_NO_ENTRIES'); ?></td></tr><?php endif; ?>
+				</tbody>
+			</table>
+		</div>
+		<div class="card-footer d-flex flex-wrap gap-2">
+			<button class="btn btn-outline-primary" type="submit" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=delivery.retryQueue'); ?>"><?php echo Text::_('COM_PUNGAMAIL_RETRY_SELECTED'); ?></button>
+			<button class="btn btn-outline-danger" type="submit" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=delivery.cancelQueue'); ?>" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_QUEUE_CANCEL_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CANCEL_SELECTED'); ?></button>
+		</div>
+		<input type="hidden" name="queue_status" value="<?php echo htmlspecialchars((string) ($this->queueFilters['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+		<input type="hidden" name="queue_newsletter" value="<?php echo (int) ($this->queueFilters['newsletter_id'] ?? 0); ?>">
+		<input type="hidden" name="queue_search" value="<?php echo htmlspecialchars((string) ($this->queueFilters['search'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+		<?php echo HTMLHelper::_('form.token'); ?>
+	</form>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function ()
+{
+	const all = document.getElementById('queue-check-all');
+	const checks = Array.from(document.querySelectorAll('.pm-queue-check'));
+
+	if (all)
+	{
+		all.addEventListener('change', function ()
+		{
+			checks.forEach(function (check)
+			{
+				check.checked = all.checked;
+			});
+		});
+	}
+});
+</script>
+
 <div class="row g-3">
 	<div class="col-12 col-xl-7">
 		<div class="card mb-3">

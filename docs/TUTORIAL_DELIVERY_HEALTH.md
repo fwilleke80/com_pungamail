@@ -139,7 +139,13 @@ This removes the bounce-based delivery block and resets the active soft-bounce c
 
 Do not clear suppression merely to increase recipient count. Repeatedly sending to invalid addresses harms delivery reputation.
 
-## 10. Pause and resume safely
+## 10. Inspect and manage the live mail queue
+
+Open **Delivery / Bounces** and use the **Mail queue** table to inspect individual recipient rows. Filter by queue state, Newsletter, or recipient/title search. The table includes attempts, retry timing, timestamps, and the latest error.
+
+Use **Retry selected** only when you intentionally want failed rows to enter the normal retry path again. **Cancel selected** affects only pending or failed unsent rows; it cannot recall mail already accepted by the transport or interrupt rows currently processing.
+
+## 11. Pause and resume safely
 
 ### Pause every mailing
 
@@ -157,7 +163,7 @@ Open the mailing and choose **Cancel remaining**, then confirm. Pending/processi
 
 Use cancellation only when the remaining delivery should never resume. A pause is the reversible option.
 
-## 11. Read delivery statistics accurately
+## 12. Read delivery statistics accurately
 
 | Statistic | Interpretation |
 | --- | --- |
@@ -174,7 +180,7 @@ Use cancellation only when the remaining delivery should never resume. A pause i
 
 Punga Mail intentionally does not equate these operational facts with opens or readership.
 
-## 12. DNS and provider checks
+## 13. DNS and provider checks
 
 The local Diagnostics section cannot reliably prove every external mail-authentication condition. Separately verify with your domain/mail provider:
 

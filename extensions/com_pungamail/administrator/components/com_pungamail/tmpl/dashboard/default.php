@@ -21,6 +21,7 @@ $nextAutomatic = $overview['next_automatic'] ?? null;
 $delivery = (array) ($overview['delivery'] ?? ['sent' => 0, 'failed' => 0, 'bounced' => 0, 'rate' => null]);
 $chart = (array) ($overview['chart'] ?? []);
 $upcoming = (array) ($overview['upcoming'] ?? []);
+$nextScheduled = $upcoming[0] ?? null;
 $automatic = (array) ($overview['automatic'] ?? []);
 $channelStats = (array) ($overview['channel_stats'] ?? []);
 $activity = (array) ($overview['activity'] ?? []);
@@ -109,17 +110,20 @@ foreach ($chart as $point)
 			</a>
 		</div>
 		<div class="col-12 col-sm-6 col-xl-3">
-			<a class="pm-dashboard-card-link" href="<?php echo $nextAutomatic ? Route::_(AdministratorRoute::digest((int) $nextAutomatic->id)) : Route::_(AdministratorRoute::digests()); ?>">
-				<div class="card h-100"><div class="card-body">
-					<div class="pm-dashboard-kicker mb-2"><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_NEXT_AUTOMATIC'); ?></div>
-					<?php if ($nextAutomatic) : ?>
-						<div class="fw-semibold text-truncate"><?php echo htmlspecialchars((string) $nextAutomatic->title, ENT_QUOTES, 'UTF-8'); ?></div>
-						<div class="small text-muted mt-2"><?php echo HTMLHelper::_('date', $nextAutomatic->next_run_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?></div>
-					<?php else : ?>
-						<div class="text-muted"><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_NO_AUTOMATIC'); ?></div>
-					<?php endif; ?>
-				</div></div>
-			</a>
+			<div class="card h-100"><div class="card-body">
+				<div class="pm-dashboard-kicker mb-2"><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_NEXT_NEWSLETTERS'); ?></div>
+				<?php if ($nextScheduled) : ?>
+					<div class="small text-muted"><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_SCHEDULED_LABEL'); ?></div>
+					<a class="fw-semibold d-block text-truncate" href="<?php echo Route::_(AdministratorRoute::newsletter((int) $nextScheduled->id)); ?>"><?php echo htmlspecialchars((string) $nextScheduled->title, ENT_QUOTES, 'UTF-8'); ?></a>
+					<div class="small text-muted"><?php echo HTMLHelper::_('date', $nextScheduled->scheduled_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?></div>
+				<?php endif; ?>
+				<?php if ($nextAutomatic) : ?>
+					<div class="small text-muted <?php echo $nextScheduled ? 'mt-2' : ''; ?>"><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_AUTOMATIC_LABEL'); ?></div>
+					<a class="fw-semibold d-block text-truncate" href="<?php echo Route::_(AdministratorRoute::digest((int) $nextAutomatic->id)); ?>"><?php echo htmlspecialchars((string) $nextAutomatic->title, ENT_QUOTES, 'UTF-8'); ?></a>
+					<div class="small text-muted"><?php echo HTMLHelper::_('date', $nextAutomatic->next_run_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?></div>
+				<?php endif; ?>
+				<?php if (!$nextScheduled && !$nextAutomatic) : ?><div class="text-muted"><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_NO_NEXT_NEWSLETTERS'); ?></div><?php endif; ?>
+			</div></div>
 		</div>
 		<div class="col-12 col-sm-6 col-xl-3">
 			<a class="pm-dashboard-card-link" href="<?php echo Route::_('index.php?option=com_pungamail&view=delivery'); ?>">
@@ -157,6 +161,7 @@ foreach ($chart as $point)
 			<a class="btn btn-outline-primary" href="<?php echo Route::_(AdministratorRoute::digest()); ?>"><?php echo Text::_('COM_PUNGAMAIL_NEW_DIGEST'); ?></a>
 			<a class="btn btn-outline-secondary" href="<?php echo Route::_(AdministratorRoute::subscriber()); ?>"><?php echo Text::_('COM_PUNGAMAIL_ADD_SUBSCRIBER'); ?></a>
 			<a class="btn btn-outline-secondary" href="<?php echo Route::_(AdministratorRoute::topics()); ?>"><?php echo Text::_('COM_PUNGAMAIL_TOPICS'); ?></a>
+			<a class="btn btn-outline-secondary" href="<?php echo Route::_(AdministratorRoute::templates()); ?>"><?php echo Text::_('COM_PUNGAMAIL_TEMPLATES'); ?></a>
 			<?php if ((int) ($queue['pending'] ?? 0) > 0 || (int) ($queue['processing'] ?? 0) > 0 || !$taskReady($tasks['queue'])) : ?>
 				<form action="<?php echo Route::_('index.php?option=com_pungamail&view=dashboard'); ?>" method="post" class="d-inline">
 					<button type="submit" class="btn btn-outline-secondary"><?php echo Text::_('COM_PUNGAMAIL_PROCESS_QUEUE'); ?></button>

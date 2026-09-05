@@ -19,6 +19,9 @@ final class HtmlView extends BaseHtmlView
 	public object $settings;
 	public array $bounces = [];
 	public array $diagnostics = [];
+	public array $queue = [];
+	public array $queueNewsletters = [];
+	public array $queueFilters = [];
 
 	/** @return void */
 	public function display($tpl = null): void
@@ -32,6 +35,9 @@ final class HtmlView extends BaseHtmlView
 		$this->settings = $model->getSettings();
 		$this->bounces = $model->getBounces();
 		$this->diagnostics = $model->getDiagnostics();
+		$this->queue = $model->getQueue();
+		$this->queueNewsletters = $model->getQueueNewsletters();
+		$this->queueFilters = $model->getQueueFilters();
 		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_DELIVERY_HEALTH'), 'heart');
 		parent::display($tpl);
 	}

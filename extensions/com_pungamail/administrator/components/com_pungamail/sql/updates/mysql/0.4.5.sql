@@ -1,0 +1,2 @@
+-- Punga Mail 0.4.5
+-- Administrator authoring/workflow maintenance release; no schema changes.

@@ -55,7 +55,7 @@ use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 					<p class="form-text"><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_TOPICS_HELP'); ?></p>
 					<?php foreach ($this->topics as $topic) : ?>
 						<div class="form-check mb-2">
-							<input class="form-check-input" type="checkbox" name="jform[topic_ids][]" value="<?php echo (int) $topic->id; ?>" id="subscriber-topic-<?php echo (int) $topic->id; ?>" <?php echo in_array((int) $topic->id, $this->selectedTopicIds, true) ? 'checked' : ''; ?> <?php echo !($topic->eligible ?? true) ? 'disabled' : ''; ?>>
+							<input class="form-check-input pm-subscriber-topic" type="checkbox" name="jform[topic_ids][]" value="<?php echo (int) $topic->id; ?>" id="subscriber-topic-<?php echo (int) $topic->id; ?>" <?php echo in_array((int) $topic->id, $this->selectedTopicIds, true) ? 'checked' : ''; ?> <?php echo !($topic->eligible ?? true) ? 'disabled' : ''; ?>>
 							<label class="form-check-label" for="subscriber-topic-<?php echo (int) $topic->id; ?>">
 								<?php echo htmlspecialchars((string) $topic->title, ENT_QUOTES, 'UTF-8'); ?>
 								<?php if ((int) $topic->state !== 1) : ?><span class="badge bg-secondary ms-1"><?php echo Text::_('JUNPUBLISHED'); ?></span><?php endif; ?>
@@ -73,7 +73,7 @@ use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 						</div>
 					<?php endforeach; ?>
 				</fieldset>
-					<div class="alert alert-info small mt-3 mb-0"><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_TOPICS_NONE_HELP'); ?></div>
+					<div id="pm-subscriber-no-topics" class="alert alert-info small mt-3 mb-0" <?php echo $this->selectedTopicIds !== [] ? 'hidden' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_TOPICS_NONE_HELP'); ?></div>
 				<?php else : ?>
 					<div class="alert alert-secondary small mb-0"><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_NO_CHANNELS'); ?></div>
 				<?php endif; ?>
@@ -81,32 +81,63 @@ use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 			</div>
 		</div>
 
+		<?php if ($this->item !== null && ($this->suppressionReason !== null || (int) ($this->item->bounce_count ?? 0) > 0)) : ?>
 		<div class="col-12">
 			<div class="card">
-				<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_HEALTH'); ?></strong></div>
+				<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_PROBLEMS'); ?></strong></div>
 				<div class="card-body">
-					<?php if ($this->item === null) : ?>
-						<p class="mb-0 text-muted"><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_HEALTH_NEW'); ?></p>
-					<?php elseif ($this->suppressionReason === null) : ?>
-						<div class="alert alert-success mb-0"><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_HEALTH_OK'); ?></div>
-					<?php else : ?>
-						<div class="alert alert-danger mb-0"><?php echo Text::sprintf('COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_HEALTH_BLOCKED', htmlspecialchars($this->suppressionReason, ENT_QUOTES, 'UTF-8')); ?></div>
+					<?php if ($this->suppressionReason !== null) : ?>
+						<?php $blockMessageKey = match ((string) $this->suppressionReason)
+						{
+							'hard-bounce' => 'COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_STOPPED_PERMANENT',
+							'soft-bounce-threshold' => 'COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_STOPPED_REPEATED',
+							default => 'COM_PUNGAMAIL_SUBSCRIBER_DELIVERY_STOPPED',
+						}; ?>
+						<div class="alert alert-danger"><?php echo Text::_($blockMessageKey); ?></div>
+						<?php if (in_array((string) $this->suppressionReason, ['hard-bounce', 'soft-bounce-threshold'], true)) : ?>
+							<button class="btn btn-outline-warning btn-sm mb-3" type="submit" name="id" value="<?php echo (int) $this->item->id; ?>" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=subscriber.clearBounceSuppression'); ?>" formmethod="post" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CLEAR_BOUNCE_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CLEAR_BOUNCE_SUPPRESSION'); ?></button>
+						<?php endif; ?>
 					<?php endif; ?>
-					<?php if ($this->item !== null && (int) ($this->item->bounce_count ?? 0) > 0) : ?>
-						<dl class="row small mt-3 mb-0">
+					<?php if ((int) ($this->item->bounce_count ?? 0) > 0) : ?>
+						<dl class="row small mb-0">
 							<dt class="col-sm-3"><?php echo Text::_('COM_PUNGAMAIL_BOUNCES'); ?></dt>
 							<dd class="col-sm-9"><?php echo (int) $this->item->bounce_count; ?></dd>
 							<?php if (!empty($this->item->last_bounce_at)) : ?>
+								<?php $bounceClassKey = (string) ($this->item->last_bounce_class ?? '') === 'hard' ? 'COM_PUNGAMAIL_BOUNCE_CLASS_PERMANENT' : 'COM_PUNGAMAIL_BOUNCE_CLASS_TEMPORARY'; ?>
 								<dt class="col-sm-3"><?php echo Text::_('COM_PUNGAMAIL_LAST_BOUNCE'); ?></dt>
-								<dd class="col-sm-9"><?php echo HTMLHelper::_('date', $this->item->last_bounce_at, Text::_('DATE_FORMAT_LC5'), 'UTC'); ?> · <?php echo htmlspecialchars((string) ($this->item->last_bounce_class ?? ''), ENT_QUOTES, 'UTF-8'); ?></dd>
+								<dd class="col-sm-9"><?php echo HTMLHelper::_('date', $this->item->last_bounce_at, Text::_('DATE_FORMAT_LC5'), 'UTC'); ?> · <?php echo Text::_($bounceClassKey); ?></dd>
 							<?php endif; ?>
 						</dl>
 					<?php endif; ?>
 				</div>
 			</div>
 		</div>
+		<?php endif; ?>
 	</div>
 
 	<input type="hidden" name="task" value="">
 	<?php echo HTMLHelper::_('form.token'); ?>
 </form>
+<script>
+document.addEventListener('DOMContentLoaded', function ()
+{
+	const checks = Array.from(document.querySelectorAll('.pm-subscriber-topic'));
+	const note = document.getElementById('pm-subscriber-no-topics');
+	const update = function ()
+	{
+		if (note)
+		{
+			note.hidden = checks.some(function (check)
+			{
+				return check.checked;
+			});
+		}
+	};
+
+	checks.forEach(function (check)
+	{
+		check.addEventListener('change', update);
+	});
+	update();
+});
+</script>

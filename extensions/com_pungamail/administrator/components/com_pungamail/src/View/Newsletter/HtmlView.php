@@ -44,6 +44,7 @@ final class HtmlView extends BaseHtmlView
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
 
+		$user = Factory::getApplication()->getIdentity();
 		$model = $this->getModel();
 		$this->item = $model->getItem();
 		$this->selectedItems = $model->getSelectedItems();
@@ -82,6 +83,12 @@ final class HtmlView extends BaseHtmlView
 			ToolbarHelper::apply('newsletter.save');
 			ToolbarHelper::save('newsletter.save2close');
 			ToolbarHelper::cancel('newsletter.cancel');
+
+			if ($this->item !== null && $user->authorise('core.create', 'com_pungamail'))
+			{
+				ToolbarHelper::custom('newsletter.duplicate', 'copy', '', Text::_('COM_PUNGAMAIL_DUPLICATE_AS_DRAFT'), false);
+			}
+
 			ToolbarHelper::custom('newsletter.preview', 'eye', '', Text::_('COM_PUNGAMAIL_PREVIEW'), false);
 			ToolbarHelper::custom('newsletter.sendTest', 'mail', '', Text::_('COM_PUNGAMAIL_SEND_TEST_MAIL'), false);
 			ToolbarHelper::custom('newsletter.preflight', 'check', '', Text::_('COM_PUNGAMAIL_REVIEW_AND_SEND'), false);
@@ -89,11 +96,10 @@ final class HtmlView extends BaseHtmlView
 			Factory::getApplication()->getDocument()->getWebAssetManager()->addInlineStyle(
 				'#toolbar-eye { margin-inline-start: auto; }'
 			);
-
-			if ($this->item !== null && (int) $this->item->status === \Punga\Component\PungaMail\Administrator\Service\NewsletterRepository::STATUS_SCHEDULED)
-			{
-				ToolbarHelper::custom('newsletter.cancelScheduled', 'cancel', '', Text::_('COM_PUNGAMAIL_CANCEL_SCHEDULE'), false);
-			}
+		}
+		elseif ($this->item !== null && $user->authorise('core.create', 'com_pungamail'))
+		{
+			ToolbarHelper::custom('newsletter.duplicate', 'copy', '', Text::_('COM_PUNGAMAIL_DUPLICATE_AS_DRAFT'), false);
 		}
 
 		parent::display($tpl);

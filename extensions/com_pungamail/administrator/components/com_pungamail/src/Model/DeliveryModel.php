@@ -11,6 +11,7 @@ namespace Punga\Component\PungaMail\Administrator\Model;
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
 use Joomla\CMS\MVC\Model\BaseDatabaseModel;
+use Joomla\Database\ParameterType;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 /** Mail delivery, bounce and queue diagnostics model. */
@@ -34,6 +35,76 @@ final class DeliveryModel extends BaseDatabaseModel
 			->order($db->quoteName('b.occurred_at') . ' DESC');
 
 		return $db->setQuery($query, 0, 100)->loadObjectList();
+	}
+
+	/** @return array{status:string,newsletter_id:int,search:string} */
+	public function getQueueFilters(): array
+	{
+		$input = Factory::getApplication()->getInput();
+		$status = $input->getCmd('queue_status', '');
+		$allowedStatuses = ['pending', 'processing', 'sent', 'failed', 'cancelled', 'bounced'];
+
+		return [
+			'status' => in_array($status, $allowedStatuses, true) ? $status : '',
+			'newsletter_id' => max(0, $input->getInt('queue_newsletter', 0)),
+			'search' => trim($input->getString('queue_search')),
+		];
+	}
+
+	/** @return array<int,object> */
+	public function getQueue(): array
+	{
+		$db = $this->getDatabase();
+		$filters = $this->getQueueFilters();
+		$query = $db->getQuery(true)
+			->select(['q.*', 'n.title AS newsletter_title'])
+			->from($db->quoteName('#__pungamail_send_queue', 'q'))
+			->leftJoin($db->quoteName('#__pungamail_newsletters', 'n') . ' ON n.id = q.newsletter_id');
+
+		if ($filters['status'] !== '')
+		{
+			$queueStatus = $filters['status'];
+			$query->where($db->quoteName('q.status') . ' = :queueStatus')
+				->bind(':queueStatus', $queueStatus);
+		}
+
+		if ($filters['newsletter_id'] > 0)
+		{
+			$queueNewsletter = $filters['newsletter_id'];
+			$query->where($db->quoteName('q.newsletter_id') . ' = :queueNewsletter')
+				->bind(':queueNewsletter', $queueNewsletter, ParameterType::INTEGER);
+		}
+
+		if ($filters['search'] !== '')
+		{
+			$search = '%' . $filters['search'] . '%';
+			$query->where(
+				'(' . $db->quoteName('q.email') . ' LIKE :queueSearchEmail'
+				. ' OR ' . $db->quoteName('q.recipient_name') . ' LIKE :queueSearchName'
+				. ' OR ' . $db->quoteName('n.title') . ' LIKE :queueSearchTitle)'
+			)
+				->bind(':queueSearchEmail', $search)
+				->bind(':queueSearchName', $search)
+				->bind(':queueSearchTitle', $search);
+		}
+
+		$query->order("CASE q.status WHEN 'processing' THEN 0 WHEN 'pending' THEN 1 WHEN 'failed' THEN 2 ELSE 3 END ASC")
+			->order($db->quoteName('q.created') . ' DESC');
+
+		return $db->setQuery($query, 0, 200)->loadObjectList();
+	}
+
+	/** @return array<int,object> */
+	public function getQueueNewsletters(): array
+	{
+		$db = $this->getDatabase();
+		$query = $db->getQuery(true)
+			->select('DISTINCT ' . $db->quoteName('n.id') . ', ' . $db->quoteName('n.title'))
+			->from($db->quoteName('#__pungamail_newsletters', 'n'))
+			->innerJoin($db->quoteName('#__pungamail_send_queue', 'q') . ' ON q.newsletter_id = n.id')
+			->order($db->quoteName('n.title') . ' ASC');
+
+		return $db->setQuery($query)->loadObjectList();
 	}
 
 	/** @return array<string,mixed> */

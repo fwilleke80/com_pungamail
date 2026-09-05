@@ -1,0 +1,2 @@
+-- Punga Mail 0.4.4
+-- Administrator workflow and presentation update; no schema changes required.
