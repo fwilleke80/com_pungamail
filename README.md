@@ -11,8 +11,8 @@ It is designed for websites that want to manage newsletters directly inside Joom
 - Use reusable **Templates** for newsletter content and design.
 - Let subscribers choose **Channels** so they receive only the newsletters they are interested in.
 - Restrict Channels to registered users or selected Joomla user groups when needed.
-- Add new Joomla content to newsletters with **`{new_content}`**, including configurable item layouts, excerpts and publication dates.
-- Create **Automatic Newsletters** on daily, weekly or monthly schedules, either as drafts for review or for automatic sending.
+- Add new Joomla content to newsletters with **`{new_content}`**, including selected/available item management, drag-and-drop ordering, configurable item layouts, excerpts and publication dates.
+- Create **Automatic Newsletters** on daily, weekly or monthly schedules, with content ordering/limits, run history, and either draft-for-review or automatic-send workflows.
 - Schedule ordinary newsletters for delivery at a later date and time.
 - Manage Joomla users and external email subscribers from one recipient list.
 - Provide public subscribe, unsubscribe and preference-management pages.

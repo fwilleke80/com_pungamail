@@ -95,14 +95,19 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.3.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.4.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.4.5.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.5.0.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.5.1.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.5.2.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/MarkdownEditorHelper.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/UnsavedChangesHelper.php",
     "extensions/plg_user_pungamail/src/Field/ChannelsField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/NewcontenttemplateField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/BounceService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestSchedule.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestContentSelection.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/CheckoutService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/PreflightService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/TopicRepository.php",
@@ -115,6 +120,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "tools/test_newsletter_renderer.php",
     "tools/test_mail_language.php",
     "tools/test_digest_schedule.php",
+    "tools/test_digest_content_selection.php",
     "extensions/mod_pungamail_signup/mod_pungamail_signup.xml",
     "extensions/plg_user_pungamail/pungamail.xml",
     "extensions/plg_task_pungamail/pungamail.xml",
@@ -1329,9 +1335,12 @@ def check_newsletter_editor_ux_0310() -> None:
     if newsletter.count("uitab.addTab") != 4 or newsletter.count("HTMLHelper::_('uitab.endTab')") != 4:
         fail("0.3.10 Newsletter editor must contain exactly four balanced Joomla tabs")
 
-    for token in ("pm-content-search", "pm-content-list", "pm-audience-summary", "newsletter.applyTemplate"):
+    for token in ("pm-content-search", "pm-audience-summary", "newsletter.applyTemplate"):
         if token not in newsletter:
             fail(f"0.3.10 tab refactor dropped existing Newsletter control: {token}")
+
+    if "pm-content-list" not in newsletter and "pm-available-content-list" not in newsletter:
+        fail("0.3.10 tab refactor dropped the Newsletter content candidate list")
 
     if 'type="newcontenttemplate"' not in config or "NewcontenttemplateField" not in field:
         fail("0.3.10 Component Options does not use the dedicated new-content Markdown editor field")
@@ -1701,8 +1710,8 @@ def check_release_fix_0402() -> None:
 
     for token in (
         "HTMLHelper::_('calendar'",
-        "'showTime'=>true",
-        "'timeFormat'=>24",
+        "'showTime' => true",
+        "'timeFormat' => 24",
         "$siteTimezone",
     ):
         if token not in digest_editor:
@@ -1889,6 +1898,169 @@ def check_release_ux_0405() -> None:
                 fail(f"0.4.5 is missing {locale} UI copy: {key}")
 
 
+def check_release_ux_0500() -> None:
+    """Protect the 0.5.0 authoring, Automatic Newsletter history, and content-selection update."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    install = (admin_root / "sql/install.mysql.sql").read_text(encoding="utf-8")
+    marker = (admin_root / "sql/updates/mysql/0.5.0.sql").read_text(encoding="utf-8")
+    newsletter = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    digest = (admin_root / "tmpl/digest/default.php").read_text(encoding="utf-8")
+    digest_service = (admin_root / "src/Service/DigestService.php").read_text(encoding="utf-8")
+    digest_selection = (admin_root / "src/Service/DigestContentSelection.php").read_text(encoding="utf-8")
+    unsaved = (admin_root / "src/Helper/UnsavedChangesHelper.php").read_text(encoding="utf-8")
+    template = (admin_root / "tmpl/template/default.php").read_text(encoding="utf-8")
+
+    for column in ("content_order", "max_items", "minimum_items"):
+        if column not in install:
+            fail(f"0.5.0 install schema is missing Automatic Newsletter field {column}")
+        if column not in marker:
+            fail(f"0.5.0 migration is missing Automatic Newsletter field {column}")
+
+    if "ALTER TABLE `#__pungamail_digests`" not in marker:
+        fail("0.5.0 migration does not update the Automatic Newsletter table")
+
+    required_digest = (
+        'name="content_order"',
+        'name="max_items"',
+        'name="minimum_items"',
+        "COM_PUNGAMAIL_DIGEST_HISTORY_HELP",
+        "COM_PUNGAMAIL_DIGEST_RUN_BELOW_MINIMUM",
+        "newsletter_title",
+        "COM_PUNGAMAIL_DURATION",
+    )
+    for token in required_digest:
+        if token not in digest:
+            fail(f"0.5.0 Automatic Newsletter editor/history is missing {token!r}")
+
+    required_selection = (
+        "DigestContentSelection::apply",
+        "below_minimum",
+        "'below_minimum'",
+        "false",
+    )
+    for token in required_selection:
+        if token not in digest_service:
+            fail(f"0.5.0 Automatic Newsletter selection workflow is missing {token!r}")
+
+    for token in ("available_count", "minimum_items", "maxItems", "oldest", "newest"):
+        if token not in digest_selection:
+            fail(f"0.5.0 content-selection service is missing {token!r}")
+
+    required_newsletter = (
+        "pm-selected-content-list",
+        "pm-available-content-list",
+        "pm-select-visible",
+        "pm-clear-selected",
+        "pm-content-sort",
+        "pm-content-ordering",
+        "dragend",
+        "COM_PUNGAMAIL_DRAG_TO_REORDER",
+    )
+    for token in required_newsletter:
+        if token not in newsletter:
+            fail(f"0.5.0 Newsletter content selector is missing {token!r}")
+
+    for contents, label in ((newsletter, "Newsletter"), (template, "Template"), (digest, "Automatic Newsletter")):
+        if 'data-pm-unsaved-warning="1"' not in contents:
+            fail(f"0.5.0 {label} editor is missing unsaved-change protection")
+
+    for token in ("beforeunload", "FormData", "editors?.instances", "getValue()", "data-pm-unsaved-warning"):
+        if token not in unsaved:
+            fail(f"0.5.0 unsaved-change helper is missing {token!r}")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_CONTENT_ORDER",
+            "COM_PUNGAMAIL_MAX_CONTENT_ITEMS",
+            "COM_PUNGAMAIL_MIN_CONTENT_ITEMS",
+            "COM_PUNGAMAIL_DIGEST_RUN_BELOW_MINIMUM",
+            "COM_PUNGAMAIL_SELECTED_CONTENT",
+            "COM_PUNGAMAIL_AVAILABLE_CONTENT",
+            "COM_PUNGAMAIL_SELECT_VISIBLE",
+            "COM_PUNGAMAIL_CLEAR_SELECTED",
+            "COM_PUNGAMAIL_DRAG_TO_REORDER",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.5.0 is missing {locale} UI copy: {key}")
+
+
+
+def check_release_fix_0501() -> None:
+    """Protect the 0.5.1 unsaved-change and content-reordering correction release."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    marker = (admin_root / "sql/updates/mysql/0.5.1.sql").read_text(encoding="utf-8")
+    newsletter = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    unsaved = (admin_root / "src/Helper/UnsavedChangesHelper.php").read_text(encoding="utf-8")
+
+    if any(token in marker.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.5.1 is an authoring/UX maintenance release; its version-marker migration must not change schema")
+
+    for token in (
+        "task.endsWith('.cancel')",
+        "task === 'newsletter.duplicate'",
+        "confirmDiscard",
+        "window.confirm",
+        "COM_PUNGAMAIL_UNSAVED_CHANGES_CONFIRM",
+    ):
+        if token not in unsaved:
+            fail(f"0.5.1 Cancel warning fix is missing {token!r}")
+
+    for token in (
+        "pm-content-drop-marker",
+        "COM_PUNGAMAIL_DROP_CONTENT_HERE",
+        "dragAfterElement",
+        "selectedList.addEventListener('drop'",
+        "selectedList.insertBefore(draggedRow, dropMarker)",
+    ):
+        if token not in newsletter:
+            fail(f"0.5.1 drag insertion marker is missing {token!r}")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_UNSAVED_CHANGES_CONFIRM",
+            "COM_PUNGAMAIL_DROP_CONTENT_HERE",
+            "COM_PUNGAMAIL_MIN_CONTENT_ITEMS_HELP",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.5.1 is missing {locale} UI copy: {key}")
+
+        if "empty" not in values["COM_PUNGAMAIL_MIN_CONTENT_ITEMS_HELP"].lower() and "leer" not in values["COM_PUNGAMAIL_MIN_CONTENT_ITEMS_HELP"].lower():
+            fail(f"0.5.1 {locale} Minimum items help does not explain empty-content behavior")
+
+
+def check_release_fix_0502() -> None:
+    """Protect the 0.5.2 pristine-editor dirty-state correction."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    marker = (admin_root / "sql/updates/mysql/0.5.2.sql").read_text(encoding="utf-8")
+    unsaved = (admin_root / "src/Helper/UnsavedChangesHelper.php").read_text(encoding="utf-8")
+
+    if any(token in marker.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.5.2 is a dirty-state correction release; its version-marker migration must not change schema")
+
+    for token in (
+        "let editStarted = false",
+        "refreshCleanSnapshot",
+        "beginEdit",
+        "event.isTrusted",
+        "beforeinput",
+        "pointerMayEdit",
+        "return editStarted && cleanSnapshot !== null",
+    ):
+        if token not in unsaved:
+            fail(f"0.5.2 pristine-editor dirty-state fix is missing {token!r}")
+
+    if "initialSnapshot !== null && snapshot() !== initialSnapshot" in unsaved:
+        fail("0.5.2 still uses the old initialization-sensitive dirty-state comparison")
+
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    if "0.5.2 focused acceptance — pristine editor dirty-state" not in test_guide:
+        fail("0.5.2 test guide is missing pristine-editor dirty-state acceptance coverage")
+
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
 
@@ -2025,6 +2197,9 @@ def main() -> int:
         check_release_fix_0403,
         check_release_ux_0404,
         check_release_ux_0405,
+        check_release_ux_0500,
+        check_release_fix_0501,
+        check_release_fix_0502,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

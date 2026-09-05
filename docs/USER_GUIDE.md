@@ -360,9 +360,11 @@ Draft/sent lifecycle status is separate from Joomla's Active/Trashed record stat
 
 ### Newsletter editor
 
-The editor follows Joomla's familiar main-content plus right-sidebar pattern. The main area keeps the **Settings**, **Mail content**, **Content selection**, and **Design** tabs. The right sidebar shows the Newsletter's real Punga Mail lifecycle status, Template selection/application, and scheduling controls.
+The editor follows Joomla's familiar main-content plus right-sidebar pattern. The main area keeps the **Settings**, **Mail content**, **Content selection**, and **Design** tabs. Template selection/application stays on **Mail content**, where its effects are immediately visible; the right sidebar is reserved for the Newsletter's real Punga Mail lifecycle status and scheduling controls.
 
 Only Draft and Scheduled newsletters remain editable. Once queueing begins, Punga Mail shows the frozen message, statistics, and frozen recipients instead of the editor.
+
+If you change a Newsletter and then close the browser tab or navigate away without saving, the browser shows its standard unsaved-changes confirmation. The same protection applies to Template and Automatic Newsletter editors. Browsers intentionally control the wording of this warning.
 
 #### Basic fields
 
@@ -387,7 +389,10 @@ The picker reads content types registered with Joomla, including compatible thir
 | Search | Filters the currently displayed candidate rows by source/title in the browser. It does not change stored content. |
 | Item title | Opens the current frontend page for that content item in a new browser tab, so you can inspect it without leaving the Newsletter editor. |
 | Item checkbox | Includes or removes that item from the newsletter selection. |
-| Ordering | Controls where the item appears inside `{new_content}`. |
+| Selected content | Shows the items currently included in `{new_content}`. Drag selected rows to change newsletter order. |
+| Available content sort | Sorts only the unselected candidate list by newest, oldest, or title. It does not disturb the manual order of selected items. |
+| Select visible | Selects all currently visible search results. |
+| Clear selected | Removes all items from the current newsletter selection. |
 | Title override | Changes the title in this newsletter only. |
 | Excerpt override | Changes the excerpt in this newsletter only. |
 
@@ -532,6 +537,8 @@ Select one or more registered content types. Their names follow the current Joom
 
 Category filters are applied only where the registered content provides a category ID.
 
+Automatic Newsletters also provide three selection controls: **Order** chooses newest-first or oldest-first; **Maximum items** caps the number included (`0` means no limit); and **Minimum items** can require a certain number of eligible items before a newsletter is generated (`0` disables only this threshold). A value of `0` does **not** cause an empty newsletter to be sent: the separate **If no new content is found** setting still decides whether an empty run is skipped or produces an empty draft. The minimum is evaluated before the maximum. If a positive minimum is missed in **Since last** mode, Punga Mail records a skipped run without advancing the content cutoff, allowing eligible content to accumulate for the next scheduled run.
+
 #### Schedule and generation
 
 | Field | What it means |
@@ -563,7 +570,7 @@ An automatic-send definition also requires **Punga Mail — Send pending newslet
 
 If Component Options → Automatic newsletters → **Notify reviewer about new drafts** is enabled, a successful draft run also sends the configured reviewer a direct administrator link. Automatic-send runs do not send this review notification.
 
-The editor's history table records run time, status, resulting newsletter link, content item count, and details such as access exclusions or errors.
+The editor's history table shows the latest runs with a plain-language result (draft created, queued, skipped, or failed), the generated Newsletter title/link and its current lifecycle state, content-item count, duration, and details such as access exclusions or errors. A **Skipped — not enough content** result also confirms that the rolling cutoff was retained.
 
 Only enabled digests run. Editing a digest does not itself generate a newsletter.
 

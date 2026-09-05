@@ -1,0 +1,2 @@
+-- Punga Mail 0.5.1
+-- Authoring/UX maintenance release; no schema changes.

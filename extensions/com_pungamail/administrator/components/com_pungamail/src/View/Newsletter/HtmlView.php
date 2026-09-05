@@ -12,6 +12,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
+use Punga\Component\PungaMail\Administrator\Helper\UnsavedChangesHelper;
 use Punga\Component\PungaMail\Administrator\Service\RecipientName;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
@@ -45,6 +46,7 @@ final class HtmlView extends BaseHtmlView
 		}
 
 		$user = Factory::getApplication()->getIdentity();
+		UnsavedChangesHelper::load();
 		$model = $this->getModel();
 		$this->item = $model->getItem();
 		$this->selectedItems = $model->getSelectedItems();

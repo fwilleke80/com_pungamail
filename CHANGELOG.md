@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.5.2 — 2026-09-05
+
+### Authoring safety fix
+
+- Fixed false unsaved-change warnings immediately after opening Newsletter, Template, and Automatic Newsletter editors. Joomla/CodeMirror initialization changes no longer make a pristine form appear modified.
+- Dirty-state comparison now starts only after a real user editing action or edit intent. The clean snapshot is refreshed while the form is still untouched, while reverting an edit back to the saved state continues to suppress the warning.
+
+## 0.5.1 — 2026-09-05
+
+### Authoring fixes
+
+- Fixed unsaved-change protection for Joomla **Cancel** toolbar actions. Cancel now explicitly asks before discarding changed Newsletter, Template, or Automatic Newsletter forms instead of being incorrectly treated as an intentional save/submit action. Normal browser/tab navigation remains protected by `beforeunload`.
+- Added a visible **Drop here** insertion marker when reordering manually selected Newsletter content. The dragged row remains in place until drop, making the resulting insertion position unambiguous.
+- Clarified **Minimum items** help for Automatic Newsletters: `0` only disables the minimum threshold and does not override the existing **If no new content is found** behavior. A positive unmet minimum additionally preserves the content cutoff so eligible content can accumulate.
+
+## 0.5.0 — 2026-09-05
+
+### Authoring safety
+
+- Added lightweight unsaved-change protection to Newsletter, Template, and Automatic Newsletter editors. Leaving or closing an editor after changing it now triggers the browser's standard confirmation warning; intentional Joomla form submissions are not interrupted.
+
+### Automatic Newsletters
+
+- Added content ordering controls for **newest first** or **oldest first**.
+- Added an optional **maximum content items** limit.
+- Added an optional **minimum content items** threshold. When too few eligible items exist, no newsletter is generated and the rolling content cutoff is deliberately retained so items can accumulate for the next scheduled run.
+- Expanded Automatic Newsletter history with clear run-state labels, generated Newsletter title/link, resulting Newsletter state, content count, duration, and run details.
+
+### Newsletter content selection
+
+- Split the content picker into **Selected content** and **Available content** so the intended newsletter contents are immediately visible.
+- Selected content can be reordered by drag-and-drop; that order is used by `{new_content}`.
+- Added client-side search and sorting for available content, plus **Select visible** and **Clear selected** actions.
+- Title and excerpt overrides are shown only for selected items, reducing visual clutter.
+
+### Database
+
+- Added `content_order`, `max_items`, and `minimum_items` to Automatic Newsletter definitions.
+
 ## 0.4.5 — 2026-09-05
 
 - Moved Newsletter Template selection and **Apply template** back into the **Mail content** tab so applying a Template happens next to the content it changes; the Joomla-style sidebar now remains focused on lifecycle state and scheduling.

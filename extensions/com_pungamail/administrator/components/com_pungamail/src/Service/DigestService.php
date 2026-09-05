@@ -123,6 +123,28 @@ final class DigestService
 		$access = $this->contentTypes->filterForRecipients($items, $recipientReport['recipients']);
 		$items = $access['items'];
 		$blockedCount = count($access['violations']);
+		$contentSelection = DigestContentSelection::apply(
+			$items,
+			(string) ($digest->content_order ?? 'newest'),
+			(int) ($digest->max_items ?? 0),
+			(int) ($digest->minimum_items ?? 0)
+		);
+		$items = $contentSelection['items'];
+		$availableCount = $contentSelection['available_count'];
+		$minimumItems = $contentSelection['minimum_items'];
+
+		if ($contentSelection['below_minimum'])
+		{
+			$message = $availableCount . ' matching item(s) were available; at least ' . $minimumItems . ' are required. The content cutoff was not advanced so eligible content can accumulate for the next run.';
+
+			if ($blockedCount > 0)
+			{
+				$message .= ' ' . $blockedCount . ' additional item(s) were excluded by Joomla access permissions.';
+			}
+
+			$this->digests->finishRun((int) $digest->id, $runId, 'below_minimum', null, $availableCount, $message, false);
+			return 'no_content';
+		}
 
 		if ($items === [] && (string) $digest->empty_action === 'skip')
 		{

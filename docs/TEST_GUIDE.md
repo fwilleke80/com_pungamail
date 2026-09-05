@@ -1800,3 +1800,35 @@ After approval, restore production-safe batch/rate/retry values, remove or unpub
 6. Open a Subscriber with no bounce history or active delivery suppression and verify no delivery-health card is shown. Open a Subscriber with bounce history and verify the card is shown with plain-language permanent/temporary failure wording. For an active bounce-based suppression, verify **Allow delivery again** is available.
 
 **Expected:** The 0.4.5 changes make Template application contextual, Media Manager image insertion reliable, scheduling state consistent between editor and Preflight, and Subscriber diagnostics visible only when useful.
+
+### 0.5.1 focused acceptance — Cancel warning and drag insertion marker
+
+1. Open an existing Newsletter, change its title or subject, then click Joomla **Cancel**. Confirm a discard warning appears. Choose **Cancel/Stay** in the browser confirmation and confirm the editor remains open with the change intact; repeat and choose to discard, then confirm the Newsletter list opens.
+2. Repeat the same Cancel-warning check in a Template and an Automatic Newsletter editor.
+3. In a Newsletter with at least three selected content items, drag the middle item upward and downward. Confirm a clearly visible **Drop here** marker follows the intended insertion point, the row itself is not reordered until it is dropped, and the final order persists after Save.
+4. In an Automatic Newsletter, set **Minimum items** to `0` and **If no new content is found** to **Do nothing**. Run it with no matching content and confirm no Newsletter is created or sent. Then set a positive minimum above the number of available items and confirm the run is skipped without advancing the **Since last** cutoff.
+
+**Expected:** 0.5.1 warns before Joomla Cancel discards authoring changes, gives drag-and-drop an unambiguous insertion target, and makes the relationship between Minimum items and empty-content handling clear.
+
+### 0.5.0 focused acceptance — unsaved edits, Automatic Newsletter history, and content selection
+
+1. Open a Draft Newsletter, change a field, then try to close/reload/navigate away without saving. Confirm the browser warns about unsaved changes. Repeat with a Template and Automatic Newsletter. Confirm **Save**, **Save & Close**, Preview, and other intentional Joomla toolbar submissions are not blocked by the warning.
+2. In a Newsletter's **Content selection** tab, select several items and confirm they move into **Selected content** while unselected candidates remain in **Available content**. Search and sort the available list; verify selected-item order is unaffected.
+3. Drag selected content into a new order, save, reopen, and confirm that order persists and `{new_content}` renders in the same order. Verify **Select visible** affects only currently visible candidates and **Clear selected** removes all selected items.
+4. Confirm title/excerpt override fields are shown for selected items and hidden for unselected candidates.
+5. Create an Automatic Newsletter with **Order = Oldest first** and a small **Maximum items** value. Run it against more eligible items than the maximum and verify the generated Newsletter contains exactly the capped number in the requested order. Repeat with Newest first.
+6. Configure **Minimum items** above the number currently eligible, using **Since last** cutoff mode. Run the task and confirm history shows **Skipped — not enough content**, no Newsletter is created, and `last_cutoff_at` is not advanced. Add enough later content, run at the next due occurrence, and confirm the previously accumulated eligible items can be included.
+7. Open the Automatic Newsletter history and confirm each run clearly shows run result, generated Newsletter title/link where applicable, the Newsletter's current lifecycle state, content count, duration, and details. Verify the empty-history state is understandable for an Automatic Newsletter that has never run.
+
+**Expected:** 0.5.0 protects unsaved authoring work, makes manual content selection/order explicit, gives Automatic Newsletters bounded content-generation rules without losing rolling content, and makes automation history useful for diagnosis.
+
+### 0.5.2 focused acceptance — pristine editor dirty-state
+
+1. Open an existing Newsletter and immediately click **Cancel** without touching any field. No discard warning should appear.
+2. Repeat for a Template and an Automatic Newsletter. No discard warning should appear.
+3. Open a Newsletter, edit a persisted field, then click **Cancel**. The unsaved-changes warning should appear.
+4. Open a Newsletter, change a persisted field, then change it back exactly to its saved value. **Cancel** should not warn.
+5. Type in a Markdown/CodeMirror field and verify that **Cancel** warns.
+6. Use a Markdown toolbar action (for example **Bold** or **Table**) and verify that **Cancel** warns if the content changed.
+
+**Expected:** Joomla/editor initialization alone never marks a form dirty; genuine authoring changes remain protected.

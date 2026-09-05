@@ -15,6 +15,8 @@ A digest definition periodically:
 
 The recurring Joomla task wakes Punga Mail up. Each Automatic Newsletter’s own **Next run** and **Repeat every** settings determine whether it is actually due.
 
+You can also control the generated content set: choose newest-first or oldest-first ordering, cap the maximum number of included items, and optionally require a minimum number of eligible items before generation. If a **Since last** run misses that minimum, Punga Mail skips generation without advancing the rolling cutoff, so content can accumulate for the next run.
+
 ## 1. Prepare the template
 
 Go to **Components → Punga Mail → Templates** and create a digest template.
@@ -229,6 +231,16 @@ The generated newsletter has its own delivery status and statistics. Digest hist
 
 For every field and task, see [Punga Mail Administrator Guide](USER_GUIDE.md).
 
+
+## Content amount and order
+
+In **Choose content** you can refine what each run generates:
+
+- **Order** — newest first or oldest first.
+- **Maximum items** — `0` means no limit; otherwise only that many eligible items are included.
+- **Minimum items** — `0` disables only this threshold; the separate **If no new content is found** setting still controls a genuinely empty run. Otherwise Punga Mail generates nothing until at least that many eligible items are available.
+
+The minimum threshold is evaluated before the maximum limit. For a rolling **Since last** Automatic Newsletter, a threshold miss does not advance the content cutoff. For example, a weekly digest requiring at least five items can see three items one week, skip, then include those three together with later items on the following run. The run history records the skip explicitly.
 
 ## Schedule time and timezone
 

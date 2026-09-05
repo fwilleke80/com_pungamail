@@ -12,6 +12,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
+use Punga\Component\PungaMail\Administrator\Helper\UnsavedChangesHelper;
 
 /** Digest automation editor. */
 final class HtmlView extends BaseHtmlView
@@ -35,6 +36,7 @@ final class HtmlView extends BaseHtmlView
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
 
+		UnsavedChangesHelper::load();
 		$model = $this->getModel();
 		$this->item = $model->getItem();
 		$this->templates = $model->getTemplates();

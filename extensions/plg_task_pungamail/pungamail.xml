@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <extension type="plugin" group="task" method="upgrade">
 	<name>PLG_TASK_PUNGAMAIL</name>
-	<version>0.4.5</version>
+	<version>0.5.2</version>
 	<creationDate>2026-09-04</creationDate>
 	<author>Punga</author>
 	<license>MIT License</license>

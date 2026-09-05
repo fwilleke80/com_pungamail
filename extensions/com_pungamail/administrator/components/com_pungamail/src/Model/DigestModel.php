@@ -44,7 +44,7 @@ final class DigestModel extends BaseDatabaseModel
 
 			foreach ([
 				'title', 'state', 'template_id', 'subject_pattern', 'recurrence_value', 'recurrence_unit', 'recurrence_minutes', 'next_run_at',
-				'cutoff_mode', 'rolling_hours', 'include_subscribers', 'generation_mode', 'empty_action', 'confirm_auto_send',
+				'cutoff_mode', 'rolling_hours', 'include_subscribers', 'generation_mode', 'empty_action', 'content_order', 'max_items', 'minimum_items', 'confirm_auto_send',
 			] as $key)
 			{
 				if (array_key_exists($key, $submitted))

@@ -63,6 +63,11 @@ if ($item !== null && !empty($item->scheduled_at))
 .pm-new-content-override > summary::-webkit-details-marker { display: none; }
 .pm-new-content-override .pm-collapse-indicator { display: inline-block; transition: transform .15s ease; }
 .pm-new-content-override[open] .pm-collapse-indicator { transform: rotate(90deg); }
+.pm-content-row[draggable="true"] { cursor: grab; }
+.pm-content-row[draggable="true"]:active { cursor: grabbing; }
+.pm-content-drag { display: inline-flex; align-items: center; gap: .35rem; }
+.pm-content-row.pm-content-dragging { opacity: .55; }
+.pm-content-drop-marker { min-height: 2rem; display: flex; align-items: center; justify-content: center; }
 </style>
 <div class="container-fluid">
 <?php if (!$isDraft && $item !== null) : ?>
@@ -90,7 +95,7 @@ if ($item !== null && !empty($item->scheduled_at))
 	</div></div>
 	<form class="mt-3 d-flex flex-wrap gap-2" action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post"><input type="hidden" name="id" value="<?php echo (int) $item->id; ?>"><?php if (in_array((int) $item->status, [NewsletterRepository::STATUS_QUEUED, NewsletterRepository::STATUS_SENDING], true)) : ?><input type="hidden" name="paused" value="<?php echo (int) $item->queue_paused === 1 ? 0 : 1; ?>"><button class="btn btn-outline-warning" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.toggleMailingPause'); ?>" type="submit"><?php echo Text::_((int) $item->queue_paused === 1 ? 'COM_PUNGAMAIL_RESUME_MAILING' : 'COM_PUNGAMAIL_PAUSE_MAILING'); ?></button><button class="btn btn-danger" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.cancelRemaining'); ?>" type="submit" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CANCEL_REMAINING_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CANCEL_REMAINING'); ?></button><?php endif; ?><a class="btn btn-outline-secondary" href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletters'); ?>"><?php echo Text::_('JTOOLBAR_BACK'); ?></a><?php echo HTMLHelper::_('form.token'); ?></form>
 <?php else : ?>
-	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm">
+	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm" data-pm-unsaved-warning="1">
 		<input type="hidden" name="id" value="<?php echo (int) ($item->id ?? 0); ?>">
 		<?php if ($item !== null && (int) $item->status === NewsletterRepository::STATUS_SCHEDULED) : ?><div class="alert alert-info"><?php echo Text::sprintf('COM_PUNGAMAIL_EDITING_SCHEDULED', HTMLHelper::_('date', $item->scheduled_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone)); ?></div><?php endif; ?>
 		<div class="row g-4 align-items-start">
@@ -268,32 +273,97 @@ if ($item !== null && !empty($item->scheduled_at))
 					</div>
 					<div class="form-text mb-3"><?php echo Text::_('COM_PUNGAMAIL_CONTENT_DATE_HELP'); ?></div>
 					<div class="fw-semibold mb-2"><?php echo Text::_('COM_PUNGAMAIL_CONTENT_TYPES'); ?></div>
-					<div class="d-flex flex-wrap gap-3 mb-3">
+					<div class="d-flex flex-wrap gap-3">
 						<?php foreach ($this->contentTypes as $key => $type) : ?>
 							<div class="form-check"><input class="form-check-input" type="checkbox" name="source_keys[]" value="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>" id="source-<?php echo sha1($key); ?>" <?php echo in_array($key, $this->selectedSourceKeys, true) ? 'checked' : ''; ?>><label class="form-check-label" for="source-<?php echo sha1($key); ?>"><?php echo htmlspecialchars((string) $type->label, ENT_QUOTES, 'UTF-8'); ?></label></div>
 						<?php endforeach; ?>
 					</div>
-					<label class="form-label" for="pm-content-search"><?php echo Text::_('JSEARCH_FILTER'); ?></label>
-					<input type="search" class="form-control" id="pm-content-search" placeholder="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CONTENT_SEARCH_PLACEHOLDER'), ENT_QUOTES, 'UTF-8'); ?>">
 				</div>
-				<div id="pm-content-list" style="max-height:38rem;overflow-y:auto;overscroll-behavior:contain">
-					<?php if ($this->availableContent === []) : ?><p class="text-muted m-3"><?php echo Text::_('COM_PUNGAMAIL_NO_NEW_CONTENT'); ?></p><?php endif; ?>
-					<?php $defaultOrder = 0; foreach ($this->availableContent as $content) :
-						$key = (string) $content->source_key . "\0" . (string) $content->id;
-						$selected = $selectedByKey[$key] ?? null;
-						$token = sha1($key);
-						$search = mb_strtolower((string) $content->source_label . ' ' . (string) $content->title, 'UTF-8');
-					?>
-					<div class="border-bottom p-3 pm-content-row" data-search="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>">
-						<input type="hidden" name="item_source[<?php echo $token; ?>]" value="<?php echo htmlspecialchars((string) $content->source_key, ENT_QUOTES, 'UTF-8'); ?>">
-						<input type="hidden" name="item_id[<?php echo $token; ?>]" value="<?php echo htmlspecialchars((string) $content->id, ENT_QUOTES, 'UTF-8'); ?>">
-						<div class="form-check mb-2"><input class="form-check-input pm-content-check" type="checkbox" name="selected_items[]" value="<?php echo $token; ?>" id="content-<?php echo $token; ?>" <?php echo $selected ? 'checked' : ''; ?>><label class="form-check-label fw-semibold" for="content-<?php echo $token; ?>"><?php if (trim((string) ($content->url ?? '')) !== '') : ?><a href="<?php echo htmlspecialchars((string) $content->url, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_OPEN_CONTENT_NEW_TAB'), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) $content->title, ENT_QUOTES, 'UTF-8'); ?></a><?php else : ?><?php echo htmlspecialchars((string) $content->title, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></label></div>
-						<div class="small text-muted mb-2"><span class="badge text-bg-secondary me-2"><?php echo htmlspecialchars((string) $content->source_label, ENT_QUOTES, 'UTF-8'); ?></span><?php echo htmlspecialchars((string) $content->published, ENT_QUOTES, 'UTF-8'); ?></div>
-						<div class="row g-2"><div class="col-md-2"><label class="form-label small"><?php echo Text::_('JGRID_HEADING_ORDERING'); ?></label><input type="number" class="form-control form-control-sm" name="item_ordering[<?php echo $token; ?>]" value="<?php echo (int) ($selected->ordering ?? $defaultOrder++); ?>"></div><div class="col-md-10"><label class="form-label small"><?php echo Text::_('COM_PUNGAMAIL_TITLE_OVERRIDE'); ?></label><input class="form-control form-control-sm" name="title_override[<?php echo $token; ?>]" value="<?php echo htmlspecialchars((string) ($selected->title_override ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div><div class="col-12"><label class="form-label small"><?php echo Text::_('COM_PUNGAMAIL_EXCERPT_OVERRIDE'); ?></label><textarea class="form-control form-control-sm" rows="2" name="excerpt_override[<?php echo $token; ?>]"><?php echo htmlspecialchars((string) ($selected->excerpt_override ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea></div></div>
+
+				<div class="card-body border-bottom">
+					<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+						<div>
+							<div class="fw-semibold"><?php echo Text::_('COM_PUNGAMAIL_SELECTED_CONTENT'); ?> <span class="badge text-bg-secondary" id="pm-selected-count">0</span></div>
+							<div class="small text-muted"><?php echo Text::_('COM_PUNGAMAIL_SELECTED_CONTENT_HELP'); ?></div>
+						</div>
+						<button class="btn btn-outline-secondary btn-sm" type="button" id="pm-clear-selected"><?php echo Text::_('COM_PUNGAMAIL_CLEAR_SELECTED'); ?></button>
 					</div>
-					<?php endforeach; ?>
+					<div id="pm-selected-content-list" data-drop-label="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_DROP_CONTENT_HERE'), ENT_QUOTES, 'UTF-8'); ?>"></div>
+					<div class="text-muted small py-2" id="pm-selected-empty"><?php echo Text::_('COM_PUNGAMAIL_NO_SELECTED_CONTENT'); ?></div>
 				</div>
-				<div class="card-footer small text-muted"><span id="pm-selected-count">0</span> <?php echo Text::_('COM_PUNGAMAIL_SELECTED_ITEMS'); ?></div>
+
+				<div class="card-body border-bottom">
+					<div class="fw-semibold mb-2"><?php echo Text::_('COM_PUNGAMAIL_AVAILABLE_CONTENT'); ?></div>
+					<div class="row g-2 align-items-end">
+						<div class="col-md-7">
+							<label class="form-label" for="pm-content-search"><?php echo Text::_('JSEARCH_FILTER'); ?></label>
+							<input type="search" class="form-control" id="pm-content-search" placeholder="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CONTENT_SEARCH_PLACEHOLDER'), ENT_QUOTES, 'UTF-8'); ?>">
+						</div>
+						<div class="col-md-3">
+							<label class="form-label" for="pm-content-sort"><?php echo Text::_('COM_PUNGAMAIL_AVAILABLE_CONTENT_SORT'); ?></label>
+							<select class="form-select" id="pm-content-sort">
+								<option value="newest"><?php echo Text::_('COM_PUNGAMAIL_CONTENT_ORDER_NEWEST'); ?></option>
+								<option value="oldest"><?php echo Text::_('COM_PUNGAMAIL_CONTENT_ORDER_OLDEST'); ?></option>
+								<option value="title"><?php echo Text::_('COM_PUNGAMAIL_CONTENT_SORT_TITLE'); ?></option>
+							</select>
+						</div>
+						<div class="col-md-2 d-grid">
+							<button class="btn btn-outline-secondary" type="button" id="pm-select-visible"><?php echo Text::_('COM_PUNGAMAIL_SELECT_VISIBLE'); ?></button>
+						</div>
+					</div>
+				</div>
+
+				<div id="pm-available-content-list" style="max-height:38rem;overflow-y:auto;overscroll-behavior:contain">
+					<?php if ($this->availableContent === []) : ?><p class="text-muted m-3"><?php echo Text::_('COM_PUNGAMAIL_NO_NEW_CONTENT'); ?></p><?php endif; ?>
+				</div>
+
+				<?php
+				$selectedRows = [];
+				$availableRows = [];
+				foreach ($this->availableContent as $content)
+				{
+					$key = (string) $content->source_key . "\0" . (string) $content->id;
+					$selected = $selectedByKey[$key] ?? null;
+
+					if ($selected)
+					{
+						$selectedRows[] = [$content, $selected];
+					}
+					else
+					{
+						$availableRows[] = [$content, $selected];
+					}
+				}
+				usort($selectedRows, static fn (array $a, array $b): int => (int) $a[1]->ordering <=> (int) $b[1]->ordering);
+				$renderRows = static function (array $rows, bool $isSelected): void
+				{
+					foreach ($rows as [$content, $selected])
+					{
+						$key = (string) $content->source_key . "\0" . (string) $content->id;
+						$token = sha1($key);
+						$searchText = mb_strtolower((string) $content->source_label . ' ' . (string) $content->title, 'UTF-8');
+						$publishedSort = strtotime((string) ($content->published ?? '')) ?: 0;
+						?>
+						<div class="border-bottom p-3 pm-content-row" data-search="<?php echo htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>" data-title="<?php echo htmlspecialchars(mb_strtolower((string) $content->title, 'UTF-8'), ENT_QUOTES, 'UTF-8'); ?>" data-published="<?php echo (int) $publishedSort; ?>" draggable="<?php echo $isSelected ? 'true' : 'false'; ?>">
+							<input type="hidden" name="item_source[<?php echo $token; ?>]" value="<?php echo htmlspecialchars((string) $content->source_key, ENT_QUOTES, 'UTF-8'); ?>">
+							<input type="hidden" name="item_id[<?php echo $token; ?>]" value="<?php echo htmlspecialchars((string) $content->id, ENT_QUOTES, 'UTF-8'); ?>">
+							<input type="hidden" class="pm-content-ordering" name="item_ordering[<?php echo $token; ?>]" value="<?php echo (int) ($selected->ordering ?? 0); ?>">
+							<div class="d-flex gap-2 align-items-start">
+								<div class="form-check flex-grow-1 mb-2"><input class="form-check-input pm-content-check" type="checkbox" name="selected_items[]" value="<?php echo $token; ?>" id="content-<?php echo $token; ?>" <?php echo $isSelected ? 'checked' : ''; ?>><label class="form-check-label fw-semibold" for="content-<?php echo $token; ?>"><?php if (trim((string) ($content->url ?? '')) !== '') : ?><a href="<?php echo htmlspecialchars((string) $content->url, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_OPEN_CONTENT_NEW_TAB'), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) $content->title, ENT_QUOTES, 'UTF-8'); ?></a><?php else : ?><?php echo htmlspecialchars((string) $content->title, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></label></div>
+								<span class="pm-content-drag small text-muted" <?php echo $isSelected ? '' : 'hidden'; ?> title="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_DRAG_TO_REORDER'), ENT_QUOTES, 'UTF-8'); ?>"><span class="fa fa-grip-vertical" aria-hidden="true"></span><?php echo Text::_('COM_PUNGAMAIL_DRAG_TO_REORDER'); ?></span>
+							</div>
+							<div class="small text-muted mb-2"><span class="badge text-bg-secondary me-2"><?php echo htmlspecialchars((string) $content->source_label, ENT_QUOTES, 'UTF-8'); ?></span><?php echo htmlspecialchars((string) $content->published, ENT_QUOTES, 'UTF-8'); ?></div>
+							<div class="pm-content-selection-options" <?php echo $isSelected ? '' : 'hidden'; ?>>
+								<div class="row g-2"><div class="col-12"><label class="form-label small"><?php echo Text::_('COM_PUNGAMAIL_TITLE_OVERRIDE'); ?></label><input class="form-control form-control-sm" name="title_override[<?php echo $token; ?>]" value="<?php echo htmlspecialchars((string) ($selected->title_override ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div><div class="col-12"><label class="form-label small"><?php echo Text::_('COM_PUNGAMAIL_EXCERPT_OVERRIDE'); ?></label><textarea class="form-control form-control-sm" rows="2" name="excerpt_override[<?php echo $token; ?>]"><?php echo htmlspecialchars((string) ($selected->excerpt_override ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea></div></div>
+							</div>
+						</div>
+						<?php
+					}
+				};
+				?>
+				<div id="pm-content-row-staging" hidden>
+					<?php $renderRows($selectedRows, true); $renderRows($availableRows, false); ?>
+				</div>
 			</div>
 		</div>
 		<?php echo HTMLHelper::_('uitab.endTab'); ?>
@@ -352,98 +422,364 @@ if ($item !== null && !empty($item->scheduled_at))
 		<input type="hidden" name="task" value="">
 		<?php echo HTMLHelper::_('form.token'); ?>
 	</form>
-	<script>
-	document.addEventListener('DOMContentLoaded', function ()
-	{
-		const search = document.getElementById('pm-content-search');
-		const rows = Array.from(document.querySelectorAll('.pm-content-row'));
-		const checks = Array.from(document.querySelectorAll('.pm-content-check'));
-		const count = document.getElementById('pm-selected-count');
-		const updateCount = function ()
+			<script>
+		document.addEventListener('DOMContentLoaded', function ()
 		{
-			if (count)
+			const form = document.getElementById('adminForm');
+			const search = document.getElementById('pm-content-search');
+			const sort = document.getElementById('pm-content-sort');
+			const selectedList = document.getElementById('pm-selected-content-list');
+			const availableList = document.getElementById('pm-available-content-list');
+			const staging = document.getElementById('pm-content-row-staging');
+			const selectedEmpty = document.getElementById('pm-selected-empty');
+			const count = document.getElementById('pm-selected-count');
+			const selectVisible = document.getElementById('pm-select-visible');
+			const clearSelected = document.getElementById('pm-clear-selected');
+			const audienceSummary = document.getElementById('pm-audience-summary');
+			const audienceWarning = document.getElementById('pm-audience-all-warning');
+			const audienceAll = document.querySelector('.pm-audience-all');
+			const audienceTopics = Array.from(document.querySelectorAll('.pm-audience-topic'));
+			const audienceGroups = Array.from(document.querySelectorAll('.pm-audience-group'));
+			let draggedRow = null;
+			const dropMarker = document.createElement('div');
+			dropMarker.className = 'pm-content-drop-marker alert alert-info py-1 my-1 text-center small';
+			dropMarker.textContent = selectedList ? String(selectedList.dataset.dropLabel || '') : '';
+
+			if (staging && selectedList && availableList)
 			{
-				count.textContent = String(checks.filter(function (item)
+				Array.from(staging.querySelectorAll('.pm-content-row')).forEach(function (row)
 				{
-					return item.checked;
-				}).length);
-			}
-		};
-		const audienceSummary = document.getElementById('pm-audience-summary');
-		const audienceWarning = document.getElementById('pm-audience-all-warning');
-		const audienceAll = document.querySelector('.pm-audience-all');
-		const audienceTopics = Array.from(document.querySelectorAll('.pm-audience-topic'));
-		const audienceGroups = Array.from(document.querySelectorAll('.pm-audience-group'));
-		const checkedLabels = function (items)
-		{
-			return items.filter(function (item)
-			{
-				return item.checked;
-			}).map(function (item)
-			{
-				const label = document.querySelector(`label[for="${item.id}"]`);
-
-				return label ? label.textContent.trim() : '';
-			}).filter(Boolean);
-		};
-		const updateAudience = function ()
-		{
-			if (!audienceSummary)
-			{
-				return;
+					const check = row.querySelector('.pm-content-check');
+					(check && check.checked ? selectedList : availableList).appendChild(row);
+				});
+				staging.remove();
 			}
 
-			const topics = checkedLabels(audienceTopics);
-			const groups = checkedLabels(audienceGroups);
-			const parts = [];
-
-			if (audienceAll && audienceAll.checked)
+			const availableRows = function ()
 			{
-				parts.push(audienceSummary.dataset.all || '');
-			}
-			else if (topics.length > 0)
+				return availableList ? Array.from(availableList.querySelectorAll(':scope > .pm-content-row')) : [];
+			};
+			const selectedRows = function ()
 			{
-				parts.push((audienceSummary.dataset.topics || '').replace('{names}', topics.join(', ')));
-			}
-
-			if (groups.length > 0)
+				return selectedList ? Array.from(selectedList.querySelectorAll(':scope > .pm-content-row')) : [];
+			};
+			const updateSelected = function (notifyChange = false)
 			{
-				parts.push((audienceSummary.dataset.groups || '').replace('{names}', groups.join(', ')));
-			}
+				const rows = selectedRows();
+				rows.forEach(function (row, index)
+				{
+					row.hidden = false;
+					row.draggable = true;
+					const ordering = row.querySelector('.pm-content-ordering');
+					const options = row.querySelector('.pm-content-selection-options');
+					const drag = row.querySelector('.pm-content-drag');
 
-			audienceSummary.textContent = parts.length > 0 ? parts.join(' ') : (audienceSummary.dataset.none || '');
-			audienceSummary.classList.toggle('alert-danger', parts.length === 0);
-			audienceSummary.classList.toggle('alert-info', parts.length > 0);
+					if (ordering)
+					{
+						ordering.value = String(index);
+					}
 
-			if (audienceWarning)
+					if (options)
+					{
+						options.hidden = false;
+					}
+
+					if (drag)
+					{
+						drag.hidden = false;
+					}
+				});
+
+				if (count)
+				{
+					count.textContent = String(rows.length);
+				}
+
+				if (selectedEmpty)
+				{
+					selectedEmpty.hidden = rows.length > 0;
+				}
+
+				if (clearSelected)
+				{
+					clearSelected.disabled = rows.length === 0;
+				}
+
+				if (notifyChange && form)
+				{
+					form.dispatchEvent(new Event('change', {bubbles: true}));
+				}
+			};
+			const prepareAvailableRow = function (row)
 			{
-				audienceWarning.hidden = !(audienceAll && audienceAll.checked && topics.length > 0);
-			}
-		};
+				row.draggable = false;
+				const options = row.querySelector('.pm-content-selection-options');
+				const drag = row.querySelector('.pm-content-drag');
 
-		if (search)
-		{
-			search.addEventListener('input', function ()
+				if (options)
+				{
+					options.hidden = true;
+				}
+
+				if (drag)
+				{
+					drag.hidden = true;
+				}
+			};
+			const applySearch = function ()
 			{
-				const term = search.value.trim().toLocaleLowerCase();
-				rows.forEach(function (row)
+				const term = search ? search.value.trim().toLocaleLowerCase() : '';
+				availableRows().forEach(function (row)
 				{
 					row.hidden = term !== '' && !String(row.dataset.search || '').includes(term);
 				});
-			});
-		}
+			};
+			const sortAvailable = function ()
+			{
+				if (!availableList)
+				{
+					return;
+				}
 
-		checks.forEach(function (check)
-		{
-			check.addEventListener('change', updateCount);
+				const mode = sort ? sort.value : 'newest';
+				availableRows().sort(function (a, b)
+				{
+					if (mode === 'title')
+					{
+						return String(a.dataset.title || '').localeCompare(String(b.dataset.title || ''));
+					}
+
+					const aDate = Number(a.dataset.published || 0);
+					const bDate = Number(b.dataset.published || 0);
+
+					return mode === 'oldest' ? aDate - bDate : bDate - aDate;
+				}).forEach(function (row)
+				{
+					availableList.appendChild(row);
+					prepareAvailableRow(row);
+				});
+				applySearch();
+			};
+			const moveForSelection = function (check)
+			{
+				const row = check.closest('.pm-content-row');
+
+				if (!row || !selectedList || !availableList)
+				{
+					return;
+				}
+
+				if (check.checked)
+				{
+					selectedList.appendChild(row);
+				}
+				else
+				{
+					availableList.appendChild(row);
+					prepareAvailableRow(row);
+				}
+
+				updateSelected();
+				sortAvailable();
+			};
+			const checkedLabels = function (items)
+			{
+				return items.filter(function (item)
+				{
+					return item.checked;
+				}).map(function (item)
+				{
+					const label = document.querySelector(`label[for="${item.id}"]`);
+
+					return label ? label.textContent.trim() : '';
+				}).filter(Boolean);
+			};
+			const updateAudience = function ()
+			{
+				if (!audienceSummary)
+				{
+					return;
+				}
+
+				const topics = checkedLabels(audienceTopics);
+				const groups = checkedLabels(audienceGroups);
+				const parts = [];
+
+				if (audienceAll && audienceAll.checked)
+				{
+					parts.push(audienceSummary.dataset.all || '');
+				}
+				else if (topics.length > 0)
+				{
+					parts.push((audienceSummary.dataset.topics || '').replace('{names}', topics.join(', ')));
+				}
+
+				if (groups.length > 0)
+				{
+					parts.push((audienceSummary.dataset.groups || '').replace('{names}', groups.join(', ')));
+				}
+
+				audienceSummary.textContent = parts.length > 0 ? parts.join(' ') : (audienceSummary.dataset.none || '');
+				audienceSummary.classList.toggle('alert-danger', parts.length === 0);
+				audienceSummary.classList.toggle('alert-info', parts.length > 0);
+
+				if (audienceWarning)
+				{
+					audienceWarning.hidden = !(audienceAll && audienceAll.checked && topics.length > 0);
+				}
+			};
+
+			document.querySelectorAll('.pm-content-check').forEach(function (check)
+			{
+				check.addEventListener('change', function ()
+				{
+					moveForSelection(check);
+				});
+			});
+
+			if (search)
+			{
+				search.addEventListener('input', applySearch);
+			}
+
+			if (sort)
+			{
+				sort.addEventListener('change', sortAvailable);
+			}
+
+			if (selectVisible)
+			{
+				selectVisible.addEventListener('click', function ()
+				{
+					availableRows().filter(function (row)
+					{
+						return !row.hidden;
+					}).forEach(function (row)
+					{
+						const check = row.querySelector('.pm-content-check');
+						if (check && !check.checked)
+						{
+							check.checked = true;
+							check.dispatchEvent(new Event('change', {bubbles: true}));
+						}
+					});
+				});
+			}
+
+			if (clearSelected)
+			{
+				clearSelected.addEventListener('click', function ()
+				{
+					selectedRows().forEach(function (row)
+					{
+						const check = row.querySelector('.pm-content-check');
+						if (check && check.checked)
+						{
+							check.checked = false;
+							check.dispatchEvent(new Event('change', {bubbles: true}));
+						}
+					});
+				});
+			}
+
+			if (selectedList)
+			{
+				const dragAfterElement = function (pointerY)
+				{
+					const candidates = selectedRows().filter(function (row)
+					{
+						return row !== draggedRow;
+					});
+					let closest = {offset: Number.NEGATIVE_INFINITY, element: null};
+
+					candidates.forEach(function (row)
+					{
+						const rectangle = row.getBoundingClientRect();
+						const offset = pointerY - rectangle.top - rectangle.height / 2;
+
+						if (offset < 0 && offset > closest.offset)
+						{
+							closest = {offset: offset, element: row};
+						}
+					});
+
+					return closest.element;
+				};
+				const clearDropMarker = function ()
+				{
+					if (dropMarker.parentElement)
+					{
+						dropMarker.remove();
+					}
+				};
+
+				selectedList.addEventListener('dragstart', function (event)
+				{
+					draggedRow = event.target.closest('.pm-content-row');
+
+					if (draggedRow && event.dataTransfer)
+					{
+						draggedRow.classList.add('pm-content-dragging');
+						event.dataTransfer.effectAllowed = 'move';
+					}
+				});
+				selectedList.addEventListener('dragover', function (event)
+				{
+					if (!draggedRow)
+					{
+						return;
+					}
+
+					event.preventDefault();
+					const after = dragAfterElement(event.clientY);
+
+					if (after)
+					{
+						selectedList.insertBefore(dropMarker, after);
+					}
+					else
+					{
+						selectedList.appendChild(dropMarker);
+					}
+				});
+				selectedList.addEventListener('drop', function (event)
+				{
+					if (!draggedRow)
+					{
+						return;
+					}
+
+					event.preventDefault();
+
+					if (dropMarker.parentElement === selectedList)
+					{
+						selectedList.insertBefore(draggedRow, dropMarker);
+					}
+
+					clearDropMarker();
+					updateSelected(true);
+				});
+				selectedList.addEventListener('dragend', function ()
+				{
+					if (draggedRow)
+					{
+						draggedRow.classList.remove('pm-content-dragging');
+					}
+
+					clearDropMarker();
+					draggedRow = null;
+				});
+			}
+
+			[audienceAll, ...audienceTopics, ...audienceGroups].filter(Boolean).forEach(function (check)
+			{
+				check.addEventListener('change', updateAudience);
+			});
+
+			updateSelected();
+			sortAvailable();
+			updateAudience();
 		});
-		[audienceAll, ...audienceTopics, ...audienceGroups].filter(Boolean).forEach(function (check)
-		{
-			check.addEventListener('change', updateAudience);
-		});
-		updateCount();
-		updateAudience();
-	});
-	</script>
+		</script>
 <?php endif; ?>
 </div>

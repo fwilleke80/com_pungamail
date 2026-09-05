@@ -62,6 +62,8 @@ You can omit either placeholder. Punga Mail never appends selected content autom
 
 Select **Save** before moving on.
 
+If you later try to close the tab or navigate away after changing the Newsletter without saving, Punga Mail enables the browser's standard unsaved-changes warning.
+
 ## 3. Apply a template, if wanted
 
 If a reusable template already exists:
@@ -76,17 +78,19 @@ Applying a template may replace work already entered in those fields, so save or
 
 ## 4. Select website content
 
-In **New content since …**:
+In **Content selection**:
 
 1. set **Content published since**;
 2. select the registered content types to search;
 3. select **Apply filters**;
-4. use Search to narrow the displayed titles if necessary;
-5. check the items to include.
+4. use Search and the newest/oldest/title sort to find candidates in **Available content**;
+5. check items to move them into **Selected content**; use **Select visible** when a filtered set should all be included;
+6. drag rows inside **Selected content** into the order they should appear in `{new_content}`.
+
+Use **Clear selected** to remove the current selection. Sorting the Available list never changes the manual order of Selected content.
 
 For each selected item you may set:
 
-- **Ordering**: lower numbers appear first;
 - **Title override**: changes the title only in this newsletter;
 - **Excerpt override**: changes the excerpt only in this newsletter.
 

@@ -1,0 +1,2 @@
+-- Punga Mail 0.5.2
+-- Unsaved-change tracking correction release; no schema changes.

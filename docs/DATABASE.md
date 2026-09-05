@@ -106,3 +106,6 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 
 - `0.4.4.sql` — version marker only; 0.4.4 changes administrator workflows and presentation without changing the schema.
 - `0.4.5.sql` — version marker only; 0.4.5 refines administrator authoring and delivery-health presentation without changing the schema.
+- `0.5.0.sql` — adds Automatic Newsletter content-selection controls: `content_order`, `max_items`, and `minimum_items`.
+- `0.5.1.sql` — authoring/UX maintenance marker; no schema changes.
+- `0.5.2.sql` — unsaved-change tracking correction marker; no schema changes.

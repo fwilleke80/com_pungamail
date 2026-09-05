@@ -42,7 +42,7 @@ $styleFields = [
 .pm-new-content-override[open] .pm-collapse-indicator { transform: rotate(90deg); }
 </style>
 <div class="container-fluid">
-	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm">
+	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm" data-pm-unsaved-warning="1">
 		<input type="hidden" name="id" value="<?php echo (int) ($item->id ?? 0); ?>">
 		<div class="row g-4 align-items-start">
 			<div class="col-12 col-xl-9">

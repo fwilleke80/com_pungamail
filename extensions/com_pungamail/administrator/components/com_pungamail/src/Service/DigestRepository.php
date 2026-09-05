@@ -91,6 +91,9 @@ final class DigestRepository
 		$generationMode = in_array((string) ($data['generation_mode'] ?? 'draft'), ['draft', 'auto'], true) ? (string) $data['generation_mode'] : 'draft';
 		$cutoffMode = in_array((string) ($data['cutoff_mode'] ?? 'since_last'), ['since_last', 'rolling'], true) ? (string) $data['cutoff_mode'] : 'since_last';
 		$emptyAction = in_array((string) ($data['empty_action'] ?? 'skip'), ['skip', 'create_draft'], true) ? (string) $data['empty_action'] : 'skip';
+		$contentOrder = in_array((string) ($data['content_order'] ?? 'newest'), ['newest', 'oldest'], true) ? (string) $data['content_order'] : 'newest';
+		$maxItems = max(0, min(1000, (int) ($data['max_items'] ?? 0)));
+		$minimumItems = max(0, min(1000, (int) ($data['minimum_items'] ?? 0)));
 		$now = (new Date('now', 'UTC'))->toSql();
 		$nextRun = trim((string) ($data['next_run_at'] ?? '')) ?: $now;
 		$recurrenceValue = DigestSchedule::normalizeValue((int) ($data['recurrence_value'] ?? 1));
@@ -123,6 +126,9 @@ final class DigestRepository
 			'include_subscribers' => (int) ($data['include_subscribers'] ?? 0) === 1 ? 1 : 0,
 			'generation_mode' => $generationMode,
 			'empty_action' => $emptyAction,
+			'content_order' => $contentOrder,
+			'max_items' => $maxItems,
+			'minimum_items' => $minimumItems,
 		];
 		$this->db->transactionStart();
 
@@ -153,6 +159,9 @@ final class DigestRepository
 				$includeSubscribers = (int) $values['include_subscribers'];
 				$mode = (string) $values['generation_mode'];
 				$empty = (string) $values['empty_action'];
+				$contentOrder = (string) $values['content_order'];
+				$maxItems = (int) $values['max_items'];
+				$minimumItems = (int) $values['minimum_items'];
 				$update = $this->db->getQuery(true)
 					->update($this->db->quoteName('#__pungamail_digests'))
 					->set($this->db->quoteName('title') . ' = :title')
@@ -168,6 +177,9 @@ final class DigestRepository
 					->set($this->db->quoteName('include_subscribers') . ' = :includeSubscribers')
 					->set($this->db->quoteName('generation_mode') . ' = :generationMode')
 					->set($this->db->quoteName('empty_action') . ' = :emptyAction')
+					->set($this->db->quoteName('content_order') . ' = :contentOrder')
+					->set($this->db->quoteName('max_items') . ' = :maxItems')
+					->set($this->db->quoteName('minimum_items') . ' = :minimumItems')
 					->set($this->db->quoteName('modified') . ' = :modified')
 					->where($this->db->quoteName('id') . ' = :id')
 					->bind(':title', $title)
@@ -182,6 +194,9 @@ final class DigestRepository
 					->bind(':includeSubscribers', $includeSubscribers, ParameterType::INTEGER)
 					->bind(':generationMode', $mode)
 					->bind(':emptyAction', $empty)
+					->bind(':contentOrder', $contentOrder)
+					->bind(':maxItems', $maxItems, ParameterType::INTEGER)
+					->bind(':minimumItems', $minimumItems, ParameterType::INTEGER)
 					->bind(':modified', $now)
 					->bind(':id', $id, ParameterType::INTEGER);
 
@@ -248,10 +263,18 @@ final class DigestRepository
 	public function getRuns(int $digestId, int $limit = 50): array
 	{
 		$query = $this->db->getQuery(true)
-			->select('*')
-			->from($this->db->quoteName('#__pungamail_digest_runs'))
-			->where($this->db->quoteName('digest_id') . ' = :id')
-			->order($this->db->quoteName('started_at') . ' DESC')
+			->select([
+				'r.*',
+				'n.title AS newsletter_title',
+				'n.status AS newsletter_status',
+				'n.recipient_count',
+				'n.sent_count',
+				'n.failed_count',
+			])
+			->from($this->db->quoteName('#__pungamail_digest_runs', 'r'))
+			->leftJoin($this->db->quoteName('#__pungamail_newsletters', 'n') . ' ON n.id = r.newsletter_id')
+			->where($this->db->quoteName('r.digest_id') . ' = :id')
+			->order($this->db->quoteName('r.started_at') . ' DESC')
 			->bind(':id', $digestId, ParameterType::INTEGER);
 
 		return $this->db->setQuery($query, 0, max(1, $limit))->loadObjectList();
