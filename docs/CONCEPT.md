@@ -8,7 +8,8 @@ Punga Mail is a focused, self-hosted Joomla! 6 newsletter extension. Its primary
 
 It is not intended to become a behavioural marketing/analytics platform.
 
-## Implemented through 0.6.3
+## Implemented through 0.6.7
+- Joomla User subscriber Channel eligibility updates immediately before save by resolving the selected Joomla account ID from Joomla's real hidden User field value.
 
 ### Lists, automation and access safety
 
@@ -143,3 +144,8 @@ A future optional provider hook is acceptable only as an escape hatch for unusua
 ### Joomla-native editor toolbars
 
 Newsletter and template editors use Joomla's standard top administrator toolbar. **Save** uses Joomla's canonical Apply toolbar behavior and stays in the editor; **Save & Close** uses Joomla's Save toolbar behavior and returns to the owning list. Draft newsletters additionally expose Preview, Send test mail, Check recipients & send, and Cancel. Templates additionally expose Preview and Cancel. Context-specific form actions such as applying a content date or template remain next to the fields they affect.
+
+
+### Administrator attention acknowledgment
+
+Returned-mail suppression warnings on the Dashboard are operational attention items, not subscriber state. Administrators can acknowledge the exact latest check after review; this only hides that Dashboard warning. Suppressions and bounce history remain unchanged, and a later check with new exclusions becomes visible again. Grouped Audience/Design routes remain the canonical administrator context for their child screens and actions.

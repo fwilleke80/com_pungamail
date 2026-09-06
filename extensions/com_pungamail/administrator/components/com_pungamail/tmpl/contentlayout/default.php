@@ -6,6 +6,7 @@ use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Helper\MarkdownEditorHelper;
+use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 use Punga\Component\PungaMail\Administrator\Service\ContentLayoutRepository;
 
 $item = $this->item;
@@ -35,7 +36,7 @@ foreach ((array) $item->columns as $column)
 .pm-layout-sidebar { position: sticky; top: 1rem; }
 </style>
 <div class="container-fluid">
-	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm" data-pm-unsaved-warning="1">
+	<form action="<?php echo Route::_(AdministratorRoute::contentLayout((string) $item->source_key)); ?>" method="post" name="adminForm" id="adminForm" data-pm-unsaved-warning="1">
 		<input type="hidden" name="source_key" value="<?php echo htmlspecialchars((string) $item->source_key, ENT_QUOTES, 'UTF-8'); ?>">
 		<div class="row g-4 align-items-start">
 			<div class="col-12 col-xl-8">

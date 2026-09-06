@@ -63,9 +63,15 @@ if ($bounceCheck !== null && !$bounceCheck->ok)
 {
 	$issues[] = ['class' => 'warning', 'text' => Text::_('COM_PUNGAMAIL_DASHBOARD_RETURNED_MAIL_FAILED'), 'url' => 'index.php?option=com_pungamail&view=delivery#returned-mail'];
 }
-elseif ($bounceCheck !== null && (int) $bounceCheck->suppressed > 0)
+elseif ($bounceCheck !== null && (bool) ($bounceCheck->attention_pending ?? false))
 {
-	$issues[] = ['class' => 'warning', 'text' => Text::plural('COM_PUNGAMAIL_DASHBOARD_BOUNCE_SUPPRESSIONS', (int) $bounceCheck->suppressed), 'url' => 'index.php?option=com_pungamail&view=delivery#returned-mail'];
+	$issues[] = [
+		'class' => 'warning',
+		'text' => Text::plural('COM_PUNGAMAIL_DASHBOARD_BOUNCE_SUPPRESSIONS', (int) $bounceCheck->suppressed),
+		'url' => 'index.php?option=com_pungamail&view=delivery#returned-mail',
+		'dismissible' => true,
+		'checked_at' => (string) $bounceCheck->checked_at,
+	];
 }
 
 $chartMax = 1;
@@ -156,7 +162,17 @@ foreach ($chart as $point)
 				<?php foreach ($issues as $issue) : ?>
 					<div class="alert alert-<?php echo htmlspecialchars((string) $issue['class'], ENT_QUOTES, 'UTF-8'); ?> d-flex justify-content-between align-items-center gap-3 mb-0">
 						<span><?php echo $issue['text']; ?></span>
-						<a class="btn btn-sm btn-outline-dark flex-shrink-0" href="<?php echo Route::_((string) $issue['url']); ?>"><?php echo Text::_('COM_PUNGAMAIL_REVIEW'); ?></a>
+						<div class="d-flex flex-wrap gap-2 flex-shrink-0">
+							<a class="btn btn-sm btn-outline-dark" href="<?php echo Route::_((string) $issue['url']); ?>"><?php echo Text::_('COM_PUNGAMAIL_REVIEW'); ?></a>
+							<?php if ((bool) ($issue['dismissible'] ?? false)) : ?>
+								<form action="<?php echo Route::_('index.php?option=com_pungamail&view=dashboard'); ?>" method="post" class="d-inline">
+									<input type="hidden" name="task" value="dashboard.acknowledgeBounceAttention">
+									<input type="hidden" name="checked_at" value="<?php echo htmlspecialchars((string) ($issue['checked_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+									<button type="submit" class="btn btn-sm btn-outline-dark"><?php echo Text::_('COM_PUNGAMAIL_MARK_AS_REVIEWED'); ?></button>
+									<?php echo HTMLHelper::_('form.token'); ?>
+								</form>
+							<?php endif; ?>
+						</div>
 					</div>
 				<?php endforeach; ?>
 				</div>

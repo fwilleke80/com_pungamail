@@ -793,6 +793,82 @@ final class SubscriberRepository
 		return true;
 	}
 
+	/**
+	 * Removes the live subscriber record and mutable membership/request data.
+	 *
+	 * Suppression and historical delivery/bounce/event rows are deliberately kept.
+	 * Their subscriber reference is detached where nullable so deleting an obsolete
+	 * administration row does not erase audit history or revive a blocked address.
+	 *
+	 * @param int $subscriberId Subscriber ID.
+	 *
+	 * @return bool True when a subscriber was removed.
+	 */
+	public function deleteSubscriber(int $subscriberId): bool
+	{
+		$subscriber = $this->findById($subscriberId);
+
+		if ($subscriber === null)
+		{
+			return false;
+		}
+
+		$this->db->transactionStart();
+
+		try
+		{
+			$requestQuery = $this->db->getQuery(true)
+				->select($this->db->quoteName('id'))
+				->from($this->db->quoteName('#__pungamail_preference_requests'))
+				->where($this->db->quoteName('subscriber_id') . ' = :subscriberId')
+				->bind(':subscriberId', $subscriberId, ParameterType::INTEGER);
+			$requestIds = array_map('intval', $this->db->setQuery($requestQuery)->loadColumn());
+
+			if ($requestIds !== [])
+			{
+				$deleteRequestTopics = $this->db->getQuery(true)
+					->delete($this->db->quoteName('#__pungamail_preference_request_topics'))
+					->whereIn($this->db->quoteName('request_id'), $requestIds);
+				$this->db->setQuery($deleteRequestTopics)->execute();
+			}
+
+			foreach (['#__pungamail_subscriber_topics', '#__pungamail_preference_requests'] as $table)
+			{
+				$delete = $this->db->getQuery(true)
+					->delete($this->db->quoteName($table))
+					->where($this->db->quoteName('subscriber_id') . ' = :subscriberId')
+					->bind(':subscriberId', $subscriberId, ParameterType::INTEGER);
+				$this->db->setQuery($delete)->execute();
+			}
+
+			foreach (['#__pungamail_suppressions', '#__pungamail_bounces', '#__pungamail_events'] as $table)
+			{
+				$detach = $this->db->getQuery(true)
+					->update($this->db->quoteName($table))
+					->set($this->db->quoteName('subscriber_id') . ' = NULL')
+					->where($this->db->quoteName('subscriber_id') . ' = :subscriberId')
+					->bind(':subscriberId', $subscriberId, ParameterType::INTEGER);
+				$this->db->setQuery($detach)->execute();
+			}
+
+			$deleteSubscriber = $this->db->getQuery(true)
+				->delete($this->db->quoteName('#__pungamail_subscribers'))
+				->where($this->db->quoteName('id') . ' = :subscriberId')
+				->bind(':subscriberId', $subscriberId, ParameterType::INTEGER);
+			$this->db->setQuery($deleteSubscriber)->execute();
+			$deleted = $this->db->getAffectedRows() === 1;
+
+			$this->db->transactionCommit();
+
+			return $deleted;
+		}
+		catch (\Throwable $e)
+		{
+			$this->db->transactionRollback();
+			throw $e;
+		}
+	}
+
 	/** Updates the optional recipient display name without changing consent state. */
 	public function updateRecipientName(int $subscriberId, string $name): void
 	{

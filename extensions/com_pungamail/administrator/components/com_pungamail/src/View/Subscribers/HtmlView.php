@@ -56,6 +56,12 @@ final class HtmlView extends BaseHtmlView
 		}
 		ToolbarHelper::custom('subscribers.unsubscribe', 'ban-circle', '', Text::_('COM_PUNGAMAIL_UNSUBSCRIBE_SELECTED'), true);
 		ToolbarHelper::custom('subscribers.requestConfirmation', 'mail', '', Text::_('COM_PUNGAMAIL_SEND_CONFIRMATION_SELECTED'), true);
+
+		if (Factory::getApplication()->getIdentity()->authorise('core.delete', 'com_pungamail'))
+		{
+			ToolbarHelper::deleteList(Text::_('COM_PUNGAMAIL_CONFIRM_DELETE_SUBSCRIBERS'), 'subscribers.delete');
+		}
+
 		ToolbarHelper::preferences('com_pungamail');
 		parent::display($tpl);
 	}

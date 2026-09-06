@@ -113,6 +113,11 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.1.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.2.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.3.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.4.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.5.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.6.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.7.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/MarkdownEditorHelper.php",
@@ -202,15 +207,15 @@ def check_administrator_documentation() -> None:
         "## C. Channels",
         "## D. Subscribers and consent state",
         "## E. Frontend module, confirmation, unsubscribe, and Joomla profile",
-        "## F. Templates and rendering",
+        "## F. Design: Templates, Content Layouts, Markdown, and rendering",
         "## G. Newsletter composition and selected content",
-        "## H. Preview, test mail, check before sending, and recipient inspection",
+        "## H. Preview, test mail, Preflight, and recipient inspection",
         "## I. Queue, scheduled sending, snapshots, browser view, and statistics",
         "## J. Automatic Newsletters",
         "## K. Delivery, bounce handling, and mail health",
         "## L. Subscriber CSV import and export",
         "## M. Joomla Scheduled Tasks and reminders",
-        "## N. ACL, CSRF, privacy, language, and regression sweep",
+        "## N. ACL, CSRF, privacy, language, responsive UI, and regression sweep",
     )
 
     for section in required_test_sections:
@@ -219,10 +224,12 @@ def check_administrator_documentation() -> None:
 
     for token in (
         "PM-205 — Critical access-permission test: mixed recipients",
-        "every resolved recipient",
+        "Every resolved recipient",
         "PM-253 — Protected-state import safety",
         "PM-291 — CSRF protection",
         "PM-303 — Existing feature regression checklist",
+        "PM-105 — Available placeholders for a content type",
+        "PM-233 — Hard bounce classification and immediate suppression",
     ):
         if token not in test_guide:
             fail(f"Test guide is missing required coverage: {token!r}")
@@ -1727,9 +1734,15 @@ def check_release_fix_0402() -> None:
     if 'type="datetime-local" id="digest-next"' in digest_editor:
         fail("0.4.2 reintroduced the browser-only Automatic Newsletter datetime-local control")
 
-    if "Factory::getApplication()->get('offset','UTC')" not in digest_list:
+    if not any(token in digest_list for token in (
+        "Factory::getApplication()->get('offset','UTC')",
+        "Factory::getApplication()->get('offset', 'UTC')",
+    )):
         fail("0.4.2 Automatic Newsletters list does not resolve the Joomla site timezone")
-    if "HTMLHelper::_('date',$item->next_run_at,Text::_('DATE_FORMAT_LC5'),$siteTimezone)" not in digest_list:
+    if not any(token in digest_list for token in (
+        "HTMLHelper::_('date',$item->next_run_at,Text::_('DATE_FORMAT_LC5'),$siteTimezone)",
+        "HTMLHelper::_('date', $item->next_run_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone)",
+    )):
         fail("0.4.2 Automatic Newsletters list does not display next run in the Joomla site timezone")
 
     for token in (
@@ -2067,8 +2080,8 @@ def check_release_fix_0502() -> None:
         fail("0.5.2 still uses the old initialization-sensitive dirty-state comparison")
 
     test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
-    if "0.5.2 focused acceptance — pristine editor dirty-state" not in test_guide:
-        fail("0.5.2 test guide is missing pristine-editor dirty-state acceptance coverage")
+    if "PM-133 — Unsaved-change protection" not in test_guide or "Untouched forms do not warn" not in test_guide:
+        fail("Current test guide is missing pristine-editor dirty-state acceptance coverage")
 
 
 def check_release_ux_0600() -> None:
@@ -2131,8 +2144,9 @@ def check_release_ux_0600() -> None:
 
 
     test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
-    if "0.6.0 focused acceptance — central content-type layouts" not in test_guide:
-        fail("0.6.0 focused Content layouts acceptance guide missing")
+    for token in ("PM-104 — Central Content Layouts overview", "PM-105 — Available placeholders for a content type", "PM-106 — Type-specific database placeholder rendering"):
+        if token not in test_guide:
+            fail(f"Current Content Layouts acceptance coverage is missing {token!r}")
 
 def check_release_ux_0601() -> None:
     """Protect the 0.6.1 grouped navigation and Newsletter archive workflow."""
@@ -2253,8 +2267,9 @@ def check_release_fix_0602() -> None:
                 fail(f"0.6.2 is missing {locale} returned-mail copy: {key}")
 
     test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
-    if "0.6.2 focused acceptance — returned-mail status and editor context" not in test_guide:
-        fail("0.6.2 focused returned-mail acceptance guide missing")
+    for token in ("PM-103 — Apply Template in Newsletter editor", "PM-232 — Manual and scheduled returned-mail processing"):
+        if token not in test_guide:
+            fail(f"Current returned-mail/editor-context acceptance coverage is missing {token!r}")
 
 
 
@@ -2392,7 +2407,6 @@ def check_release_ux_0603() -> None:
 
     user_guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
     for token in (
-        "Punga Mail 0.6.3",
         "Custom SMTP",
         "Use Joomla settings",
         "Subscription",
@@ -2403,8 +2417,317 @@ def check_release_ux_0603() -> None:
             fail(f"0.6.3 USER_GUIDE is missing {token!r}")
 
     test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
-    if "0.6.3 focused acceptance — outgoing mail, bounce clarity, and toolbar consistency" not in test_guide:
-        fail("0.6.3 focused acceptance guide missing")
+    for token in ("PM-006 — Options toolbar consistency", "PM-013 — Outgoing transport: Custom SMTP", "PM-050 — Subscriber list and status columns", "PM-234 — Soft bounce threshold"):
+        if token not in test_guide:
+            fail(f"Current outgoing-mail/bounce acceptance coverage is missing {token!r}")
+
+
+
+def check_release_fix_0604() -> None:
+    """Protect 0.6.4 Dashboard acknowledgment, bounce recovery, and grouped routes."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    install = (admin_root / "sql/install.mysql.sql").read_text(encoding="utf-8")
+    migration = (admin_root / "sql/updates/mysql/0.6.4.sql").read_text(encoding="utf-8")
+    settings = (admin_root / "src/Service/MailSettingsRepository.php").read_text(encoding="utf-8")
+    dashboard_controller = (admin_root / "src/Controller/DashboardController.php").read_text(encoding="utf-8")
+    dashboard = (admin_root / "tmpl/dashboard/default.php").read_text(encoding="utf-8")
+    subscriber_controller = (admin_root / "src/Controller/SubscriberController.php").read_text(encoding="utf-8")
+    subscribers = (admin_root / "tmpl/subscribers/default.php").read_text(encoding="utf-8")
+    subscriber = (admin_root / "tmpl/subscriber/default.php").read_text(encoding="utf-8")
+    template = (admin_root / "tmpl/template/default.php").read_text(encoding="utf-8")
+    contentlayout = (admin_root / "tmpl/contentlayout/default.php").read_text(encoding="utf-8")
+
+    for contents in (install, migration):
+        if "bounce_last_check_acknowledged_at" not in contents:
+            fail("0.6.4 returned-mail acknowledgment schema is missing")
+
+    for token in (
+        "attention_pending",
+        "acknowledged_at",
+        "function acknowledgeBounceCheck(string $checkedAt): bool",
+        "bounce_last_check_acknowledged_at",
+        "bounce_last_check_at') . ' = :checkedAt",
+        "bounce_last_check_acknowledged_at') . ' = NULL",
+    ):
+        if token not in settings:
+            fail(f"0.6.4 mail-settings acknowledgment contract is missing {token!r}")
+
+    for token in (
+        "function acknowledgeBounceAttention(): void",
+        "acknowledgeBounceCheck($checkedAt)",
+        "COM_PUNGAMAIL_DASHBOARD_ATTENTION_REVIEWED",
+        "COM_PUNGAMAIL_DASHBOARD_ATTENTION_CHANGED",
+    ):
+        if token not in dashboard_controller:
+            fail(f"0.6.4 Dashboard acknowledgment controller is missing {token!r}")
+
+    for token in (
+        "attention_pending",
+        "dashboard.acknowledgeBounceAttention",
+        "COM_PUNGAMAIL_MARK_AS_REVIEWED",
+        "checked_at",
+    ):
+        if token not in dashboard:
+            fail(f"0.6.4 Dashboard acknowledgment UI is missing {token!r}")
+
+    for token in (
+        "post->getInt('subscriber_id')",
+        "clearBounceSuppression($id)",
+        "COM_PUNGAMAIL_BOUNCE_SUPPRESSION_NOT_CLEARED",
+        "AdministratorRoute::subscriber($id)",
+        "AdministratorRoute::subscribers()",
+        "guardBounceRecovery()",
+    ):
+        if token not in subscriber_controller:
+            fail(f"0.6.4 bounce-recovery controller is missing {token!r}")
+
+    for name, contents, context in (
+        ("Subscribers", subscribers, "subscribers"),
+        ("Subscriber", subscriber, "subscriber"),
+    ):
+        if 'form="pm-clear-bounce-form"' not in contents:
+            fail(f"0.6.4 {name} recovery action is not isolated from Joomla adminForm")
+        if 'name="subscriber_id"' not in contents:
+            fail(f"0.6.4 {name} recovery action does not submit an explicit subscriber ID")
+        if f'name="return_context" value="{context}"' not in contents:
+            fail(f"0.6.4 {name} recovery action does not preserve its Audience return context")
+        if "formaction=" in contents and "subscriber.clearBounceSuppression" in contents:
+            fail(f"0.6.4 {name} still uses the task-in-formaction pattern that can fall back to Dashboard")
+
+    if "AdministratorRoute::template((int) ($item->id ?? 0))" not in template:
+        fail("0.6.4 Template editor form does not preserve the grouped Design route")
+    if "AdministratorRoute::contentLayout((string) $item->source_key)" not in contentlayout:
+        fail("0.6.4 Content layout editor form does not preserve the grouped Design route")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_MARK_AS_REVIEWED",
+            "COM_PUNGAMAIL_DASHBOARD_ATTENTION_REVIEWED",
+            "COM_PUNGAMAIL_DASHBOARD_ATTENTION_CHANGED",
+            "COM_PUNGAMAIL_BOUNCE_SUPPRESSION_NOT_CLEARED",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.6.4 is missing {locale} UI copy: {key}")
+
+    user_guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "Mark as reviewed",
+        "Allow delivery again",
+        "same Audience context",
+    ):
+        if token not in user_guide:
+            fail(f"0.6.4 USER_GUIDE is missing {token!r}")
+
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    for token in ("PM-009A — Returned-mail attention acknowledgement", "PM-057 — Allow delivery again after bounce suppression", "PM-299 — Error handling and grouped-route recovery"):
+        if token not in test_guide:
+            fail(f"Current attention/recovery/grouped-routing acceptance coverage is missing {token!r}")
+
+
+def check_release_fix_0605() -> None:
+    """Protect 0.6.5 live Channel eligibility and subscriber deletion."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    subscriber_controller = (admin_root / "src/Controller/SubscriberController.php").read_text(encoding="utf-8")
+    subscriber_template = (admin_root / "tmpl/subscriber/default.php").read_text(encoding="utf-8")
+    subscribers_controller = (admin_root / "src/Controller/SubscribersController.php").read_text(encoding="utf-8")
+    subscribers_view = (admin_root / "src/View/Subscribers/HtmlView.php").read_text(encoding="utf-8")
+    subscriber_repo = (admin_root / "src/Service/SubscriberRepository.php").read_text(encoding="utf-8")
+    queue_service = (admin_root / "src/Service/QueueService.php").read_text(encoding="utf-8")
+    migration = (admin_root / "sql/updates/mysql/0.6.5.sql").read_text(encoding="utf-8")
+
+    for token in (
+        "function channelEligibility(): void",
+        "eligibleIds($ids, $effectiveUserId, false)",
+        "Session::checkToken('post')",
+        "new JsonResponse(['eligible_ids' => $eligibleIds])",
+    ):
+        if token not in subscriber_controller:
+            fail(f"0.6.5 live Channel eligibility endpoint is missing {token!r}")
+
+    for token in (
+        "pm-topic-eligibility",
+        "subscriber.channelEligibility",
+        "jform_user_id",
+        "refreshEligibility",
+        "window.setInterval",
+        "check.disabled = !allowed",
+    ):
+        if token not in subscriber_template:
+            fail(f"0.6.5 Subscriber editor live eligibility UI is missing {token!r}")
+
+    for token in (
+        "function delete(): void",
+        "guard('core.delete')",
+        "cancelForSubscriber($id)",
+        "deleteSubscriber($id)",
+        "COM_PUNGAMAIL_SUBSCRIBERS_DELETED",
+    ):
+        if token not in subscribers_controller:
+            fail(f"0.6.5 subscriber deletion controller is missing {token!r}")
+
+    if "subscribers.delete" not in subscribers_view or "COM_PUNGAMAIL_CONFIRM_DELETE_SUBSCRIBERS" not in subscribers_view:
+        fail("0.6.5 Subscribers list is missing the permanent delete toolbar action")
+
+    for token in (
+        "function deleteSubscriber(int $subscriberId): bool",
+        "#__pungamail_subscriber_topics",
+        "#__pungamail_preference_requests",
+        "#__pungamail_suppressions",
+        "subscriber_id') . ' = NULL",
+        "#__pungamail_subscribers",
+    ):
+        if token not in subscriber_repo:
+            fail(f"0.6.5 subscriber deletion repository contract is missing {token!r}")
+
+    for token in (
+        "function cancelForSubscriber(int $subscriberId): bool",
+        "['pending', 'failed']",
+        "status') . ' = ' . $this->db->quote('processing')",
+    ):
+        if token not in queue_service:
+            fail(f"0.6.5 queue-safe subscriber deletion is missing {token!r}")
+
+    if "no schema change required" not in migration.lower():
+        fail("0.6.5 migration marker does not document its no-schema-change contract")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_CONFIRM_DELETE_SUBSCRIBERS",
+            "COM_PUNGAMAIL_SUBSCRIBERS_DELETED_1",
+            "COM_PUNGAMAIL_SUBSCRIBERS_DELETED_MORE",
+            "COM_PUNGAMAIL_SUBSCRIBER_DELETE_PROCESSING",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.6.5 is missing {locale} UI copy: {key}")
+
+    user_guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "Delete permanently",
+        "do not have to save the subscriber first",
+        "registered-user Channels",
+    ):
+        if token not in user_guide:
+            fail(f"0.6.5 USER_GUIDE is missing {token!r}")
+
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "PM-052 — Add a Joomla user and choose restricted Channels before saving",
+        "PM-060 — Permanently delete an obsolete/test subscriber",
+    ):
+        if token not in test_guide:
+            fail(f"0.6.5 TEST_GUIDE is missing {token!r}")
+
+
+def check_release_ux_0606() -> None:
+    """Protect 0.6.6 Automatic Newsletter list-state UX."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    template = (admin_root / "tmpl/digests/default.php").read_text(encoding="utf-8")
+    controller = (admin_root / "src/Controller/DigestsController.php").read_text(encoding="utf-8")
+    migration = (admin_root / "sql/updates/mysql/0.6.6.sql").read_text(encoding="utf-8")
+
+    for token in (
+        "jgrid.published",
+        "'digests.'",
+        "core.edit.state",
+        "$canToggleThisState",
+        "($state === 0 || $state === 1)",
+    ):
+        if token not in template:
+            fail(f"0.6.6 Automatic Newsletter state icon is missing {token!r}")
+
+    for stale_token in (
+        "Text::_('JENABLED')",
+        "Text::_('JDISABLED')",
+        "Text::_('JTRASHED')",
+    ):
+        if stale_token in template:
+            fail(f"0.6.6 Automatic Newsletter list still contains the old text Status output: {stale_token!r}")
+
+    for token in (
+        "function publish(): void",
+        "function unpublish(): void",
+        "guard('core.edit.state')",
+        "Session::checkToken()",
+    ):
+        if token not in controller:
+            fail(f"0.6.6 state-icon action contract is missing {token!r}")
+
+    if "no schema change required" not in migration.lower():
+        fail("0.6.6 migration marker does not document its no-schema-change contract")
+
+    user_guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "enabled/disabled state icon",
+        "Click that icon to enable or disable",
+    ):
+        if token not in user_guide:
+            fail(f"0.6.6 USER_GUIDE is missing {token!r}")
+
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "PM-213 — Enable/disable behavior and list state icon",
+        "there is no redundant text Status column",
+    ):
+        if token not in test_guide:
+            fail(f"0.6.6 TEST_GUIDE is missing {token!r}")
+
+def check_release_fix_0607() -> None:
+    """Protect live Channel eligibility for unsaved Joomla User subscribers."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    template = (admin_root / "tmpl/subscriber/default.php").read_text(encoding="utf-8")
+    controller = (admin_root / "src/Controller/SubscriberController.php").read_text(encoding="utf-8")
+    migration = (admin_root / "sql/updates/mysql/0.6.7.sql").read_text(encoding="utf-8")
+
+    # Joomla's User field renders the display name as #jform_user_id and the
+    # actual numeric ID in a hidden input named jform[user_id]. Reading the
+    # display field makes getInt('user_id') collapse the selection to zero.
+    for token in (
+        'input[name="jform[user_id]"].field-user-input',
+        "document.getElementById('jform_user_id_id')",
+        "body.set('user_id', recipientType === 'user' ? userId : '0')",
+        "refreshEligibility(true)",
+    ):
+        if token not in template:
+            fail(f"0.6.7 live Channel eligibility fix is missing {token!r}")
+
+    if "const userInput = document.getElementById('jform_user_id');" in template:
+        fail("0.6.7 Subscriber editor still reads Joomla's visible user-name field instead of the hidden numeric user ID")
+
+    for token in (
+        "function channelEligibility(): void",
+        "post->getInt('user_id')",
+        "eligibleIds($ids, $effectiveUserId, false)",
+    ):
+        if token not in controller:
+            fail(f"0.6.7 Channel eligibility endpoint is missing {token!r}")
+
+    if "no schema change required" not in migration.lower():
+        fail("0.6.7 migration marker does not document its no-schema-change contract")
+
+    user_guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "Punga Mail 0.6.7",
+        "actual selected Joomla account ID",
+        "do not have to save the subscriber first",
+    ):
+        if token not in user_guide:
+            fail(f"0.6.7 USER_GUIDE is missing {token!r}")
+
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "Punga Mail 0.6.7 Live Acceptance Test Guide",
+        "PM-052 — Add a Joomla user and choose restricted Channels before saving",
+        "Do not save yet",
+        "become selectable immediately",
+    ):
+        if token not in test_guide:
+            fail(f"0.6.7 TEST_GUIDE is missing {token!r}")
 
 
 def check_package_members() -> None:
@@ -2550,6 +2873,10 @@ def main() -> int:
         check_release_ux_0601,
         check_release_fix_0602,
         check_release_ux_0603,
+        check_release_fix_0604,
+        check_release_fix_0605,
+        check_release_ux_0606,
+        check_release_fix_0607,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

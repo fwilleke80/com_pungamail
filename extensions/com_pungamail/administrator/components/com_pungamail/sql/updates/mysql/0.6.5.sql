@@ -1,0 +1,2 @@
+-- Punga Mail 0.6.5
+-- Live Channel eligibility in the Subscriber editor and permanent subscriber removal; no schema change required.

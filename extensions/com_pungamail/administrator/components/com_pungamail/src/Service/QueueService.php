@@ -127,6 +127,48 @@ final class QueueService
 		return count($recipients);
 	}
 	/**
+	 * Cancels pending/failed queue rows for a subscriber before the live record is removed.
+	 *
+	 * Historical sent/cancelled rows remain immutable. A currently processing row
+	 * cannot safely be cancelled here and is reported to the caller.
+	 *
+	 * @param int $subscriberId Subscriber ID.
+	 *
+	 * @return bool False when a row is currently being processed.
+	 */
+	public function cancelForSubscriber(int $subscriberId): bool
+	{
+		if ($subscriberId <= 0)
+		{
+			return false;
+		}
+
+		$select = $this->db->getQuery(true)
+			->select($this->db->quoteName('id'))
+			->from($this->db->quoteName('#__pungamail_send_queue'))
+			->where($this->db->quoteName('subscriber_id') . ' = :subscriberId')
+			->whereIn($this->db->quoteName('status'), ['pending', 'failed'], ParameterType::STRING)
+			->bind(':subscriberId', $subscriberId, ParameterType::INTEGER);
+		$ids = array_map('intval', $this->db->setQuery($select)->loadColumn());
+
+		if ($ids !== [])
+		{
+			$this->cancel($ids);
+		}
+
+		// Check after cancellation so a worker that claimed a pending row while the
+		// delete action was running is detected before the subscriber is removed.
+		$processing = $this->db->getQuery(true)
+			->select('COUNT(*)')
+			->from($this->db->quoteName('#__pungamail_send_queue'))
+			->where($this->db->quoteName('subscriber_id') . ' = :subscriberId')
+			->where($this->db->quoteName('status') . ' = ' . $this->db->quote('processing'))
+			->bind(':subscriberId', $subscriberId, ParameterType::INTEGER);
+
+		return (int) $this->db->setQuery($processing)->loadResult() === 0;
+	}
+
+	/**
 	 * Resets failed queue entries so the queue processor can try them again.
 	 *
 	 * @param array<int,int> $ids Queue row IDs.

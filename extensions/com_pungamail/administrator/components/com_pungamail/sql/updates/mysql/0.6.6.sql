@@ -1,0 +1,2 @@
+-- Punga Mail 0.6.6
+-- Clickable Automatic Newsletter state icon in the administrator list; no schema change required.

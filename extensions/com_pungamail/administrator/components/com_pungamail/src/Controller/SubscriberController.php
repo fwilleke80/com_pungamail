@@ -13,6 +13,7 @@ use Joomla\CMS\Date\Date;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
+use Joomla\CMS\Response\JsonResponse;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
@@ -244,7 +245,7 @@ final class SubscriberController extends BaseController
 		$this->guard();
 		$id = Factory::getApplication()->getInput()->getInt('id');
 		ServiceFactory::subscribers()->unsubscribe($id, 'administrator');
-		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=audience&screen=subscribers', false), Text::_('COM_PUNGAMAIL_SUBSCRIBER_SUPPRESSED'));
+		$this->setRedirect(Route::_(AdministratorRoute::subscribers(), false), Text::_('COM_PUNGAMAIL_SUBSCRIBER_SUPPRESSED'));
 	}
 
 	/**
@@ -261,7 +262,7 @@ final class SubscriberController extends BaseController
 
 		if ($subscriber === null)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=audience&screen=subscribers', false), Text::_('COM_PUNGAMAIL_ERROR_SUBSCRIBER_NOT_FOUND'), 'error');
+			$this->setRedirect(Route::_(AdministratorRoute::subscribers(), false), Text::_('COM_PUNGAMAIL_ERROR_SUBSCRIBER_NOT_FOUND'), 'error');
 			return;
 		}
 
@@ -271,16 +272,105 @@ final class SubscriberController extends BaseController
 		$newId = $repo->storePendingExternal((string) $subscriber->email, $tokenData['hash'], $expires, (string) ($subscriber->language ?? 'en-GB'));
 		ServiceFactory::mail()->sendConfirmation((string) $subscriber->email, $tokenData['token']);
 		$repo->recordEvent($newId, 'confirmation_sent', null, null, ['source' => 'administrator']);
-		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=audience&screen=subscribers', false), Text::_('COM_PUNGAMAIL_CONFIRMATION_SENT'));
+		$this->setRedirect(Route::_(AdministratorRoute::subscribers(), false), Text::_('COM_PUNGAMAIL_CONFIRMATION_SENT'));
+	}
+
+	/**
+	 * Returns Channel eligibility for the current unsaved recipient selection.
+	 *
+	 * This keeps the editor responsive without duplicating Joomla group logic in
+	 * JavaScript. Final save still performs the same server-side eligibility check.
+	 *
+	 * @return void
+	 */
+	public function channelEligibility(): void
+	{
+		$app = Factory::getApplication();
+
+		try
+		{
+			$user = $app->getIdentity();
+
+			if (!$user->authorise('core.create', 'com_pungamail') && !$user->authorise('core.edit', 'com_pungamail'))
+			{
+				throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+			}
+
+			if (!Session::checkToken('post'))
+			{
+				throw new \RuntimeException(Text::_('JINVALID_TOKEN'), 403);
+			}
+
+			$recipientType = $app->getInput()->post->getCmd('recipient_type', 'email');
+			$userId = max(0, $app->getInput()->post->getInt('user_id'));
+			$effectiveUserId = null;
+
+			if ($recipientType === 'user' && $userId > 0)
+			{
+				$db = ServiceFactory::database();
+				$query = $db->getQuery(true)
+					->select([$db->quoteName('id'), $db->quoteName('email'), $db->quoteName('block')])
+					->from($db->quoteName('#__users'))
+					->where($db->quoteName('id') . ' = :id')
+					->bind(':id', $userId, \Joomla\Database\ParameterType::INTEGER);
+				$selectedUser = $db->setQuery($query)->loadObject();
+
+				if ($selectedUser !== null && (int) $selectedUser->block === 0 && filter_var((string) $selectedUser->email, FILTER_VALIDATE_EMAIL))
+				{
+					$effectiveUserId = (int) $selectedUser->id;
+				}
+			}
+
+			$topics = ServiceFactory::topics()->availableForAdministration();
+			$ids = array_map(static fn (object $topic): int => (int) $topic->id, $topics);
+			$eligibleIds = ServiceFactory::topics()->eligibleIds($ids, $effectiveUserId, false);
+			echo new JsonResponse(['eligible_ids' => $eligibleIds]);
+		}
+		catch (\Throwable $e)
+		{
+			echo new JsonResponse(null, ErrorMessage::sanitize($e), true);
+		}
+
+		$app->close();
 	}
 
 	/** @return void */
 	public function clearBounceSuppression(): void
 	{
-		$this->guard();
-		$id = Factory::getApplication()->getInput()->getInt('id');
-		ServiceFactory::subscribers()->clearBounceSuppression($id);
-		$this->setRedirect(Route::_(AdministratorRoute::subscribers(), false), Text::_('COM_PUNGAMAIL_BOUNCE_SUPPRESSION_CLEARED'));
+		$app = Factory::getApplication();
+		$id = max(0, $app->getInput()->post->getInt('subscriber_id'));
+		$returnContext = $app->getInput()->post->getCmd('return_context', 'subscribers');
+		$this->guardBounceRecovery();
+		$returnUrl = $returnContext === 'subscriber' && $id > 0
+			? AdministratorRoute::subscriber($id)
+			: AdministratorRoute::subscribers();
+
+		if ($id <= 0 || !ServiceFactory::subscribers()->clearBounceSuppression($id))
+		{
+			$this->setRedirect(Route::_($returnUrl, false), Text::_('COM_PUNGAMAIL_BOUNCE_SUPPRESSION_NOT_CLEARED'), 'error');
+			return;
+		}
+
+		$this->setRedirect(Route::_($returnUrl, false), Text::_('COM_PUNGAMAIL_BOUNCE_SUPPRESSION_CLEARED'));
+	}
+
+
+	/**
+	 * Verifies permission to restore delivery after a bounce suppression.
+	 *
+	 * @return void
+	 */
+	private function guardBounceRecovery(): void
+	{
+		if (!Factory::getApplication()->getIdentity()->authorise('core.edit', 'com_pungamail'))
+		{
+			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+		}
+
+		if (!Session::checkToken())
+		{
+			throw new \RuntimeException(Text::_('JINVALID_TOKEN'), 403);
+		}
 	}
 
 	/**

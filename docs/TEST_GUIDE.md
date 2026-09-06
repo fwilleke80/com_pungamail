@@ -1,60 +1,61 @@
-# Punga Mail 0.3.6 Live Acceptance Test Guide
+# Punga Mail 0.6.7 Live Acceptance Test Guide
 
-This guide is for a Joomla administrator testing Punga Mail on a real installation. It covers the extension's administrator screens, frontend features, mail generation, automation, delivery controls, consent safeguards, and important regressions.
+This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
-Work through the tests in order on a staging copy first. A live-site test can send real mail, alter subscriptions, or expose test content if the preparation below is skipped.
+Use a staging clone first whenever possible. Several tests intentionally send mail, alter subscription state, create queue records, or suppress an address.
 
 ## How to record a test
 
 For every test, record:
 
 - result: **Pass**, **Fail**, **Blocked**, or **Not applicable**;
-- date, tester, Joomla version, PHP version, and Punga Mail version;
-- the test account, topic, newsletter, or digest used;
-- screenshots of unexpected results;
-- the exact error message and relevant Joomla log entry for a failure;
-- whether the cleanup step was completed.
+- date, tester, Joomla version, PHP version, database type/version, and Punga Mail version;
+- the relevant account, Channel, newsletter, Automatic Newsletter, template, or content type;
+- screenshots for unexpected UI behavior;
+- the exact error message and relevant Joomla/PHP log entry for failures;
+- whether cleanup was completed.
 
-A test passes only when every expected result is true. Do not mark a test as passed merely because no error page appeared.
+A test passes only when all expected results are true. “No error page appeared” is not enough.
 
 ## Safe test setup
 
-1. Make a current database and file backup and confirm how it will be restored.
-2. Prefer a staging clone with the same Joomla, PHP, database, mail, cron, and SEF configuration as the live site.
-3. In **Components → Punga Mail → Options → Queue**, set **Pause queue processing** to **Yes** and save.
-4. Temporarily disable the Punga Mail Scheduled Tasks until their individual tests.
-5. Create a private topic named `PM Test <date>` and target only that topic during send tests.
-6. Use mailboxes controlled by the tester. Never use invented addresses at somebody else's domain.
-7. Create these Joomla users with different controlled mailboxes:
-
-   - **Test Registered**: ordinary Registered user;
-   - **Test Special**: member of a group allowed to see a test Special access level;
-   - **Test Manager**: administrator allowed to manage Punga Mail but not Super User;
-   - **Test Restricted**: administrator without Punga Mail management permission.
-
-8. Prepare one controlled external subscriber address that is not a Joomla user.
-9. Create and publish these harmless test content items, each with a distinctive title:
-
+1. Make a current database and file backup and verify how to restore it.
+2. Prefer a staging clone with the same Joomla, PHP, database, mail, cron, SEF, and timezone configuration as production.
+3. Open **Components → Punga Mail → Options → Send queue**, set **Pause queue processing** to **Yes**, and save.
+4. Temporarily disable Punga Mail Scheduled Tasks until their dedicated tests.
+5. Create a published Channel named `PM Test <date>` and use it for controlled recipient tests.
+6. Use only mailboxes controlled by the tester. Do not use invented addresses at somebody else’s domain.
+7. Create these Joomla users with controlled addresses:
+   - **Test Registered** — ordinary Registered user;
+   - **Test Special** — member of a group allowed to view a Special/custom-access test item;
+   - **Test Manager** — administrator allowed to manage Punga Mail but not Joomla Super User;
+   - **Test Restricted** — administrator without Punga Mail management permission.
+8. Prepare one controlled external subscriber address that is not attached to a Joomla user.
+9. Create harmless content with distinctive titles:
    - a Public item;
    - a Registered item;
    - a Special/custom-access item visible only to Test Special;
-   - a Public unpublished item;
-   - optionally, equivalent items from another extension that correctly registers a Joomla content type.
-
-10. Create a hidden but published menu item of type **Punga Mail → Newsletter subscription** with **Public** access.
-11. If bounce testing is planned, use a dedicated mailbox and a controlled mail system capable of producing known delivery-status notifications.
-12. Write down the site's configured timezone from **System → Global Configuration**. Scheduled times in this guide refer to that displayed site timezone.
+   - an unpublished item;
+   - at least one item from a non-core extension that correctly registers a Joomla content type, if available.
+10. For the non-core content type, choose one whose source table contains a useful type-specific field such as an event start date, venue, price, author, or similar value. This is used to test central Content Layouts.
+11. Create a published menu item of type **Punga Mail → Newsletter subscription**. It may live in a hidden menu but must remain accessible to recipients.
+12. Publish a **Punga Mail Signup** module on a test page.
+13. If returned-mail testing is planned, use a dedicated mailbox and a controlled mail system that can produce known permanent and temporary delivery-status notifications.
+14. Record the Joomla site timezone from **System → Global Configuration**. Scheduled times in this guide refer to the site timezone shown in the administrator UI.
 
 ## Recommended execution order
 
 Run the sections in this order:
 
-1. installation, navigation, options, and non-sending administration;
-2. topics, subscribers, module, profile, and consent flows;
-3. templates, composition, preview, and preflight;
-4. import/export and security checks;
-5. test mail, queue, scheduling, digests, browser view, and statistics;
-6. bounce processing last, because it intentionally changes delivery status.
+1. installation, update, navigation, Dashboard, and Options;
+2. Audience: Channels, Subscribers, frontend signup, and Joomla profile;
+3. Design: Templates, Content Layouts, and rendering;
+4. Newsletter authoring, preview, Preflight, duplication, and scheduling;
+5. Automatic Newsletters;
+6. Delivery queue, Custom SMTP, browser view, and statistics;
+7. import/export and Scheduled Tasks;
+8. returned-mail processing last, because it intentionally changes delivery state;
+9. ACL, privacy, language, responsive UI, and end-to-end regressions.
 
 Keep the global queue paused except where a test explicitly says to resume it.
 
@@ -64,97 +65,124 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 ### PM-001 — Fresh package installation
 
-**Prerequisite:** A clean Joomla test installation and the Punga Mail package ZIP.
+**Prerequisite:** Clean Joomla test installation and the current Punga Mail package ZIP.
 
 **Steps:**
 
 1. Open **System → Install → Extensions**.
 2. Upload the Punga Mail package.
-3. Wait for Joomla's success message.
+3. Wait for Joomla’s success message.
 4. Open **System → Manage → Extensions** and search for `Punga Mail`.
 5. Open **Components → Punga Mail**.
 
-**Expected:** The package installs without an SQL or prepared-statement error. The component, signup module, user plugin, and task plugin are installed. The user and task plugins are enabled. The dashboard opens without a database-column error.
+**Expected:** The package installs without SQL/prepared-statement errors. The component, signup module, user plugin, and task plugin are installed. Required plugins are enabled. The Dashboard opens without an unknown-column or migration error.
 
-### PM-002 — Update from an existing 0.2.x/0.3.x installation
+### PM-002 — Update from an older installation
 
-**Prerequisite:** A restored copy of an older Punga Mail database containing at least one subscriber, topic/template if supported by that version, newsletter, and sent snapshot.
+**Prerequisite:** Restored copy of an older Punga Mail installation containing representative subscribers, Channels, templates, newsletters, sent snapshots, and if available Automatic Newsletters.
 
 **Steps:**
 
-1. Record the existing IDs and take screenshots of the records.
+1. Record representative IDs and take screenshots of important records.
 2. Install the current package as an update.
-3. Open **System → Maintenance → Database** and select **Check Database** if offered.
-4. Open every Punga Mail main page.
-5. Recheck the recorded records and sent snapshot.
+3. Open **System → Maintenance → Database** and use Joomla’s database check/repair if offered.
+4. Open every Punga Mail top-level section.
+5. Reopen the recorded records and a historic sent newsletter.
+6. If upgrading from before 0.6.0, open **Design → Content layouts** and inspect the migrated Default layout.
 
-**Expected:** The update completes without SQL errors. No dashboard migration warning remains. Existing IDs and data are preserved. The subscriber page and Joomla user profile save without `recipient_name` or other missing-column errors. A historic sent newsletter remains unchanged.
+**Expected:** Update completes without SQL errors. Existing data and IDs remain intact. Historic sent snapshots are unchanged. The former global selected-content layout is migrated to the central Default Content Layout. Legacy per-newsletter/template layout data, if present, is preserved rather than silently destroyed.
 
 ### PM-003 — Reinstall the same package safely
 
 **Steps:**
 
 1. Back up the database.
-2. Install the current package over the same version.
-3. Reopen the dashboard and one record from each area.
+2. Install the same package version over itself.
+3. Reopen the Dashboard and one record from each main area.
 
-**Expected:** Installation succeeds, no data is duplicated or deleted, and no migration warning or unknown-column error appears.
+**Expected:** Reinstall succeeds without duplicating or deleting data and without migration/unknown-column warnings.
 
 ### PM-004 — Uninstall data policy
 
-**Prerequisite:** A disposable clone only.
+**Prerequisite:** Disposable clone only.
 
 **Steps:**
 
 1. Leave **Options → Maintenance / Data → Uninstall: Remove database tables** set to **No**.
-2. Uninstall the Punga Mail package and reinstall it.
-3. Confirm that the test data remains.
-4. On a newly restored disposable clone, set the option to **Yes**, save, and uninstall again.
+2. Uninstall Punga Mail and reinstall it.
+3. Confirm that existing Punga Mail data remains.
+4. Restore the disposable clone, set the option to **Yes**, save, and uninstall again.
 
-**Expected:** The default uninstall preserves data. The explicit destructive option removes Punga Mail data. The option is clearly labelled and does not default to deletion.
+**Expected:** Default uninstall preserves data. Explicit destructive uninstall removes Punga Mail tables. The destructive option is clearly labelled and never defaults to Yes.
 
-### PM-005 — Administrator navigation and page discovery
+### PM-005 — Current administrator navigation
 
 **Steps:**
 
 1. Open **Components → Punga Mail**.
-2. Visit Dashboard, Newsletters, Templates, Channels, Subscribers, Automatic Newsletters, Delivery, Import/Export, and Options.
-3. From a list, open an editor, preview, preflight, or detail page.
+2. Verify the sidebar contains: **Dashboard**, **Newsletters**, **Automatic Newsletters**, **Audience**, **Design**, **Delivery**, and **Tools**.
+3. Open **Audience** and switch between **Subscribers** and **Channels**.
+4. Open **Design** and switch between **Templates** and **Content layouts**.
+5. Open **Tools** and verify Import / Export is available.
+6. Open an editor from Audience and Design, then Save & Close or Cancel.
 
-**Expected:** Every area is reachable and uses the normal Joomla administrator style. The Punga Mail submenu stays expanded and highlights the owning section on secondary pages. No untranslated key, PHP warning, or 404 appears.
+**Expected:** No old child section appears as an unnecessary first-level sidebar item. Audience/Design tabs work, their parent sidebar entry remains active, and editor actions return to the correct grouped section rather than Dashboard. No untranslated key, PHP warning, 404, or collapsed/wrong sidebar state appears.
 
-### PM-006 — Dashboard totals and links
-
-**Steps:**
-
-1. Note the dashboard counts for subscriber, newsletter, and queue states.
-2. Compare them with filtered lists in the corresponding pages.
-3. Follow every dashboard link and action.
-
-**Expected:** Counts agree with the lists. Links open the intended Punga Mail or Joomla Scheduled Tasks page. **Process queue now** produces a useful result and, while globally paused, does not mark queued recipients failed.
-
-### PM-007 — Dashboard task notices
+### PM-006 — Options toolbar consistency
 
 **Steps:**
 
-1. Ensure no Punga Mail tasks exist; enable one digest, schedule one newsletter, and configure a bounce mailbox.
-2. Reopen the dashboard.
-3. Create and enable each missing task type, returning to the dashboard after each one.
+1. Open Dashboard, Newsletters, Automatic Newsletters, Audience, Design, Delivery, and Tools.
+2. Inspect the Joomla toolbar on each main section.
 
-**Expected:** Contextual notices identify the missing digest, scheduled-newsletter, bounce, and normal queue tasks. Each notice disappears when the corresponding enabled Scheduled Task exists. Notices do not demand unused task types.
+**Expected:** Main backend sections provide a consistent **Options** action where component options are applicable. Clicking it opens **Punga Mail: Options**.
 
-### PM-008 — Incomplete-database warning
-
-**Prerequisite:** A disposable clone on which an administrator can deliberately restore an older Punga Mail schema.
+### PM-007 — Dashboard cards, quick actions, and links
 
 **Steps:**
 
-1. Restore an older component database schema while keeping the current files.
-2. Open the dashboard.
-3. Use Joomla's database/update repair or reinstall the package.
-4. Reopen the dashboard.
+1. Note the Dashboard counts and compare them with the corresponding filtered lists.
+2. Verify Quick Actions include at least New Newsletter, New Automatic Newsletter, subscriber creation, Channels, and **Templates**.
+3. Follow each Quick Action.
+4. If queue items exist, use **Process queue now** while global queue processing is paused.
 
-**Expected:** The dashboard shows a clear migration warning rather than crashing. After repair, the warning disappears and all pages open normally.
+**Expected:** Counts agree with the underlying lists. Quick Actions open the intended page. Templates appears next to Channels. Manual queue processing while globally paused reports the paused state without falsely failing queued recipients.
+
+### PM-008 — Upcoming mail on Dashboard
+
+**Steps:**
+
+1. Schedule an ordinary Newsletter for a future time.
+2. Enable an Automatic Newsletter with a future next run.
+3. Return to Dashboard.
+
+**Expected:** Upcoming ordinary **Scheduled Newsletter** and **Automatic Newsletter** are both shown and clearly distinguishable, with correct site-timezone dates and useful links.
+
+### PM-009 — Dashboard task and migration notices
+
+**Steps:**
+
+1. Configure features that require tasks (queue, scheduled newsletter, Automatic Newsletter, returned-mail mailbox, optional reminder) while the corresponding tasks are absent or disabled.
+2. Reopen Dashboard.
+3. Add/enable each required task and recheck.
+4. On a disposable clone, temporarily create an incomplete schema situation and reopen Dashboard.
+
+**Expected:** Dashboard shows only relevant missing-task warnings and removes them when corrected. An incomplete schema produces a clear repair/update warning rather than a crash.
+
+### PM-009A — Returned-mail attention acknowledgement
+
+**Prerequisite:** Latest returned-mail check has newly suppressed at least one address.
+
+**Steps:**
+
+1. Open Dashboard and locate **Needs your attention**.
+2. Confirm the suppression warning offers **Review** and **Mark as reviewed**.
+3. Click **Review**, inspect Delivery, and return.
+4. Click **Mark as reviewed**.
+5. Verify the subscriber’s delivery state and returned-mail history.
+6. Later perform another check that newly suppresses another address.
+
+**Expected:** Mark as reviewed removes only that Dashboard warning. It does not unsuppress/delete the subscriber or erase bounce history. A later suppression creates a fresh attention item.
 
 ---
 
@@ -166,1376 +194,1337 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 1. Open **Punga Mail → Options**.
 2. Toggle **Inline Help**.
-3. Change one harmless field, save, leave the page, and reopen it.
+3. Change one harmless setting, save, leave the page, and reopen it.
 
-**Expected:** Help text toggles normally, the localized title is **Punga Mail: Options**, and the saved value persists.
+**Expected:** Help toggles normally, the title is **Punga Mail: Options**, and the saved value persists.
 
 ### PM-011 — Sender and Reply-To settings
 
 **Steps:**
 
-1. Under **Mail**, enter a valid From name and From email.
+1. Set a valid From name and From email.
 2. Test Reply-To modes **None** and **Custom**.
-3. For Custom, enter a valid address/name, save, and later inspect a test message's headers.
-4. Enter an invalid From or Reply-To address and run newsletter preflight.
+3. With Custom, set an address/name and save.
+4. Later inspect a controlled test message’s headers.
+5. Try an invalid From or Reply-To address and run Preflight/test mail.
 
-**Expected:** Valid values persist and produce the expected `From` and `Reply-To` headers. None omits the custom Reply-To. Invalid addresses are rejected or become a blocking preflight error.
+**Expected:** Valid values persist and produce the expected headers. None omits a custom Reply-To. Invalid addresses are rejected or block sending clearly.
 
-### PM-012 — Default subscription for new Joomla users
-
-**Steps:**
-
-1. Set **New Joomla users subscribed by default** to **No** and register a controlled user.
-2. Confirm that the user is not globally subscribed.
-3. Set it to **Yes** and register another controlled user.
-4. Inspect both in Subscribers and their profiles.
-
-**Expected:** Only the second new user receives the configured default. Existing users are not silently changed when the option changes.
-
-### PM-013 — Global body heading modes
+### PM-012 — Outgoing transport: Joomla settings
 
 **Steps:**
 
-1. Set the global heading to a literal test heading and preview a newsletter with no override.
-2. Set it to `{site_name}` and preview again.
-3. Set it to empty and preview again.
-4. Repeat with a test mail and, later, a browser version.
+1. Set **Outgoing transport** to **Use Joomla settings**.
+2. Save Options.
+3. Send a controlled mail from Delivery and a Newsletter test mail.
 
-**Expected:** The literal text, Joomla site name, and no-heading states render exactly as configured. Empty does not silently fall back to the site name. Preview, test mail, real mail, and browser snapshot use the same result.
+**Expected:** Punga Mail uses Joomla’s globally configured mail transport, while honoring Punga Mail’s resolved From/Reply-To settings. No Custom SMTP credentials are required.
 
-### PM-014 — Global visual design fields
+### PM-013 — Outgoing transport: Custom SMTP
 
-**Steps:**
-
-1. Record the current values.
-2. Set distinctive but readable values for content width, outer/content backgrounds, text/heading/link colours, font family, font size, padding, logo URL/width, footer colour, and footer reason Markdown.
-3. Add harmless custom CSS such as a border on the content container.
-4. Preview and send a test message to at least one desktop and one mobile mail client.
-
-**Expected:** Every value is saved and visibly applied where supported. Width, font size, padding, and logo width respect their documented limits. The email remains readable in clients that ignore optional CSS. Footer Markdown renders and the standard unsubscribe facility remains present.
-
-**Cleanup:** Restore the original design values.
-
-### PM-015 — Subscription security/timing options
+**Prerequisite:** Controlled SMTP account dedicated to testing.
 
 **Steps:**
 
-1. Record the current confirmation lifetime, hourly IP limit, and resend interval.
-2. Set short, test-friendly values within the displayed limits and save.
-3. Request confirmation twice within the resend interval.
-4. In a controlled staging environment, exceed the hourly IP limit.
-5. Try an expired confirmation token after the configured lifetime.
+1. Select **Custom SMTP**.
+2. Enter the provider’s host, port, security mode, authentication setting, username, and password.
+3. Save the secure SMTP settings using the provided action.
+4. Send a test message.
+5. Reopen Options and verify the password is not displayed.
+6. Leave the password blank, change a harmless SMTP setting, save again, and retest.
+7. Inspect Delivery diagnostics.
 
-**Expected:** Duplicate confirmation mail is throttled, excessive requests are limited without disclosing whether an address exists, and an expired token cannot confirm. Values outside the allowed ranges cannot be saved.
+**Expected:** Punga Mail sends through the dedicated SMTP account without changing Joomla’s global mail account. Stored password is never revealed. Blank password on later save preserves the stored secret. Diagnostics identify Custom SMTP and host without exposing credentials.
 
-### PM-016 — Confirmation mail subject and Markdown
-
-**Steps:**
-
-1. Customize the confirmation subject and body with `{site_name}`, `{email}`, and `{confirmation_url}`.
-2. Start a guest subscription.
-3. Inspect both HTML/text content and follow the URL.
-
-**Expected:** Placeholders are replaced correctly; no raw placeholder remains. The URL confirms only the intended request and is safe to use once.
-
-### PM-017 — Queue and retry settings
+### PM-014 — Custom SMTP validation and failure handling
 
 **Steps:**
 
-1. Record batch size, maximum attempts, and retry interval.
-2. Set small test values, save, and reopen Options.
-3. Run the later controlled queue-retry test.
+1. Temporarily enter a wrong SMTP host, port, username, or password.
+2. Use the SMTP test action.
+3. Restore valid settings.
 
-**Expected:** Values persist and stay within displayed limits. These settings control the existing queue; no duplicate rate/batch/retry setting appears elsewhere.
+**Expected:** Failure is reported clearly without exposing the password. No unrelated component state changes. Restoring correct settings makes the test succeed.
 
-### PM-018 — Bounce mailbox configuration and password secrecy
-
-**Steps:**
-
-1. Open **Options → Bounce / return mailbox**.
-2. Enter server, port, security/protocol choice, folder, username, password, bounce address, certificate-validation choice, and temporary-failure threshold.
-3. Save and reopen Options.
-4. Inspect the page source and browser password-manager-visible value.
-5. Save another unrelated option while leaving the password blank.
-
-**Expected:** Mailbox settings live in Component Options, not on the Delivery page. The stored password is never returned to the browser or displayed. Leaving it blank preserves the existing secret. Other values persist.
-
-### PM-019 — Bounce mailbox connection test
+### PM-015 — Global mail design
 
 **Steps:**
 
-1. In the bounce mailbox field, test intentionally invalid connection details.
-2. Correct the details and test again.
+1. Set distinctive but readable values for mail heading, width, backgrounds, text/heading/link colors, font, padding, logo, footer color/reason, and harmless custom CSS.
+2. Preview a newsletter and send a test message to desktop and mobile clients.
+3. Test mail heading as literal text, `{site_name}`, and empty.
 
-**Expected:** Failure is reported inside the Joomla administrator UI with a useful, sanitized message. Correct settings succeed. Neither result exposes the password or produces an unstyled Joomla 500 page.
+**Expected:** Preview/test mail consistently reflect settings. Empty heading remains empty. Styles remain readable and structurally email-safe.
 
-### PM-020 — Reminder options
-
-**Steps:**
-
-1. Open **Options → Newsletter reminder** and verify the explanatory note appears above the settings.
-2. Use Joomla’s inline-help toggle and verify Enable reminder, days, recipient email, subject, and Markdown all have useful help text.
-3. Enable the reminder and set days, recipient email, subject, and Markdown using `{days}`, `{last_newsletter}`, `{last_sent_date}`, and `{site_name}`.
-4. Save and run PM-275 later.
-5. Disable the reminder and run the task again.
-
-**Expected:** The tab explains the feature before configuration, every relevant field participates in inline help, settings persist, placeholders resolve, and disabled means no reminder is sent.
-
-### PM-021 — Mail diagnostics
+### PM-016 — Browser view option
 
 **Steps:**
 
-1. Open **Delivery / Bounces** and review diagnostics.
-2. Compare the outgoing transport source/mailer/sender values and Punga Mail batch/retry values with Global Configuration and Component Options. When Custom SMTP is selected, verify the custom host is shown without exposing credentials.
-3. Check IMAP availability and queue state.
+1. Enable browser view, save, send a controlled newsletter, and open its browser-view link.
+2. Disable browser view and repeat with a new newsletter.
 
-**Expected:** Locally knowable values are accurate. Missing IMAP is clearly reported. SPF, DKIM, and DMARC appear only as guidance unless genuinely checked; the page does not claim to configure DNS.
+**Expected:** Enabled mail contains a valid browser-view link to the immutable sent snapshot. Disabled mail does not expose one. Drafts cannot be publicly enumerated through browser-view URLs.
 
-### PM-022 — Punga Mail Custom SMTP
+### PM-017 — Subscription and confirmation options
 
 **Steps:**
 
-1. Confirm an upgraded site initially shows **Use Joomla settings** and sends through the same Joomla transport as before the update.
-2. Under **Options → Mail**, configure a controlled Custom SMTP account with host, port, security, authentication, username, password, From name/address, and a controlled test recipient.
-3. Use **Save outgoing mail settings**, reopen Options, and verify the password is not displayed or present in page source.
-4. Use the section's **Send test mail**, first with valid values and then with a controlled invalid host or credential.
-5. Leave Password blank, change another SMTP value, save/test again, and verify the previously stored password is retained.
-6. Save the Punga Mail From name/address using Joomla's normal Options **Save** action and send a Delivery-page test.
-7. Send a controlled Newsletter and a confirmation/reminder/Automatic Newsletter notification where practical.
-8. Switch back to **Use Joomla settings** and verify Joomla's global mail transport is used again without deleting the stored Custom SMTP secret.
+1. Set confirmation lifetime, signup rate limit, resend delay, confirmation subject, and confirmation Markdown.
+2. Use placeholders such as `{confirmation_url}`, `{site_name}`, and `{email}`.
+3. Run a controlled guest signup.
 
-**Expected:** Custom SMTP affects Punga Mail only; Joomla system mail is unchanged. All Punga Mail mail paths use the selected transport. The SMTP password is stored encrypted and never returned to the browser. Invalid connection data produces a sanitized Joomla administrator error. From/Reply-To behavior remains separate from SMTP authentication. Users without `core.admin` cannot save or test stored SMTP/IMAP account credentials by calling the controller directly.
+**Expected:** Values persist. Confirmation mail renders Markdown and placeholders correctly. Expired/altered links fail safely. Resend/rate limits are enforced.
+
+### PM-018 — Default subscription for new Joomla users
+
+**Steps:**
+
+1. Set **New Joomla users subscribed by default** to No and create a controlled Joomla user.
+2. Set it to Yes and create another controlled user.
+3. Inspect both users in Audience → Subscribers/profile.
+
+**Expected:** Only the second account receives the configured default. Changing the option does not silently rewrite existing explicit preferences.
+
+### PM-019 — Queue and retry options
+
+**Steps:**
+
+1. Record global queue pause, batch size, maximum attempts, and retry delay.
+2. Change them to safe test values and save.
+3. Use queue tests later to verify behavior.
+
+**Expected:** Settings persist and are reflected by queue processing. Global pause does not itself mark mail failed.
+
+### PM-020 — Returned-mail mailbox configuration and password secrecy
+
+**Steps:**
+
+1. Enter return mailbox host, port/security, folder, username, and password.
+2. Save using the secure mailbox action.
+3. Reopen Options.
+4. Leave password blank, change another mailbox value, and save again.
+
+**Expected:** Password is not redisplayed and is stored separately from normal Joomla component parameters. Blank password preserves the existing secret.
+
+### PM-021 — Returned-mail connection test
+
+**Steps:**
+
+1. Use valid mailbox settings and click the mailbox connection test.
+2. Temporarily use invalid credentials and test again.
+3. Restore the valid values.
+
+**Expected:** Success/failure is reported clearly. Invalid credentials do not leak secrets or corrupt subscriber state.
+
+### PM-022 — Temporary-failure threshold wording
+
+**Steps:**
+
+1. Inspect **Temporary failures before blocking address** and its help text.
+2. Set the threshold to 3.
+3. Compare the wording with Delivery/Subscriber bounce-state wording later.
+
+**Expected:** UI explicitly states the threshold applies only to temporary/soft failures and that a permanent/hard failure stops delivery immediately.
+
+### PM-023 — Reminder options
+
+**Steps:**
+
+1. Enable Newsletter reminder.
+2. Configure age threshold, recipient, subject, and Markdown with supported placeholders.
+3. Run the Scheduled Task test later.
+
+**Expected:** Settings persist, help explains the feature in user-facing language, and mail content renders correctly.
+
+### PM-024 — Automatic Newsletter draft notification options
+
+**Steps:**
+
+1. Enable draft notifications and configure an explicit recipient address.
+2. Run a draft-producing Automatic Newsletter later.
+3. Repeat with Automatic send mode.
+
+**Expected:** Draft mode can notify the configured reviewer with useful context and direct admin link. Automatic-send mode does not send the draft-review notification.
 
 ---
 
 ## C. Channels
 
-### PM-030 — Create a topic
+### PM-030 — Create a Channel
 
 **Steps:**
 
-1. Open **Channels → New**.
-2. Enter a title and description, leave Alias blank, and choose Published.
-3. Click **Save** and then **Save & Close**.
+1. Open **Audience → Channels**.
+2. Create a Channel with title, alias/description as available, and publish it.
+3. Save & Close and reopen it.
 
-**Expected:** Both toolbar buttons exist. Save remains in the editor; Save & Close returns to the list. A unique URL-safe alias is generated and the record appears with title, description, alias, member count, state, ordering, and ID.
+**Expected:** Channel persists, appears in the list, and the Audience sidebar/tab context remains correct.
 
 ### PM-031 — Validation and unique alias
 
 **Steps:**
 
-1. Try to save a topic without a title.
-2. Try to create another topic with the same explicit alias.
+1. Attempt to create invalid/duplicate Channel data where applicable.
+2. Save.
 
-**Expected:** Required-title validation is clear. A duplicate alias is prevented or made predictably unique; existing data is not overwritten.
+**Expected:** Validation reports the problem without losing unrelated field values or leaving a partial record.
 
-### PM-032 — Channel list controls
-
-**Steps:**
-
-1. Create several topics with different titles/states.
-2. Test search, published-state filter, every sortable column, ordering controls, and pagination at a small page size.
-
-**Expected:** Filters, sorting, ordering, and pagination show the correct stable records. Clearing filters restores the full list.
-
-### PM-032A — Drag Channel ordering
+### PM-032 — Channel list controls and ordering
 
 **Steps:**
 
-1. Sort the Channels table by **Ordering**.
-2. Drag several Channels into a different order using the Joomla drag handles.
-3. Reload the page and open the public Newsletter page or a signup module that offers all Channels.
-4. Sort the administrator table by Title and verify that dragging is disabled until Ordering is selected again.
+1. Sort/filter the Channel list.
+2. Reorder Channels using the supported ordering controls.
+3. Reload the page.
 
-**Expected:** No raw ordering number needs to be edited. The dragged order persists after reload and is used by public Channel choices. Handles behave like Joomla core list ordering and do not imply reordering while another sort column is active.
+**Expected:** Filtering/sorting work and manual ordering persists.
 
 ### PM-033 — Publish, unpublish, trash, restore, and delete
 
 **Steps:**
 
-1. Select a disposable topic and use Publish and Unpublish.
-2. Trash it, filter for Trashed, restore it, then trash it again and delete it.
+1. Exercise publish/unpublish on a test Channel.
+2. Trash it, filter Trash, restore it, then permanently delete only a disposable Channel.
 
-**Expected:** Every state action works through Joomla conventions, requires a selected record, and shows an appropriate message. Permanent deletion is limited to trashed records.
+**Expected:** Joomla lifecycle actions behave normally. Existing memberships are not silently reassigned.
 
-### PM-034 — Protect an in-use topic
-
-**Steps:**
-
-1. Assign a topic to a subscriber, newsletter, module, or digest.
-2. Trash it and attempt permanent deletion.
-
-**Expected:** Destructive deletion is blocked or safely handles all dependencies; no orphan relation or SQL error is produced.
-
-### PM-035 — Topic member count
+### PM-034 — Channel eligibility: everyone
 
 **Steps:**
 
-1. Note a topic's count.
-2. Add one controlled subscriber to it, refresh, then remove that membership and refresh again.
+1. Configure a Channel for everyone/external subscribers.
+2. View the signup page/module logged out and logged in.
 
-**Expected:** The count changes by one in each direction and does not double-count one email.
+**Expected:** External email-only visitors can subscribe, subject to normal confirmation rules.
 
-### PM-036 — Topic checkout and Global Check-in
+### PM-035 — Channel eligibility: registered users
 
 **Steps:**
 
-1. Open an existing topic for editing and close the browser tab without Save & Close or Cancel.
-2. Open Joomla's **System → Maintenance → Global Check-in**.
-3. Check in the Punga Mail topic table.
-4. Repeat, this time using Cancel.
+1. Configure a Channel for registered Joomla users only.
+2. Compare logged-out visitor, ordinary logged-in user, and administrator subscriber editor.
 
-**Expected:** Abandoning the editor leaves a recoverable checkout shown in Global Check-in. Global Check-in releases it. Cancel releases it immediately. A second administrator sees the normal Joomla locked-record behaviour while it is checked out.
+**Expected:** Logged-out external addresses cannot subscribe. Eligible registered users can. Backend controls do not create invalid external memberships.
+
+### PM-036 — Channel eligibility: selected Joomla groups
+
+**Steps:**
+
+1. Restrict a Channel to a selected Joomla user group.
+2. Test with Test Registered and Test Special/group-qualified user.
+3. Change the qualified user’s Joomla group membership and re-evaluate signup/profile and delivery eligibility.
+
+**Expected:** Eligibility follows current Joomla group membership dynamically. A user who loses the qualifying group stops receiving that restricted Channel even if an old membership row still exists.
+
+### PM-037 — Member count and in-use protection
+
+**Steps:**
+
+1. Add/remove controlled subscribers from a Channel.
+2. Compare displayed member count.
+3. Attempt destructive operations on a Channel currently referenced where protection applies.
+
+**Expected:** Counts are accurate and destructive actions do not silently break references.
+
+### PM-038 — Checkout and Global Check-in
+
+**Steps:**
+
+1. Open the same Channel in two administrator sessions.
+2. Observe checkout behavior.
+3. Abandon one edit and recover with Joomla Global Check-in.
+
+**Expected:** Conflicting edits are protected and Global Check-in restores abandoned locks safely.
 
 ---
 
 ## D. Subscribers and consent state
 
-### PM-050 — Subscriber list, filters, and statuses
+### PM-050 — Subscriber list and status columns
 
 **Steps:**
 
-1. Open Subscribers with prepared active, pending, unsubscribed, suppressed, and bounced addresses.
-2. Test search, subscription-status filter, suppression filter, sorting, and pagination.
-3. Compare a normal active row with a globally subscribed but bounced row and a globally unsubscribed row.
-4. Select each email address to open its editor.
+1. Open **Audience → Subscribers**.
+2. Inspect normal subscribed, unsubscribed/pending if available, and bounce-suppressed test records.
+3. Sort/filter by supported fields.
 
-**Expected:** The list has separate **Subscription** and **Delivery** columns. Subscription shows Subscribed/Pending/Unsubscribed independently from deliverability. A subscribed hard-bounced row remains **Subscribed** but shows **Delivery blocked — permanent failure**; a soft-bounce address below threshold remains deliverable and shows progress such as **Temporary failure — 1 of 3 before delivery is stopped**. Search, filters, links, and details are correct without exposing security tokens.
+**Expected:** Subscription permission and delivery health are not conflated. The list clearly distinguishes **Subscription** from **Delivery**. A hard-bounced address can correctly show subscribed/active permission while also showing **Delivery blocked — permanent failure**.
 
 ### PM-051 — Add an external subscriber in administration
 
 **Steps:**
 
-1. Click **Subscribers → New**.
-2. Enter a controlled email address and optional name, choose two published topics, and save.
-3. Search for it and open it.
+1. Add a controlled email-only subscriber.
+2. Select one or more eligible Channels.
+3. Save and reopen.
 
-**Expected:** The editor visibly separates identity/permission, Channels, and delivery health. The external subscriber is created once as globally subscribed with the chosen name and topics. Invalid email is rejected. Creating the same normalized email again does not create a duplicate.
+**Expected:** Subscriber persists, normalized email prevents accidental duplicates, and Channel selections persist. A “no Channels selected” note is shown only when no Channel is actually selected.
 
-### PM-052 — Enable an existing Joomla user in administration
+### PM-052 — Add a Joomla user and choose restricted Channels before saving
+
+**Prerequisite:** Have at least one Channel for **Registered users** and, if possible, one Channel restricted to a Joomla group that the controlled account belongs to.
 
 **Steps:**
 
-1. Click **New** and select or enter the controlled Joomla user.
-2. Save and inspect the Subscriber row and Joomla user profile.
+1. Open **Audience → Subscribers → New**.
+2. Set **Recipient Type** to **Joomla User**.
+3. Before selecting an account, confirm restricted Channels are unavailable as appropriate.
+4. Select a controlled registered Joomla user. **Do not save yet.**
+5. Confirm Channels for registered users and matching Joomla groups become selectable immediately.
+6. Change to a Joomla user that does not belong to the restricted group and confirm the Channel becomes unavailable again.
+7. Re-select the eligible user, choose the Channels, and save.
+8. Reopen the Joomla profile and Punga Mail subscriber editor.
 
-**Expected:** Punga Mail uses the existing user/email identity, displays the Joomla name, and enables the newsletter preference without creating a second address record.
+**Expected:** Channel eligibility follows the selected Joomla account immediately, before the subscriber exists in the database. Saving preserves the selected eligible Channels, server-side validation still rejects ineligible memberships, and no duplicate subscriber row is created.
 
 ### PM-053 — Administrator Channel membership changes
 
 **Steps:**
 
-1. Open a controlled subscriber.
-2. Add two topics and save.
-3. Remove one topic and save again.
-4. Use Apply and then Save & Close, verifying both navigation behaviors.
+1. Add/remove several eligible Channel memberships in Subscriber editor.
+2. Save and reopen.
+3. Include an unpublished Channel membership if the backend supports maintaining it.
 
-**Expected:** The subscriber remains in the other topic. Removing one membership is not a global unsubscribe and does not clear an existing bounce/manual suppression. Topic counts update correctly. Apply keeps the editor open; Save & Close returns to the list.
+**Expected:** Visible choices persist correctly; backend administration does not accidentally erase unrelated/unpublished memberships.
 
-### PM-053A — Administrator can manage unpublished Channels
-
-**Steps:**
-
-1. Give a controlled subscriber membership in a published Channel.
-2. Unpublish that Channel and open the subscriber in Punga Mail.
-3. Verify that the Channel is still shown, clearly marked unpublished, then remove and save the membership.
-4. Re-add the membership while the Channel remains unpublished and save again.
-5. Open the public Newsletter page and confirm that the unpublished Channel is not offered there.
-
-**Expected:** Administrators can inspect and maintain every non-trashed Channel membership without republishing it. Public subscription surfaces continue to expose published Channels only.
-
-### PM-054 — Bulk global unsubscribe
+### PM-054 — Global unsubscribe
 
 **Steps:**
 
-1. Select only controlled active subscribers.
-2. Choose the bulk unsubscribe action and confirm it.
-3. Resolve recipients for a newsletter that otherwise includes them.
+1. Globally unsubscribe a controlled subscriber while leaving Channel memberships stored.
+2. Resolve that address through Channel and Joomla-group audience sources.
 
-**Expected:** Addresses become globally unsubscribed and are excluded with that reason. Topic memberships may be retained as preferences, but do not reactivate delivery.
+**Expected:** Global unsubscribe always wins. Stored Channel choices do not cause delivery until newsletter reception is explicitly restored.
 
-### PM-055 — Resend confirmation to pending subscribers
+### PM-055 — Pending confirmation and resend
 
 **Steps:**
 
-1. Select one pending subscriber and one already active subscriber.
-2. Use **Send confirmation**.
-3. Check controlled inboxes and administrator messages.
+1. Create a pending guest subscription.
+2. Attempt resend before and after the configured resend delay.
+3. Confirm via the newest valid link.
 
-**Expected:** A valid confirmation is sent only where appropriate, respecting resend throttling. The action does not change status by itself.
+**Expected:** Resend timing is enforced, confirmation activates the correct address/Channel choices, and stale/altered tokens fail safely.
 
 ### PM-056 — Protected-address reactivation requires intent
 
 **Steps:**
 
-1. Use an unsubscribed address and try ordinary topic membership edits/import without explicit reactivation.
-2. Repeat with a suppressed or hard-bounced address.
-3. Use the clearly labelled administrator reactivation/clear-suppression action only for a controlled address.
+1. Use an address that has explicitly unsubscribed or is otherwise protected.
+2. Attempt to reintroduce it indirectly through import, Channel selection, or Joomla group targeting.
+3. Perform the explicit reactivation flow where available.
 
-**Expected:** Ordinary edits never silently reactivate protected addresses. Explicit reactivation is visibly destructive/important and affects only the selected address.
+**Expected:** Alternate audience sources cannot silently override a protected consent state. Explicit reactivation is required.
 
-### PM-057 — Clear bounce suppression and retain history
+### PM-057 — Allow delivery again after bounce suppression
 
-**Steps:**
-
-1. Open a controlled bounced/suppressed subscriber with history.
-2. Record count, timestamps, and reasons.
-3. Choose **Clear bounce suppression** and confirm.
-
-**Expected:** Suppression is removed for that email address, but bounce history remains available. Unrelated subscribers or other addresses are untouched.
-
-### PM-058 — Subscriber identity and duplicate email normalization
+**Prerequisite:** Subscriber suppressed due to hard bounce or temporary-failure threshold.
 
 **Steps:**
 
-1. Attempt to add the same controlled address with different letter case and surrounding spaces through admin, module, and CSV.
-2. Search the subscriber list.
+1. Open **Audience → Subscribers** and click **Allow delivery again**.
+2. Confirm the list returns to Audience with the sidebar still active.
+3. Verify Delivery state becomes deliverable and temporary-bounce counter resets.
+4. Confirm historic bounce entries remain.
+5. Repeat from the Subscriber editor.
+6. In a second stale tab, attempt the action again after the suppression has already been cleared.
 
-**Expected:** One canonical address exists. Membership/state updates apply to it; recipient resolution sends only once.
+**Expected:** A real bounce-origin suppression is removed. History is retained. The grouped route is preserved. A stale/no-op action reports that no block was cleared instead of showing false success.
+
+### PM-058 — Subscriber identity and duplicate normalization
+
+**Steps:**
+
+1. Attempt to create/import the same email with different case/whitespace forms.
+2. If one address corresponds to a Joomla user, exercise the relevant merge/update path.
+
+**Expected:** Punga Mail treats normalized addresses consistently and does not create conflicting duplicate recipient identities.
+
+### PM-059 — Delivery health visibility
+
+**Steps:**
+
+1. Open a subscriber with no bounce history or suppression.
+2. Open one with bounce history but currently deliverable.
+3. Open one with active suppression.
+
+**Expected:** Delivery-health UI is hidden when there is nothing meaningful to report. When shown, wording is plain-language and distinguishes permanent from temporary failures.
+
+### PM-060 — Permanently delete an obsolete/test subscriber
+
+**Prerequisite:** Use a disposable subscriber. Ideally use the hard-bounced bogus address from the returned-mail tests so suppression preservation can also be verified.
+
+**Steps:**
+
+1. Open **Audience → Subscribers** and select the disposable subscriber.
+2. Click **Delete** and confirm the permanent-delete warning.
+3. Verify the subscriber disappears from the Subscribers list.
+4. If it had Channel memberships or pending preference requests, confirm those live relationships no longer appear.
+5. If it had a hard-bounce/soft-bounce suppression, verify the address remains blocked if you inspect/reintroduce it through a controlled administration flow.
+6. Verify existing Delivery queue history and returned-mail/bounce history are still present.
+7. If practical, queue a controlled pending message for another disposable subscriber and delete that subscriber; verify pending/failed rows are cancelled before deletion.
+
+**Expected:** The live subscriber identity can be removed without erasing historical delivery/bounce evidence or accidentally removing an address-level suppression. Deletion is refused while a delivery for that subscriber is actively being processed.
 
 ---
+
+- Change the selected Joomla user to another account with different group memberships and confirm the enabled/disabled Channel set updates immediately without saving.
 
 ## E. Frontend module, confirmation, unsubscribe, and Joomla profile
 
-### PM-070 — Module with no configured topics
-
-**Prerequisite:** At least one published topic and one unpublished topic.
+### PM-070 — Signup module with no configured Channels
 
 **Steps:**
 
-1. Edit the Punga Mail signup module and select no topics in its configuration.
-2. Publish it on a controlled page and open that page as a guest.
-3. Repeat when exactly one public topic exists.
+1. Configure the signup module with no explicit Channels selected.
+2. View it logged out and logged in.
 
-**Expected:** No configuration means **all currently published topics are available for selection**. Even with exactly one published topic, it remains a visitor choice; the module must not silently behave as a configured single-topic module. Unpublished topics do not appear.
+**Expected:** It offers all currently published Channels the visitor/account is eligible to join. It does not invent a hidden single-Channel choice.
 
-### PM-071 — Module with exactly one configured topic
-
-**Steps:**
-
-1. Configure exactly one published topic.
-2. Open the module as guest and logged-in user.
-
-**Expected:** No topic selector is shown. The copy clearly names the configured topic and actions apply directly to it.
-
-### PM-072 — Module with multiple configured topics
+### PM-071 — Signup module with exactly one Channel
 
 **Steps:**
 
-1. Configure two published topics while other topics also exist.
-2. Open the module and select one, then both.
+1. Configure exactly one Channel.
+2. View the module.
 
-**Expected:** Only the configured topics appear. The visitor can choose one or more. No unrelated or unpublished topic is offered.
+**Expected:** The Channel selector is hidden and the module clearly refers to the configured Channel.
 
-### PM-073 — Module text and return page options
-
-**Steps:**
-
-1. Set the module's custom intro text and button label.
-2. Publish the module on a nested frontend page and submit a valid request from that page.
-
-**Expected:** The configured presentation appears and the logged-in preference actions return to the same local site page. A forged external return value cannot create an open redirect.
-
-### PM-074 — New guest email confirmation
+### PM-072 — Signup module with multiple Channels
 
 **Steps:**
 
-1. As a logged-out visitor, enter a new controlled email and choose topics.
-2. Submit and inspect the public response and Subscribers page.
-3. Before confirmation, resolve a newsletter audience.
-4. Open the confirmation link and resolve again.
+1. Configure multiple Channels.
+2. Select different combinations as guest and logged-in user.
 
-**Expected:** The public response is generic. The address is Pending and excluded before confirmation. A valid one-time token activates the intended global subscription/topic request; the address becomes eligible afterward.
+**Expected:** Only configured, published, eligible Channels are offered. Membership updates affect the intended visible choices.
 
-### PM-075 — Existing subscriber adds a topic
+### PM-073 — Module text and return-page options
 
 **Steps:**
 
-1. Start with an active address in Topic A only.
-2. Through the module, request Topic B while preserving A.
-3. Complete any required confirmation.
+1. Configure intro text, button label, Joomla module assignment, and any return-page behavior.
+2. Exercise a signup/update.
 
-**Expected:** Topic B is added and Topic A remains. No duplicate subscriber is created.
+**Expected:** Custom text renders safely, Joomla module settings behave normally, and the user returns to the intended page.
 
-### PM-076 — Remove one topic without global unsubscribe
-
-**Steps:**
-
-1. Start with an active address in Topics A and B.
-2. Use the frontend preference action to remove A only.
-3. Resolve newsletters for A and B.
-
-**Expected:** The address is absent from A and still eligible for B. Global status remains active.
-
-### PM-077 — Global unsubscribe page
+### PM-074 — Guest confirmation flow
 
 **Steps:**
 
-1. Send a test newsletter to a controlled active subscriber.
-2. Follow its unsubscribe link.
-3. Confirm the complete unsubscribe action.
-4. Reopen the same link and resolve future recipients.
+1. Sign up a new external email address and selected Channels.
+2. Inspect confirmation email.
+3. Follow confirmation link.
 
-**Expected:** The action is unambiguous and globally suppresses future delivery. Reuse is safe/idempotent. The token is not displayed beyond what is required in the URL and is not leaked into the browser newsletter.
+**Expected:** No newsletter is sent before confirmation. Confirmation activates the correct subscription state and Channel choices.
 
-### PM-078 — RFC 8058 one-click unsubscribe
-
-**Prerequisite:** HTTPS public site and access to raw received-message headers.
+### PM-075 — Existing subscriber adds/removes Channels
 
 **Steps:**
 
-1. Send a real controlled newsletter.
-2. Inspect `List-Unsubscribe` and `List-Unsubscribe-Post` headers.
-3. POST `List-Unsubscribe=One-Click` to the header URL without an administrator session.
-4. Resolve the address again.
+1. Use an existing subscriber to add one Channel and remove another through frontend controls.
+2. Reopen the subscriber in backend.
 
-**Expected:** Headers are standards-shaped, the endpoint accepts the one-click POST securely, the address becomes globally unsubscribed, and no GET-only crawler action unsubscribes unexpectedly.
+**Expected:** Only intended visible memberships change. Leaving a Channel does not automatically mean “stop all newsletters.”
 
-### PM-079 — Invalid, expired, and altered public tokens
+### PM-076 — Global unsubscribe page
 
 **Steps:**
 
-1. Alter one character in a confirmation and unsubscribe token.
-2. Try an expired confirmation link and a token for a different address/action.
+1. Open a valid unsubscribe link from a controlled newsletter.
+2. Complete global unsubscribe.
+3. Attempt later delivery through a Channel and Joomla group.
 
-**Expected:** No subscription state changes. The public response is safe and does not reveal subscriber details or token secrets.
+**Expected:** Address is globally excluded regardless of alternate audience sources. Stored Channel choices may remain for future explicit reactivation.
 
-### PM-080 — Signup abuse controls and privacy
-
-**Steps:**
-
-1. Submit the module with its hidden honeypot filled.
-2. Submit repeated requests beyond the rate limit in staging.
-3. Compare responses for an existing and unknown address.
-
-**Expected:** Bot/rate-limited requests are rejected or safely ignored. Responses do not enable address enumeration. No entered email/token/password is written to public output or ordinary Joomla logs.
-
-### PM-081 — Registered user profile topic selector
+### PM-077 — RFC 8058 one-click unsubscribe
 
 **Steps:**
 
-1. Log in as Test Registered and edit the Joomla profile.
-2. Set **Receive newsletters** to Yes and select two published topics.
-3. Save, reopen, and resolve a topic-targeted newsletter.
-4. Remove one topic and save again.
+1. Inspect a sent message for `List-Unsubscribe` and `List-Unsubscribe-Post` headers.
+2. Open the HTTPS URL with GET as a human.
+3. Exercise a valid one-click POST in a controlled way.
 
-**Expected:** Profile saves without a database-column error. The global preference and selected topics persist. Removing one topic leaves the other. The address is resolved only for the retained topic.
+**Expected:** GET reaches the human confirmation flow rather than HTTP 400. Token-authenticated one-click POST unsubscribes without unsafe redirects.
 
-### PM-082 — Profile global No retains preferences safely
-
-**Steps:**
-
-1. With two topic preferences selected, change **Receive newsletters** to No and save.
-2. Reopen the profile and resolve both audiences.
-3. Change it to Yes again deliberately.
-
-**Expected:** No globally unsubscribes/excludes delivery but topic preferences remain visible/retained. Topic membership alone cannot override global No. Deliberately returning to Yes restores eligibility according to current topics.
-
-### PM-083 — Unpublished profile topics
+### PM-078 — Invalid/expired public tokens
 
 **Steps:**
 
-1. Give a user a published topic membership.
-2. Unpublish that topic, edit/save the user's profile, then republish it.
+1. Alter confirmation/unsubscribe tokens.
+2. Use an expired confirmation token.
+3. Reuse completed one-time flows where appropriate.
 
-**Expected:** The unpublished topic is not offered publicly but is not accidentally deleted merely by saving unrelated profile fields. Republish restores its visibility/preference as designed.
+**Expected:** Invalid requests fail safely without revealing subscriber data or changing unrelated records.
 
-### PM-084 — Profile surfaces and permissions
-
-**Steps:**
-
-1. Check registration, frontend profile edit, administrator user edit, and administrator profile edit.
-2. Save the newsletter fields in each relevant surface.
-
-**Expected:** Fields appear only where intended, use translated labels/help, save consistently, and cannot be used by one user to alter another user's subscription without Joomla permission.
-
-### PM-085 — Frontend menu item and SEF routes
+### PM-079 — Signup abuse controls and privacy
 
 **Steps:**
 
-1. Create a menu item of type **Punga Mail → Newsletter subscription**.
-2. Confirm the type title/description are translated, publish it, and optionally hide it from the visible menu.
-3. Enable Joomla SEF URLs and open the page as a guest. Verify that every published topic and no unpublished topic appears, select topics, submit, and complete email confirmation.
-4. Log in as a controlled Joomla user. Verify that current Channel memberships are preselected, change only Channels, and save directly on the menu-item page (not through a signup module).
-5. Disable the global subscription, change topics again, and confirm the global state remains disabled.
-6. Open confirmation, status, unsubscribe, and browser-view links.
+1. Exercise the configured IP/rate limit using a controlled test environment.
+2. Submit an already-known address and an unknown address through public forms.
 
-**Expected:** No `COM_PUNGAMAIL_...` language key is visible. The Newsletter URL renders inside the normal site template without a fatal 500 page, and saving Channel choices does not require or assume a module ID. Newsletter reception is shown as the master setting; the topic summary explains the selected-topic and no-topic consequences. The standalone page offers all published topics, guest choices activate only after confirmation, and logged-in topic changes never alter global consent. Clean routes work with the hidden published anchor; no route exposes a draft or backend-only data.
+**Expected:** Abuse limits work without exposing whether an arbitrary address belongs to a subscriber more than necessary.
 
-### PM-086 — Logged-in module global and topic controls
+### PM-080 — Joomla user-profile integration
 
 **Steps:**
 
-1. Log in as Test Registered and open a page containing the module.
-2. Change only the topic choices and save them.
-3. Use the separate Receive newsletters master control to stop all newsletters.
-4. Change topics again while globally unsubscribed, then deliberately subscribe globally again.
+1. Open frontend profile and administrator user editor for a controlled Joomla user.
+2. Toggle **Receive newsletters** and select Channels.
+3. Save and compare Punga Mail subscriber state.
 
-**Expected:** The module uses the logged-in Joomla account rather than asking for another email. Topic-only changes do not reactivate global delivery. Global and topic actions are labelled distinctly, topic choices can be retained while globally off, and deliberate global re-subscription restores eligibility without creating a duplicate identity.
+**Expected:** Master permission and Channel choices remain distinct. Channel choices may remain stored while Receive newsletters = No, but no newsletter is delivered until reception is re-enabled.
+
+### PM-081 — Unpublished/restricted Channels in profile
+
+**Steps:**
+
+1. Give a user membership in a Channel, then unpublish/restrict that Channel.
+2. Save the user profile without seeing that Channel.
+
+**Expected:** Hidden/unavailable memberships are not accidentally deleted by the profile form. Current eligibility still controls delivery.
+
+### PM-082 — Subscription menu item and SEF routes
+
+**Steps:**
+
+1. Open the published Newsletter subscription menu item logged out and logged in.
+2. Exercise confirmation/unsubscribe/browser-view routes with SEF enabled.
+
+**Expected:** Public routes resolve through Joomla routing, use the intended menu item, and do not expose administrator-only pages.
 
 ---
 
-## F. Templates and rendering
+## F. Design: Templates, Content Layouts, Markdown, and rendering
 
-### PM-100 — Create and edit a template
-
-**Steps:**
-
-1. Open **Templates → New** and verify the editor uses a main content area plus a Joomla-style right sidebar.
-2. Confirm title/subject/body are in the main content area, visual overrides/custom CSS are under **Design**, and message options are in the right sidebar. Confirm there is no per-Template Selected Content Layout control and no fake Published/Unpublished status.
-3. Enter a title, default subject, and Markdown body containing headings, emphasis, a list, a link, an image, a pipe table, `{recipient}`, and `{new_content}`.
-4. Click Save, Preview, and Save & Close.
-
-**Expected:** The Template editor follows Joomla's main-content/sidebar editing pattern without inventing an active/inactive state. All toolbar actions work. Preview renders supported Markdown in HTML, produces readable plain text, replaces `{recipient}` with the administrator's display name, and places selected-content output only at `{new_content}`.
-
-### PM-101 — Template placeholders and image URL forms
+### PM-100 — Create and edit a Template
 
 **Steps:**
 
-1. In a template, add HTTP(S), root-relative, and site-relative Joomla image URLs.
-2. Add `{recipient}` twice and place `{new_content}` between two unique paragraphs.
-3. Apply the template to a draft with selected content and preview it.
+1. Open **Design → Templates** and create a Template.
+2. Enter subject/body and message/design overrides.
+3. Save, reopen, Save & Close, and Cancel.
 
-**Expected:** Images resolve to usable mail URLs, recipient placeholders resolve consistently, and selected items appear exactly at the placeholder—not appended elsewhere and without an invented heading.
+**Expected:** Template persists, Design remains highlighted, and no fake always-Active status column is shown.
 
-### PM-102 — Template style inheritance and overrides
-
-**Steps:**
-
-1. Give the global configuration a distinctive heading/design.
-2. In a template, leave several fields at Inherit and override several others.
-3. Test heading modes Inherit, custom literal, site name, and no heading.
-4. Test browser-view and Reply-To modes Inherit, Enabled/Custom, Disabled/None as applicable.
-5. Preview after each mode change.
-
-**Expected:** Inherited values come from Component Options; explicit template values win. Custom, site-name, and empty heading are distinct. Browser and Reply-To modes follow the selected value.
-
-### PM-103 — Apply template copies values into a newsletter
+### PM-101 — Template inheritance and overrides
 
 **Steps:**
 
-1. Apply a template to a new newsletter and save it.
-2. Record the newsletter's subject/body/style.
-3. Change the original template substantially.
-4. Reopen the newsletter.
+1. Configure global design/Reply-To values.
+2. Configure different Template overrides.
+3. Apply the Template to a Newsletter and preview.
 
-**Expected:** Applying copies values; later template changes do not alter the existing draft. A newly created newsletter receives the newer template values.
+**Expected:** Template inherits or overrides each setting according to UI choices; resolved output is predictable.
 
-### PM-104 — Template list lifecycle
-
-**Steps:**
-
-1. Create several templates.
-2. Test search, sorting, pagination, trash, trashed filter, restore, and permanent delete.
-
-**Expected:** Standard Joomla list behaviour works, trashed rows remain legible in light and dark administrator themes, and no dependent newsletter changes when a template is removed.
-
-### PM-105 — Template checkout and Global Check-in
+### PM-102 — Template lifecycle, checkout, and list controls
 
 **Steps:**
 
-1. Abandon an existing template editor by closing its tab.
-2. Confirm the lock in Joomla Global Check-in and from a second administrator account.
-3. Check it in; then repeat using Cancel.
+1. Exercise list filters/sorting/trash/restore where supported.
+2. Open the same Template in two admin sessions.
+3. Recover an abandoned checkout with Global Check-in.
 
-**Expected:** The abandoned edit is recoverably locked. Global Check-in and Cancel release it. Concurrent editing follows Joomla conventions.
+**Expected:** Joomla-standard lifecycle/checkout works and Design routing is preserved.
 
-### PM-106 — Rendering sanitization
+### PM-103 — Apply Template in Newsletter editor
 
 **Steps:**
 
-1. In staging, add Markdown containing raw `<script>`, an event handler, and a `javascript:` link.
-2. Add custom CSS containing the text `</style><script>alert(1)</script>`.
-3. Preview and inspect the HTML source.
+1. Open a Newsletter on **Mail content**.
+2. Choose a Template and click **Apply template**.
+3. Inspect subject/body/design values.
 
-**Expected:** No executable script, event handler, unsafe URL, or style-breakout markup reaches the preview or mail. Ordinary Markdown and safe CSS still render.
+**Expected:** Template values are copied into the Newsletter as designed, the user remains on **Mail content**, and the applied content change is immediately visible.
+
+### PM-104 — Central Content Layouts overview
+
+**Steps:**
+
+1. Open **Design → Content layouts**.
+2. Verify a **Default content layout** and all usable registered Joomla content types appear.
+3. Confirm each type indicates whether it inherits Default or uses a custom layout.
+
+**Expected:** Content Layouts are centralized; Newsletter and Template editors no longer expose competing Selected Content Layout overrides.
+
+### PM-105 — Available placeholders for a content type
+
+**Steps:**
+
+1. Open a non-core registered content type in Content Layouts.
+2. Compare **Available placeholders** with its real backing database table.
+3. Inspect generic Punga Mail placeholders and database placeholders.
+4. Look for obviously sensitive columns such as password, secret, token, credential, OTP, API key.
+
+**Expected:** Administrator can see exactly which placeholders are available. Safe source-table fields are exposed automatically; obvious secret/security fields are not offered. No cooperation/plugin/provider code from the originating extension is required.
+
+### PM-106 — Type-specific database placeholder rendering
+
+**Steps:**
+
+1. Enable a custom layout for the non-core content type.
+2. Use a type-specific source field, e.g. `{start_at}`, `{venue}`, or another real column.
+3. For a date/time column, test `|date`, `|time`, and/or `|datetime`.
+4. Preview a Newsletter containing that content item.
+
+**Expected:** The source-table value renders correctly. Date/time formatting uses Joomla/site conventions. An event layout can show the actual event date while Punga Mail’s new-content selection still uses its normal publication/creation recency logic.
+
+### PM-107 — Mixed content types and fallback
+
+**Steps:**
+
+1. Create a Newsletter containing at least two content types, one with a custom layout and one using Default.
+2. Preview and send a test mail.
+3. Reset the custom type to Default and preview again.
+
+**Expected:** Each item uses the layout for its own content type. Resetting restores Default behavior without changing the selected content record.
+
+### PM-108 — Markdown editor controls
+
+**Steps:**
+
+1. Open a Markdown editor in Newsletter/Template/Options.
+2. Verify line numbers are not shown.
+3. Use Bold/Italic/link or other existing toolbar controls.
+4. Use **Table** and confirm a sensible starter Markdown table is inserted.
+5. Use **Image**, select media from Joomla Media Manager, click Select, and supply alt text if requested.
+
+**Expected:** Table and Image buttons are visually distinct. Media selection inserts Markdown image syntax at the current cursor rather than doing nothing. Selecting the same image again later still works.
+
+### PM-109 — Markdown preview and sanitization
+
+**Steps:**
+
+1. Test headings, paragraphs, lists, links, images, tables, horizontal rules, escaped punctuation, and Markdown hard line breaks.
+2. Include harmless raw/unsafe HTML and unresolved Joomla-style content-plugin commands in selected-content excerpts where applicable.
+
+**Expected:** Supported Markdown renders consistently. Unsafe output is sanitized. Joomla content-plugin commands are not executed unexpectedly inside newsletter rendering.
 
 ---
 
 ## G. Newsletter composition and selected content
 
-### PM-119a — Newsletter editor layout
-
-1. Open a draft Newsletter in the administrator.
-2. Switch through **Settings**, **Mail content**, **Content selection**, and **Design** in the main area.
-3. Confirm the right sidebar shows the real Newsletter lifecycle status, Template selector/application, and Schedule controls.
-4. Change at least one field on each tab and save.
-
-**Expected:** The editor follows Joomla's main-content/sidebar pattern, all values save normally, toolbar actions remain available, and the Content selection list/search behavior still works.
-
-### PM-119b — Central Content layouts
-
-1. Open **Punga Mail → Content layouts**.
-2. Confirm the list contains **Default content layout** plus each usable registered Joomla content type.
-3. Open the Default layout, then open at least one third-party content type.
-4. Confirm Newsletter, Template, and Component Options no longer expose separate Selected Content Layout editors.
-
-**Expected:** The central editor uses the shared Markdown editor. The right-hand panel lists normalized Punga Mail placeholders and, for a specific content type, safe database fields discovered from that content type's registered source table.
-
-
-### PM-120 — Create, save, and reopen a draft
+### PM-119A — Newsletter editor layout
 
 **Steps:**
 
-1. Open **Newsletters → New**.
-2. Enter a backend title, mail subject, Markdown body, recipients, and message options.
-3. Save, leave, and reopen it.
+1. Create/open a Draft Newsletter.
+2. Inspect Settings, Mail content, Content selection, Design, and the right-hand lifecycle/sidebar controls.
+3. Verify Template selector + Apply template are on **Mail content**.
+4. Verify scheduling/status controls are in the Joomla-style sidebar.
 
-**Expected:** The draft saves with status Draft. Backend title and email subject remain independent. Every selection and override persists.
+**Expected:** Authoring controls are grouped logically. Template application is beside the content it changes; scheduling can be done directly without first opening Preflight.
+
+### PM-120 — Create, save, and reopen a Draft
+
+**Steps:**
+
+1. Enter title, subject, body, audience settings, and design values.
+2. Save, leave, and reopen.
+
+**Expected:** Persisted values survive exactly; no unintended audience source is selected by default for a new Newsletter.
 
 ### PM-121 — Registered content-type discovery and filtering
 
 **Steps:**
 
-1. Set **Content published since** to include the prepared content.
-2. Select each offered registered content type and apply filters.
-3. Use the candidate search and inspect item metadata.
-4. Switch the Joomla administrator language where a translation is installed and reopen the content-source controls.
+1. Open **Content selection**.
+2. Inspect available registered content types.
+3. Filter by type/date/search as available.
 
-**Expected:** Joomla registered content types with usable metadata are offered generically. Their display names follow the administrator language when the originating component provides a language string. Date, type, category/filter where supported, and search narrow the list correctly. No deprecated UCM-specific copy or third-party-specific coupling is visible.
+**Expected:** Usable registered Joomla content types appear without Punga Mail-specific provider plugins. Unpublished/ineligible content is not silently treated as sendable.
 
-### PM-122 — Select, order, inspect, and override content
-
-**Steps:**
-
-1. Click a candidate content title and verify the corresponding frontend page opens in a new browser tab while the Newsletter editor remains open.
-2. Select three content items.
-3. Reorder them and give one a newsletter-only title and excerpt override.
-4. Save, close, reopen, and preview.
-5. Open the original website content item again.
-
-**Expected:** Candidate titles are safe frontend links with new-tab behavior. Selection, order, source identity, and overrides persist. Preview uses the overridden values. The source content is unchanged.
-
-### PM-123 — Removed, missing, and legacy content references
+### PM-122 — Select, order, and override content
 
 **Steps:**
 
-1. On a disposable clone, select content and then trash/delete the source item.
-2. Reopen the newsletter and run preflight.
-3. If upgrading old data, open a newsletter containing migrated article selections.
+1. Select several available content items.
+2. Confirm they move into **Selected content**.
+3. Search/sort Available content and use **Select visible**.
+4. Drag selected items into a new order; watch the **Drop here** insertion marker.
+5. Drop, save, reopen, and verify order.
+6. Use title/excerpt overrides on selected items.
+7. Use **Clear selected**.
 
-**Expected:** Missing content is reported rather than causing a crash or silently selecting another item. Old migrated selections still resolve or show a clear warning, and their identity is preserved.
+**Expected:** Selected and Available content remain conceptually separate. Drop target is obvious before release. Order persists and drives `{new_content}` output. Overrides appear only where relevant.
+
+### PM-123 — Missing/removed selected content
+
+**Steps:**
+
+1. Select a disposable content item and save the Newsletter.
+2. Unpublish/delete/change access to that source item.
+3. Reopen composition/Preflight.
+
+**Expected:** Missing/inaccessible references are handled explicitly; Punga Mail does not crash or silently leak restricted content.
 
 ### PM-124 — `{new_content}` placement
 
 **Steps:**
 
-1. Put text before and after `{new_content}` and select two items.
-2. Preview HTML and plain text.
-3. Remove the placeholder and preview again.
+1. Put `{new_content}` in a distinctive position in the body.
+2. Preview with multiple selected items/types.
+3. Remove `{new_content}` and preview again.
 
-**Expected:** Selected content appears exactly at the placeholder and in selected order. Punga Mail does not add its own “new content” heading. Without the placeholder, content is not silently appended.
-
-### PM-124A — Per-content-type selected-content layouts
-
-**Steps:**
-
-1. In **Content layouts**, set the Default layout to a Markdown pattern containing `{publish_date}`, `{title_link}`, `{excerpt}`, and `{read_more}`.
-2. Preview a Newsletter containing an Article and verify it uses the Default layout.
-3. Open a different registered content type (preferably an Event type) and enable a custom layout.
-4. Confirm the right-hand placeholder list includes columns that really exist in that type's registered source table. Use one of them in the layout, for example `{start_at}` or the actual equivalent on the test site.
-5. If the field is date-like, test `|date`, `|time`, and `|datetime`.
-6. Preview a Newsletter containing both an Article and that custom content type.
-7. Disable the custom layout and preview again.
-
-**Expected:** Each selected item uses the layout for its own registered content type. Types without a custom layout use Default. Database-field placeholders resolve without any Punga Mail-specific integration in the originating extension, while normalized placeholders such as `{title}` and `{excerpt}` still honor Newsletter overrides. Date/time filters use the Joomla/site timezone and locale.
+**Expected:** Selected content renders exactly where the placeholder is placed and uses central per-content-type layouts. No obsolete per-Newsletter Selected Content Layout control appears.
 
 ### PM-125 — `{recipient}` personalization and fallback
 
 **Steps:**
 
-1. Send controlled copies to a Joomla user with a display name and an external subscriber with a stored name.
-2. If supported, test an external subscriber without a name.
-3. Compare preview, queued snapshot, HTML, and text parts.
+1. Use `{recipient}` in a controlled Newsletter.
+2. Preview/test against a Joomla user with a name and an email-only subscriber.
 
-**Expected:** Joomla users use their display name, external stored names are used where available, and the documented email fallback is used when no name exists. The resolved name is frozen in the queued/sent snapshot.
+**Expected:** Personalization resolves appropriately and has a sensible fallback without exposing another recipient’s data.
 
-### PM-126 — Target all confirmed subscribers
-
-**Steps:**
-
-1. Choose the all-confirmed audience.
-2. Include controlled active, pending, unsubscribed, suppressed, and invalid addresses.
-3. Run recipient inspection without sending.
-
-**Expected:** The live audience summary says that all globally subscribed recipients are included regardless of topic. Only deliverable confirmed active addresses are final recipients. Every excluded address has an accurate reason.
-
-### PM-127 — Target one or multiple topics and deduplicate
+### PM-126 — Audience: all globally subscribed recipients
 
 **Steps:**
 
-1. Put one controlled address in Topics A and B.
-2. Target A only, then B only, then both.
-3. Inspect resolved recipients each time.
+1. Select **All globally subscribed recipients, regardless of Channel** only.
+2. Run Preflight.
 
-**Expected:** The address appears for either membership and exactly once when both topics are selected. The newsletter editor clearly distinguishes topics from Joomla groups.
+**Expected:** All eligible globally subscribed addresses are included subject to validity, consent, access, deduplication, and suppression rules.
 
-### PM-128 — Joomla group targeting remains independent
-
-**Steps:**
-
-1. Target a controlled Joomla group without selecting a topic.
-2. Target a topic without selecting the group.
-3. Target both together.
-
-**Expected:** Either source may include an eligible address; combined targeting is a deduplicated union. Global unsubscribe, pending, invalid, and suppression states still win. Group targeting does not create topic membership.
-
-### PM-129 — Zero-topic subscriber semantics
+### PM-127 — Audience: one or multiple Channels
 
 **Steps:**
 
-1. Keep an active controlled subscriber with no topic membership.
-2. Resolve an all-confirmed newsletter, a topic-only newsletter, and a group-targeted newsletter containing that user.
+1. Clear the all-subscribers source.
+2. Select one Channel, then multiple Channels with overlapping members.
+3. Run Preflight.
 
-**Expected:** The address is eligible for all-subscriber targeting or an applicable Joomla group but not for a topic it did not choose. An empty topic set is not misrepresented as a global opt-out. The frontend summary explains this consequence in plain language. When all-subscriber targeting and a topic are both selected, the editor states that the topic does not narrow the audience and Preflight warns if eligible recipients outside the topic are included. Clearing every audience source produces a blocking Preflight error.
+**Expected:** Channel sources use OR semantics and duplicate normalized email addresses are removed.
 
-### PM-130 — Newsletter-level message/design overrides
-
-**Steps:**
-
-1. Apply a template with known values.
-2. Override heading, browser view, Reply-To, several styles, and custom CSS on the newsletter.
-3. Preview and send a test copy.
-
-**Expected:** Newsletter overrides win over template/global values; inherited fields still follow the lower level. Output is consistent across preview, test, real mail, and browser snapshot.
-
-### PM-131 — Newsletter list controls and statuses
+### PM-128 — Audience: Joomla groups
 
 **Steps:**
 
-1. Prepare newsletters in Draft, Scheduled, Queued/Sending, Sent, Failed/Cancelled, and Trashed states where practical.
-2. Test search, filters, sorting, pagination, and displayed scheduled time.
-3. Confirm the list does not contain a redundant record-state column that always says Active; delivery status remains visible.
+1. Target a Joomla user group independently of Channels.
+2. Combine it with Channel sources.
 
-**Expected:** Delivery status is distinct from Joomla trash/restore record state. Scheduled time is clearly shown in site timezone. Filters and list controls are accurate.
+**Expected:** Sources are combined as documented. Global opt-out/suppression still win. Restricted content access remains recipient-safe.
+
+### PM-129 — Subscriber with no Channel choices
+
+**Steps:**
+
+1. Use a globally subscribed user with no Channel memberships.
+2. Compare a Channel-only Newsletter with an All-subscribers/Joomla-group Newsletter.
+
+**Expected:** No Channel selection does not mean “never receive newsletters.” The user receives only mailings whose selected audience sources actually include them.
+
+### PM-130 — Newsletter message/design overrides
+
+**Steps:**
+
+1. Override Template/global Reply-To, heading, and several style fields at Newsletter level.
+2. Preview/test send.
+
+**Expected:** Newsletter-specific overrides win where selected; inherited values remain unchanged otherwise.
+
+### PM-131 — Newsletter list statuses and archive
+
+**Steps:**
+
+1. Inspect Draft, Scheduled, Queued/Sending if available, Sent, Failed/Cancelled, Archived, and Trash filters/states.
+2. Archive a safe Draft or Sent Newsletter.
+3. Filter Archived, open it, then Unarchive it.
+4. Attempt to archive an active Scheduled/Queued/Sending Newsletter.
+
+**Expected:** Archived is separate from delivery status and Trash. Archived items are hidden from Current by default but preserve their real lifecycle status and history. Active delivery states cannot be hidden by archiving.
 
 ### PM-132 — Duplicate as new draft
 
 **Steps:**
 
-1. Open a draft Newsletter and a sent Newsletter separately and use **Duplicate as new draft** from the top toolbar.
-2. In the Newsletters list, select two or more rows and use the bulk duplicate action.
-3. Open the duplicates and compare them with their sources.
+1. Open both an unsent and a sent Newsletter and use **Duplicate as new draft** from the top toolbar.
+2. In the Newsletters list, select multiple items and bulk-duplicate.
 
-**Expected:** The toolbar action is available for every saved Newsletter. Each duplicate is a new editable Draft with a new ID. Bulk duplication creates one Draft per selected source. Original snapshots, statistics, and queue rows are unchanged; no recipient is queued automatically.
+**Expected:** Every duplicate is an independent Draft. Originals are unchanged. The action is available regardless of sent state.
 
-### PM-133 — Newsletter checkout and safe editing
+### PM-133 — Unsaved-change protection
 
 **Steps:**
 
-1. Repeat the abandoned-editor/Global Check-in test for a draft newsletter.
-2. Schedule a newsletter and check the available edit/cancel behaviour.
-3. Start actual queueing and attempt to edit the sending newsletter.
+1. Open a Newsletter and immediately click **Cancel** without changing anything.
+2. Change a persisted field and click Cancel.
+3. Change it back exactly and click Cancel.
+4. Edit Markdown through typing and through a toolbar action.
+5. Repeat basic pristine/changed checks in Template and Automatic Newsletter editors.
 
-**Expected:** Draft checkout works. Scheduled editing is predictable and cannot leave an unseen stale snapshot. Once queueing/sending begins, immutable message and recipient data cannot be altered by ordinary editing.
+**Expected:** Untouched forms do not warn. Genuine unsaved edits warn. Reverting exactly to saved state avoids a false warning. Joomla/editor initialization alone never marks a form dirty.
 
 ### PM-134 — Newsletter trash, restore, and delete
 
 **Steps:**
 
-1. Trash and restore a disposable draft.
-2. Trash it again, filter for Trashed, and permanently delete it.
-3. Attempt the same lifecycle on a newsletter with immutable delivery history.
+1. Trash a disposable non-active Newsletter.
+2. Filter Trash, restore it, then permanently delete only where safe.
 
-**Expected:** Standard Joomla state actions work for disposable drafts. Historic snapshots/statistics cannot be silently destroyed or orphaned; the UI blocks or safely handles an in-use sent record. Trashed rows remain legible.
+**Expected:** Trash remains distinct from Archive. Sent immutable history is protected according to the component’s lifecycle rules.
 
 ---
 
-## H. Preview, test mail, check before sending, and recipient inspection
+## H. Preview, test mail, Preflight, and recipient inspection
 
 ### PM-150 — Preview is non-destructive
 
 **Steps:**
 
-1. Record subscriber states and newsletter modification data.
-2. Open Preview several times.
-3. Try both **Unsubscribe** and **View in browser** in the backend preview.
-4. Compare the recorded data.
+1. Preview a Draft with unsaved/saved content as supported.
+2. Click unsubscribe/footer controls inside the backend preview.
+3. Return to the editor.
 
-**Expected:** Preview uses the current administrator identity, renders both personal actions as non-navigable, creates no queue rows, and changes no subscriber/newsletter state.
+**Expected:** Preview does not alter subscriber state, queue mail, or recursively load itself through the unsubscribe link.
 
-### PM-151 — Newsletter test mail through active outgoing transport
+### PM-151 — Newsletter test mail through active transport
 
 **Steps:**
 
-1. Use a valid controlled address and click the newsletter test-mail action.
-2. Inspect HTML, plain text, From, Reply-To, subject, links, and rendering.
-3. Temporarily enter an unreachable/invalid transport on staging and repeat.
+1. Configure Joomla transport and send a Newsletter test mail.
+2. Configure Custom SMTP and repeat.
+3. Inspect From, Reply-To, subject, HTML, and selected-content rendering.
 
-**Expected:** Test mail uses Punga Mail's currently active outgoing transport. With **Use Joomla settings**, it follows Joomla's global mailer. With **Custom SMTP**, it uses the Punga Mail-specific SMTP connection through Joomla's mailer factory. Success/failure appears in the Joomla UI with a useful sanitized message. Failure does not produce an unstyled 500 page or queue a campaign.
+**Expected:** Test mail uses the currently selected outgoing transport and renders the same content rules as real delivery without creating a real mailing to the audience.
 
 ### PM-152 — Preflight complete summary
 
 **Steps:**
 
-1. Build a valid newsletter with a known mixed recipient set.
-2. Click **Check recipients & send**.
-3. Compare displayed subject, sender, Reply-To, HTML/text status, unsubscribe, browser link, size, queue, schedule, intended/raw/final counts, and exclusions with the source data.
+1. Open Preflight for a valid Newsletter.
+2. Inspect audience, included/excluded recipient counts, content, configuration, and warnings.
 
-**Expected:** The summary is understandable and accurate. Warnings are visually distinct from blocking errors. Opening preflight does not alter subscription state or queue mail.
+**Expected:** Preflight gives a useful final validation summary and does not alter subscriptions or delivery state.
 
-### PM-153 — Blocking preflight errors
+### PM-153 — Blocking Preflight errors
 
 **Steps:**
 
-1. Test separately: missing subject, invalid/missing From, invalid Reply-To, zero valid recipients, unavailable HTML, unavailable text, missing unsubscribe mechanism, and a missing/restricted content reference where blocking.
-2. Attempt to proceed after each case.
+1. Create controlled invalid states: no eligible recipients, invalid sender/Reply-To, unusable selected content, or another blocking condition.
+2. Attempt Check & Send / Schedule.
 
-**Expected:** Genuine blocking problems prevent send/queue/schedule. The problem names the field or condition to fix. No accidental newsletter snapshot is created.
+**Expected:** Punga Mail refuses the action with clear reasons and does not create a partial mailing.
 
 ### PM-154 — Preflight warnings
 
 **Steps:**
 
-1. Add an obviously malformed HTTP link and an image without alt text.
-2. Generate a message over the warning-size threshold (approximately 500 KiB) and, on staging, the blocking threshold (approximately 1 MiB).
-3. Pause the queue and run preflight.
+1. Create a non-blocking edge case, such as an audience combination that includes recipients outside selected Channels.
+2. Open Preflight.
 
-**Expected:** Detectable malformed links, missing alt text, large size, and paused queue appear as appropriate warnings. A truly oversized message is blocked where documented. A warning alone does not masquerade as proof that all links/images are valid.
+**Expected:** Warning explains the consequence without falsely blocking a valid send.
 
 ### PM-155 — Inspect included and excluded recipients
 
 **Steps:**
 
-1. Prepare addresses excluded for invalid email, pending/unsubscribed, suppression, permanent failure, temporary-failure threshold, not-in-topic, and duplicate identity.
-2. Include one valid address through multiple audience sources.
-3. Open recipient inspection and search/view the underlying rows.
+1. Build an audience containing valid, duplicate, opted-out, suppressed, and access-ineligible recipients.
+2. Inspect Preflight recipient details.
 
-**Expected:** Raw and deduplicated final counts reconcile. Every expected exclusion has the correct reason; the duplicate is eliminated exactly once; the valid address appears once. Inspection changes no state.
+**Expected:** Included/excluded lists explain why addresses are or are not eligible. Consent and suppression reasons are understandable.
 
-### PM-156 — List-ID strategy
+### PM-156 — Schedule field consistency between editor and Preflight
 
 **Steps:**
 
-1. Send controlled newsletters targeted to one topic, multiple topics, no topic/all-confirmed, and Joomla group only.
-2. Inspect raw headers.
+1. Schedule a Newsletter from the editor sidebar.
+2. Open Preflight.
+3. Inspect the **Schedule send** date/time field.
+4. Reschedule from either surface and revisit the other.
 
-**Expected:** Each message has one stable standards-compatible `List-ID`. A single topic gets a stable topic-specific identity. Multiple-topic/non-topic strategies are predictable and do not generate a changing arbitrary ID per recipient or send attempt.
+**Expected:** Both surfaces display the same scheduled date/time in Joomla’s site timezone. Preflight remains available as an alternate scheduling location.
 
 ---
 
 ## I. Queue, scheduled sending, snapshots, browser view, and statistics
 
-### PM-170 — Queue a valid newsletter while globally paused
+### PM-170 — Queue a valid Newsletter while globally paused
 
 **Steps:**
 
-1. Keep global queue pause enabled.
-2. Complete preflight and choose Send now/queue for a controlled audience.
-3. Open the newsletter delivery detail and manually run queue processing.
+1. Keep global queue paused.
+2. Approve/queue a controlled valid Newsletter.
+3. Open Delivery → Mail queue.
 
-**Expected:** An immutable message/recipient snapshot is created, status becomes Queued, and rows remain pending while paused. Pause is not counted as a failure or retry.
+**Expected:** Mailing and recipient rows are created but not transported. Queue entries show useful Newsletter, recipient, status, timing, attempt, and error information.
 
-### PM-171 — Immutable queue snapshot
-
-**Steps:**
-
-1. Record frozen subject, HTML, plain text, recipient email/name/source, and intended count.
-2. Change the original template, source article, subscriber name, topic membership, and global design.
-3. Reopen delivery detail and then resume/send.
-
-**Expected:** The queued/sent mailing retains the recorded snapshot. Current editable records do not rewrite history.
-
-### PM-172 — Batch processing and successful handoff
+### PM-171 — Immutable queued/sent snapshot
 
 **Steps:**
 
-1. Set a small batch size and use more controlled recipients than fit in one batch.
-2. Resume global queue processing and run one batch at a time.
-3. Inspect statuses and controlled inboxes after each run.
+1. Queue a Newsletter.
+2. Attempt to change source content/template after queue creation.
+3. Process the mailing.
+4. Compare sent/browser-view output with the frozen snapshot.
 
-**Expected:** No run exceeds the configured batch. Rows progress atomically without duplicates. Statistics distinguish queued/remaining from successfully handed to the configured mail transport; they do not claim a human read or guaranteed delivery.
+**Expected:** Queued/sent history is immutable and not rewritten by later source edits.
 
-### PM-173 — Retry temporary transport failures
-
-**Prerequisite:** A controlled staging mail transport that can reject temporarily.
-
-**Steps:**
-
-1. Cause a temporary transport failure for a controlled recipient.
-2. Run queue processing and record attempts, next retry, and status.
-3. Run again before the retry time, then restore transport and run after it.
-4. Separately allow failures to reach maximum attempts.
-
-**Expected:** Retry uses the existing configured interval/count, does not duplicate successful rows, and distinguishes temporary from permanent/exhausted failure. Before due time it is not retried. Statistics reconcile.
-
-### PM-174 — Per-mailing pause and resume
+### PM-172 — Queue filtering and safe administrative actions
 
 **Steps:**
 
-1. Start a multi-batch controlled mailing.
-2. Pause that mailing after one batch while leaving the global queue enabled.
-3. Run processing, then resume it.
+1. Filter queue by state, Newsletter, and recipient.
+2. Retry a controlled failed row.
+3. Cancel/remove only a pending/failed unsent row where the UI permits.
+4. Attempt the same on a sent/currently-processing row.
 
-**Expected:** Already handed-off messages are not recalled or resent. Remaining rows stay queued without failure while paused and continue after resume. Other eligible mailings can continue.
+**Expected:** Filters work. Retry/cancel actions are constrained to safe states and never rewrite already-sent history.
 
-### PM-175 — Global queue pause and resume
-
-**Steps:**
-
-1. With two queued controlled mailings, enable global pause.
-2. Run both manual and Scheduled Task processing.
-3. Disable pause and run again.
-
-**Expected:** Nothing new is handed to transport while paused, no retries/failures accrue, and all eligible queues resume safely afterward.
-
-### PM-176 — Cancel remaining mailing
+### PM-173 — Batch processing and successful handoff
 
 **Steps:**
 
-1. Start a multi-batch mailing and let one batch complete.
-2. Choose **Cancel remaining mailing** and confirm the clearly worded warning.
-3. Run queue processing again.
+1. Set a small batch size and resume global queue.
+2. Process a mailing larger than one batch.
+3. Observe queue/delivery statistics after each pass.
 
-**Expected:** Sent messages are not recalled and are not reclassified. Unsent remainder becomes Cancelled, no more messages go out, newsletter status/statistics show partial completion and cancellation accurately.
+**Expected:** Only configured batch size is processed per run. Successful transport handoffs progress cleanly until completion.
 
-### PM-177 — Schedule a newsletter
-
-**Steps:**
-
-1. In a valid Draft Newsletter, enter a future date/time directly in the right-hand Schedule sidebar without opening Preflight first.
-2. Select **Schedule** and confirm the Newsletter becomes Scheduled. Change the date and use **Reschedule**.
-3. Compare the editor, list, dashboard, database/task timing if available, and current UTC offset.
-4. Repeat with a deliberately invalid Newsletter (for example, no effective audience) and confirm scheduling is rejected with the same blocking validation used by Preflight.
-
-**Expected:** Valid mail becomes Scheduled; displayed time and timezone are unambiguous. Invalid mail cannot be scheduled. No queue snapshot starts before the due scheduling task.
-
-### PM-178 — Cancel and edit a scheduled newsletter
+### PM-174 — Retry temporary transport failures
 
 **Steps:**
 
-1. Cancel a scheduled newsletter before it is picked up.
-2. Run the scheduling task after the original due time.
-3. Separately edit a scheduled newsletter using the allowed workflow and confirm/reschedule it.
+1. Create a controlled temporary SMTP/transport failure.
+2. Process queue and inspect attempt count/next retry.
+3. Restore transport before max attempts and process again.
 
-**Expected:** Removing the schedule returns the Newsletter to Draft and clears its scheduled time; the old due time never queues it. Editing cannot accidentally keep an obsolete hidden schedule or enable immediate sending.
+**Expected:** Temporary send failure enters retry flow using configured attempts/delay. Later success does not leave the recipient falsely failed.
 
-### PM-179 — Scheduled newsletter task
+### PM-175 — Per-mailing pause/resume and cancellation
 
 **Steps:**
 
-1. Create and enable **Punga Mail — Prepare scheduled newsletters** at a short interval.
-2. Schedule one newsletter in the future and one due controlled newsletter.
-3. Run the task manually or wait for cron, then inspect task history and newsletter states.
+1. With a queued mailing, pause and resume it if supported.
+2. Cancel remaining deliveries on a disposable mailing.
 
-**Expected:** Only due newsletters move to the immutable send queue. Future/cancelled items remain untouched. Actual transport still depends on the normal send-queue task and pause state.
+**Expected:** Pause is reversible; cancellation affects only remaining unsent deliveries and is clearly irreversible. Already-sent messages remain historical facts.
+
+### PM-176 — Global queue pause/resume
+
+**Steps:**
+
+1. Toggle global queue pause in Options.
+2. Run queue processing both paused and unpaused.
+
+**Expected:** Pause stops sending without marking recipients failed. Resume continues eligible queued work.
+
+### PM-177 — Direct scheduling from Newsletter editor
+
+**Steps:**
+
+1. Set a future schedule in the editor sidebar and schedule the Newsletter.
+2. Reopen it.
+3. Reschedule to a different future time.
+4. Cancel the schedule.
+
+**Expected:** Status/time update correctly. Cancelling the schedule returns the Newsletter to **Draft**, not a terminal Cancelled state, so it can be edited/rescheduled.
+
+### PM-178 — Scheduled Newsletter task
+
+**Steps:**
+
+1. Schedule a Newsletter shortly in the future.
+2. Enable **Punga Mail — Prepare scheduled newsletters**.
+3. Run the task before due time and after due time.
+
+**Expected:** Nothing is queued early. Once due, the Newsletter is revalidated/prepared for delivery. The normal send-queue task remains responsible for transporting queued mail.
+
+### PM-179 — Scheduled/automatic Dashboard distinction
+
+**Steps:**
+
+1. Keep one future manually Scheduled Newsletter and one enabled Automatic Newsletter.
+2. Inspect Dashboard upcoming mail.
+
+**Expected:** Both appear as separate concepts; ordinary scheduled mail is not hidden behind Automatic Newsletter information.
 
 ### PM-180 — Delivery statistics and recipient details
 
 **Steps:**
 
-1. Open a completed, partially failed, partially cancelled, and bounced controlled mailing.
-2. Inspect intended, queued, transport-accepted, temporary/permanent failure, hard/soft bounce, suppressed, attributable unsubscribe, remaining/processing, and cancelled counts.
-3. Drill into the underlying recipient/failure rows.
+1. Complete a controlled send with at least one success and, if possible, one controlled failure/exclusion.
+2. Open the sent Newsletter detail/statistics.
 
-**Expected:** Counts reconcile to the immutable mailing population and rows. Reasons/timestamps are useful and sanitized. Later subscriber changes do not rewrite historic intended/delivery counts.
+**Expected:** Counts and recipient details match queue/history. “Sent/accepted” wording does not falsely claim human reading.
 
 ### PM-181 — Attributable unsubscribe statistic
 
 **Steps:**
 
-1. Send two distinct controlled mailings to a subscriber.
-2. Use the unsubscribe link from the newer mailing.
-3. Inspect both mailings' statistics.
+1. Unsubscribe a controlled recipient using a link from a specific sent Newsletter.
+2. Inspect that Newsletter’s statistics/history.
 
-**Expected:** Where attribution is available, the unsubscribe is credited to the correct immutable mailing only; the system does not invent attribution for unrelated/manual changes.
+**Expected:** Unsubscribe is attributed where the feature records it without changing unrelated historic recipient rows.
 
-### PM-182 — Browser view enabled
-
-**Steps:**
-
-1. Enable browser view globally or via a valid template/newsletter override.
-2. Send a controlled newsletter and follow its browser link in a logged-out/private window.
-3. Change the draft/source/template/global styles after sending and reload the browser view.
-
-**Expected:** The public page displays the immutable sent snapshot and stays unchanged. It contains no recipient-specific greeting/token, backend metadata, or private subscriber data. The route is SEF when the menu anchor exists.
-
-### PM-183 — Browser view disabled and draft protection
+### PM-182 — Browser view integrity
 
 **Steps:**
 
-1. Disable browser view and send a controlled newsletter.
-2. Attempt its would-be browser route.
-3. Try guessed IDs/keys for a draft, scheduled, cancelled-before-send, and nonexistent newsletter.
+1. Open browser view from a sent Newsletter.
+2. Modify the source Draft/template/content afterwards.
+3. Reload browser view.
 
-**Expected:** Disabled views and all non-sent/private records are unavailable without revealing whether a private draft exists. Random/invalid keys fail safely. No sequential ID alone grants access.
+**Expected:** Public browser view remains tied to the immutable sent snapshot and does not expose draft changes.
 
 ---
 
 ## J. Automatic Newsletters
 
-### PM-200 — Create a safe draft-only digest
+### PM-200 — Create a safe draft-only Automatic Newsletter
 
 **Steps:**
 
-1. Open **Automatic Newsletters → New**, change several non-required settings, then press Save once with Title and Template still empty. Verify the editor remains open and the changed settings are still present.
-2. Confirm recurrence is entered as a number plus **days**, **weeks**, or **months**. Verify a monthly choice remains a calendar-month schedule rather than becoming 30 days. Choose **Content since the previous automatic newsletter** and verify the look-back field is hidden; choose **Content from a recent time period** and verify **Look back … days** appears.
-3. Verify registered content-source names follow the current administrator language where Joomla provides a translation; then enter a title, recurrence/next run, template, subject pattern, cutoff, content type/filter, target audience, **Create draft**, and empty-content behaviour.
-4. Save and reopen it, then confirm or set its Enabled state in the Automatic Newsletters list.
+1. Create an Automatic Newsletter targeting the test Channel.
+2. Select content types and schedule.
+3. Choose draft/review mode rather than automatic send.
+4. Save and enable it.
 
-**Expected:** Failed validation stays in the editor, shows the error, and preserves submitted values. Recurrence offers days/weeks/months, look-back remains day-based, and irrelevant fields stay hidden. After a valid save, all fields persist, next run is clear in site timezone, and Create draft is the safe/default generation mode. Editing does not run the automatic newsletter immediately.
+**Expected:** Definition persists, shows a clear next run, and does not send unattended in draft mode.
 
-### PM-201 — Digest subject placeholders and template placement
-
-**Steps:**
-
-1. Use `{date}` and `{site_name}` in the subject pattern and `{new_content}` in the chosen template.
-2. Make one eligible public item new and run the digest task when due.
-3. Open the generated newsletter.
-
-**Expected:** A new Draft is created with resolved subject, template/style values, selected item, and content at the exact placeholder. It is not queued or sent.
-
-### PM-202 — Since-last-successful cutoff avoids repeats
+### PM-201 — Automatic Newsletter recurrence and timezone
 
 **Steps:**
 
-1. Configure **content since last successfully generated/sent digest**.
-2. Run it with Item A new and confirm a successful draft/run.
-3. Run again with no new item, then publish Item B and run again.
+1. Test daily, weekly, and monthly recurrence where practical.
+2. Use a monthly date near the end of a month if possible.
+3. Compare editor, list, Dashboard, and run-history times.
 
-**Expected:** Item A is not repeatedly included. The empty run follows configured empty behaviour and is recorded. The next content run includes Item B but not A. A failed run does not incorrectly advance the successful cutoff.
+**Expected:** Times use the configured Joomla timezone in the UI. Monthly recurrence behaves as calendar months rather than fixed 30-day drift.
+
+### PM-202 — Since-last cutoff avoids repeats
+
+**Steps:**
+
+1. Configure **Since last successful run**.
+2. Run once with eligible content.
+3. Run at the next due time without adding content.
+4. Add a new eligible item and run again.
+
+**Expected:** Already-consumed content is not repeatedly included. Cutoff advances only according to successful/defined behavior.
 
 ### PM-203 — Rolling-period cutoff
 
 **Steps:**
 
-1. Choose **Content from a recent time period** and enter a short **Look back … days** value.
-2. Prepare one item inside and one outside the period.
-3. Run the digest twice while both time positions remain valid.
+1. Configure content from a recent time period.
+2. Add items inside and outside the window.
+3. Run at due time.
 
-**Expected:** Only in-period content is included. Repetition is possible only because rolling mode intentionally selects the period and is understandable from configuration/history.
+**Expected:** Only items in the configured rolling period are considered.
 
-### PM-204 — Content types and category/filter handling
+### PM-204 — Content type order, maximum, and minimum
 
 **Steps:**
 
-1. Select multiple registered content types and supported categories/filters.
-2. Publish matching and nonmatching items after the cutoff.
-3. Run the digest.
+1. Make more eligible items than needed.
+2. Test **Newest first** and **Oldest first**.
+3. Set a Maximum items cap.
+4. Set Minimum items to 0 with **If no new content is found → Do nothing** and run with zero content.
+5. Set a positive Minimum above the currently available count in Since-last mode.
 
-**Expected:** Only matching items are selected. Generic registered metadata drives selection; no Punga Mail-specific provider integration is required.
+**Expected:** Sort/cap work. Minimum 0 does not force an empty Newsletter when empty behavior is Do nothing. A positive unmet minimum records a skip and does not advance the Since-last cutoff, allowing content to accumulate.
 
 ### PM-205 — Critical access-permission test: mixed recipients
 
-**Prerequisite:** Public, Registered, and Special/custom-access test items plus recipients Test Registered and Test Special in the same intended digest audience.
+**Prerequisite:** Audience contains recipients with different Joomla content access rights and selected content includes restricted items.
 
 **Steps:**
 
-1. Confirm on the website that Test Registered cannot view the Special item and Test Special can.
-2. Make the Public, Registered, and Special items new for the cutoff.
-3. Configure one digest targeting both recipients and run it in Create draft mode.
-4. Inspect selected content, preview, generated HTML/text, and digest history.
+1. Build an Automatic Newsletter whose resolved audience includes Test Registered and Test Special.
+2. Include Public and Special-only content.
+3. Generate/send in a controlled mode.
+4. Inspect each recipient-specific output or generated selection behavior.
 
-**Expected:** Every included item is something **every resolved recipient** could normally view. The Special item is excluded because one recipient lacks access. Missing/uncertain access metadata fails closed. There is no restricted title, excerpt, URL, or body leak.
+**Expected:** **Every resolved recipient** receives only content that recipient would normally be allowed to view on the website. Restricted content must never leak because another recipient in the same mailing can see it.
 
-### PM-206 — Access test: homogeneous privileged audience
+### PM-206 — Homogeneous privileged audience
 
 **Steps:**
 
-1. Create a separate digest audience containing only Test Special users who can view the Special item.
-2. Run the digest in Create draft mode.
+1. Target only recipients allowed to see the Special item.
+2. Generate the Automatic Newsletter.
 
-**Expected:** The Special item may now be included, while unpublished/trashed items remain excluded. Website view-level and applicable category access both take effect.
+**Expected:** Eligible restricted content can be included when every resolved recipient is allowed to view it.
 
 ### PM-207 — Guest/external audience access
 
 **Steps:**
 
-1. Target an external email-only subscriber with Public, Registered, and Special items new.
-2. Run a draft digest.
+1. Target an external email-only audience.
+2. Include Public plus Registered/Special content candidates.
 
-**Expected:** Only content available to a public/guest website visitor is included. External subscribers are never assumed to hold a Joomla authenticated access level.
+**Expected:** External recipients receive only content available to the equivalent public visitor.
 
-### PM-208 — Empty digest behaviour: skip
-
-**Steps:**
-
-1. Configure no-content handling to Skip and make the digest due with no eligible content.
-2. Run the task.
-
-**Expected:** No newsletter or mail is created/sent. History clearly records no content/skip and the run time. No blank automatic newsletter reaches recipients.
-
-### PM-209 — Empty digest behaviour: explicit draft
+### PM-208 — Empty-content behavior
 
 **Steps:**
 
-1. Explicitly configure the available create-empty-draft behaviour.
-2. Run with no eligible content, including while generation mode says automatic send.
+1. Configure **Do nothing** and run with no matching content.
+2. Configure the explicit empty-draft behavior if available and repeat.
 
-**Expected:** At most a Draft is created; an empty digest is never automatically sent. History explains the outcome.
+**Expected:** Empty behavior matches the selected policy and is recorded clearly in history.
 
-### PM-210 — Explicit automatic-send activation
-
-**Steps:**
-
-1. With **Create draft** selected, verify the unattended-send warning and confirmation checkbox are hidden.
-2. Change it to **Create and send automatically** and verify both appear.
-3. Save without accepting the explicit confirmation, then repeat with deliberate confirmation.
-4. Edit an already configured Automatic Newsletter without changing generation mode.
-
-**Expected:** Automatic send cannot become active accidentally. The warning is shown only when relevant, a clear confirmation is required when newly enabling it, and ordinary later edits do not silently switch modes or trigger an immediate run.
-
-### PM-211 — Automatic digest delivery path
+### PM-209 — Explicit automatic-send activation
 
 **Steps:**
 
-1. Use only controlled recipients and keep global queue paused initially.
-2. Make an automatic-send digest due and run the digest task.
-3. Inspect generated newsletter/history/queue; then resume normal queue processing.
+1. Switch a controlled Automatic Newsletter from draft/review to unattended send.
+2. Observe any warning/confirmation.
 
-**Expected:** The digest creates a newsletter and normal immutable queue snapshot, then uses the existing queue/task/rate/retry path. Paused means queued, not failed. No parallel mail sender exists.
+**Expected:** Automatic sending requires an explicit administrator decision and is not enabled accidentally by ordinary edits.
 
-### PM-212 — Digest recipient targeting and suppression
-
-**Steps:**
-
-1. Target overlapping topics and a Joomla group containing duplicate, unsubscribed, suppressed, and active controlled addresses.
-2. Run in draft mode and inspect recipient/preflight data.
-
-**Expected:** Audience is a deduplicated union, while opt-out/suppression/bounce rules win. Digest targeting never creates memberships or reactivates protected addresses.
-
-### PM-213 — Digest schedule and overlap protection
+### PM-210 — Automatic Newsletter delivery path
 
 **Steps:**
 
-1. Test a daily or weekly recurrence and set the next run in site timezone.
-2. Test a monthly recurrence anchored on the 31st (or another end-of-month date), including a shorter following month.
-3. Trigger two task executions as close together as the staging system allows.
-4. Inspect newsletters and history.
+1. Run a due Automatic Newsletter in send mode while global queue is paused.
+2. Inspect the generated Newsletter and queue.
+3. Resume queue and process.
 
-**Expected:** One due occurrence produces at most one result. Overlapping workers do not duplicate an automatic newsletter/newsletter. Daily and weekly schedules advance predictably. A monthly schedule uses the last valid day in a shorter month and returns to its stored anchor day in later months instead of drifting.
+**Expected:** Automatic generation uses the normal immutable Newsletter/queue infrastructure rather than bypassing delivery safeguards.
 
-### PM-214 — Digest history and failure recovery
-
-**Steps:**
-
-1. Produce successful draft, no-content, automatic-queue, and controlled failure runs.
-2. Open history and follow the generated newsletter link where present.
-3. Correct the failure and run again.
-
-**Expected:** Each entry records run time, status, item count, whether/generated newsletter ID, sent/queued/draft/no-content outcome, and sanitized failure details. Passwords/tokens are absent. Recovery does not erase history.
-
-### PM-215 — Digest list lifecycle and checkout
+### PM-211 — Draft notification
 
 **Steps:**
 
-1. Test search, state filter, sorting, pagination, enable/disable, trash, restore, and delete.
-2. Abandon the editor and test Joomla Global Check-in as for topics/templates.
+1. Enable the Component Option for Automatic Newsletter draft notification and a controlled reviewer address.
+2. Generate a draft with selected content.
+3. Inspect notification.
+4. Repeat in automatic-send mode.
 
-**Expected:** Normal Joomla list and checkout conventions work. Disabled/trashed digests never run. Deleting a definition retains reasonable run/newsletter history or blocks unsafe deletion.
+**Expected:** Draft notification identifies the Automatic Newsletter and generated Draft, summarizes selected/excluded content, and links directly to the admin editor. It is not sent for automatic-send runs.
+
+### PM-212 — Automatic Newsletter history
+
+**Steps:**
+
+1. Produce successful, skipped, and if possible failed runs.
+2. Inspect the history for each definition.
+3. Open a generated Newsletter through its history link.
+
+**Expected:** History clearly shows result, generated Newsletter title/link and current lifecycle state, selected content count, duration, and useful details. Never-run state is understandable.
+
+### PM-213 — Enable/disable behavior and list state icon
+
+**Steps:**
+
+1. Open the Automatic Newsletters list and verify each normal row shows an enabled/disabled icon directly after the selection checkbox; there is no redundant text Status column on the right.
+2. Click the icon of an enabled Automatic Newsletter.
+3. Verify it changes to disabled without opening the editor and that the current list/filter context remains usable.
+4. Click the icon again and verify it changes back to enabled.
+5. Repeat with an administrator who lacks `core.edit.state` permission if practical; the state indicator must not be actionable.
+6. Disable an Automatic Newsletter before its due time.
+7. Let the due time pass.
+8. Re-enable it and run the Automatic Newsletter task.
+
+**Expected:** The row icon accurately represents the stored state and toggles through the existing CSRF-protected enable/disable actions. Disabled definitions do not generate. On re-enable, overdue scheduling follows the documented catch-up behavior rather than silently discarding the due run. Trashed rows are not directly toggleable from this icon.
+
+### PM-214 — Automatic Newsletter checkout and grouped navigation
+
+**Steps:**
+
+1. Open/edit/save/cancel an Automatic Newsletter.
+2. Exercise checkout with a second admin session.
+
+**Expected:** Joomla-standard checkout works and sidebar context remains stable.
 
 ---
 
 ## K. Delivery, bounce handling, and mail health
 
-### PM-230 — Backend outgoing mail test
+### PM-230 — Delivery page overview and diagnostics
 
 **Steps:**
 
-1. Open **Delivery / Bounces** and send a mail test to a controlled address.
-2. Inspect the received message.
-3. On staging, cause a configured transport failure and repeat.
+1. Open **Delivery**.
+2. Inspect active outgoing transport, queue summary, returned-mail status, diagnostics, and available manual actions.
 
-**Expected:** Valid mail succeeds through the currently saved active outgoing transport (Joomla settings or Custom SMTP). Failure is shown in the normal administrator template with a sanitized useful message—not an unstyled 500 page. No newsletter/queue/subscription record is created.
+**Expected:** Page identifies Joomla transport vs Custom SMTP without exposing secrets. Missing PHP IMAP or other relevant capabilities are reported clearly.
 
-### PM-231 — Return/envelope behaviour inspection
-
-**Prerequisite:** A mail transport/server where envelope sender can be inspected.
+### PM-231 — Backend outgoing-mail test
 
 **Steps:**
 
-1. Configure a bounce/return address.
-2. Send a controlled newsletter and inspect SMTP transaction/server logs or provider metadata plus message headers.
+1. Send a controlled test mail from Delivery using Joomla transport.
+2. Repeat using Custom SMTP.
 
-**Expected:** Punga Mail uses Joomla mail-layer capabilities for envelope sender where technically available. It does not pretend that merely adding an ordinary `Return-Path` header controls SMTP routing. Behaviour/limitations are predictable.
+**Expected:** Test reaches controlled recipient and uses active transport/sender settings. Failures produce useful diagnostics.
 
-### PM-232 — Manual and scheduled mailbox processing
-
-**Steps:**
-
-1. Put one controlled DSN in the bounce mailbox.
-2. Click **Process bounces now**.
-3. Put another DSN in the mailbox and run **Punga Mail — Check returned mail**.
-
-**Expected:** Both paths use the same rules, report useful counts, and process each message at most once. Mailbox errors are sanitized. The recent-bounces list updates. Delivery shows the latest check time/result for both manual and Scheduled Task runs. If a run newly suppresses an address, the latest-check summary reports it and Dashboard → Needs attention links back to returned-mail details. Subscriber records are retained.
-
-### PM-233 — Hard bounce classification and suppression
-
-**Prerequisite:** A controlled delivery-status notification for the test address, for example status `5.1.1` with a permanent “user unknown” diagnostic. Do not send to a random real domain.
+### PM-232 — Manual and scheduled returned-mail processing
 
 **Steps:**
 
-1. Queue/send a controlled mailing so the bounce can identify subscriber and mailing.
-2. Deliver the hard-bounce DSN to the configured mailbox and process it.
-3. Inspect subscriber detail, bounce history, mailing statistics, and future preflight.
+1. Place a known DSN/bounce in the configured mailbox.
+2. Click **Check returned mail now**.
+3. Confirm there is no `imap_fetchheader()` flag TypeError.
+4. Place another controlled DSN and run **Punga Mail — Check returned mail** Scheduled Task.
+5. Inspect Delivery status after each run.
 
-**Expected:** The event is classified as a permanent/hard failure, with timestamp, address, subscriber, mailing if identifiable, status/SMTP code, and diagnostic. The address is immediately suppressed after this first permanent failure, regardless of the temporary-failure threshold, and excluded from future queues. Historical mailing hard-bounce count updates. Audience → Subscribers shows the subscriber permission separately from the blocked delivery state.
+**Expected:** Manual and scheduled paths use the same processing logic. Delivery shows latest check time, processed count, permanent failures, temporary failures, newly suppressed addresses, or a sanitized failure message.
+
+### PM-233 — Hard bounce classification and immediate suppression
+
+**Steps:**
+
+1. Process a controlled permanent failure such as unknown mailbox/domain (`5.x.x` or equivalent clear permanent diagnostic).
+2. Inspect Delivery and Audience → Subscribers.
+
+**Expected:** Address is blocked immediately regardless of temporary-failure threshold. UI says **Permanent failure — delivery stopped immediately** / **Delivery blocked — permanent failure**, not merely technical “hard-bounce” jargon.
 
 ### PM-234 — Soft bounce threshold
 
-**Prerequisite:** Controlled DSNs such as `4.2.2` mailbox full, and a low test threshold.
+**Steps:**
+
+1. Set **Temporary failures before blocking address** to 3.
+2. Process one controlled temporary failure for an address.
+3. Repeat until threshold is reached.
+
+**Expected:** Before threshold, address remains deliverable and UI shows progress such as **Temporary failure — 1 of 3 before delivery is stopped**. At threshold, delivery becomes blocked. Temporary-failure count behaves predictably.
+
+### PM-235 — Unknown/unmatched bounce
 
 **Steps:**
 
-1. Process one soft DSN and inspect the subscriber.
-2. Process distinct subsequent soft DSNs until the threshold is reached.
-3. Resolve a future newsletter before and after the threshold.
+1. Process a bounce that cannot be confidently classified or associated.
 
-**Expected:** Each genuine event increments the temporary/soft count and records details. Before threshold, the address remains deliverable and shows `X of Y` progress; at threshold, it becomes suppressed and is excluded. The threshold does not affect permanent/hard failures. A duplicate mailbox message does not increment twice.
+**Expected:** Event is retained/reported for diagnosis without suppressing an unrelated subscriber.
 
-### PM-235 — Unknown bounce
+### PM-236 — Bounce association and duplicate handling
 
 **Steps:**
 
-1. Process a controlled nonstandard/ambiguous DSN that identifies the address but lacks a reliable permanent/temporary code.
-2. Inspect subscriber and history.
+1. Process the same DSN more than once if the mailbox/test setup allows.
+2. Inspect bounce history and counters.
 
-**Expected:** It is retained as Unknown/Unclassified with diagnostic data where safe. It is not silently treated as a hard bounce or deleted.
-
-### PM-236 — Bounce association and unmatched events
-
-**Steps:**
-
-1. Process one DSN identifying a known queue recipient/mailing and another controlled DSN for no known subscriber.
-2. Inspect recent history and statistics.
-
-**Expected:** Known events associate with the correct email/subscriber and mailing when identifiers permit. Unmatched events do not change an unrelated subscriber; they are reported/retained safely as designed.
+**Expected:** Duplicate processing does not repeatedly inflate suppression/counters or create misleading new suppression warnings.
 
 ### PM-237 — Address-level isolation
 
 **Steps:**
 
-1. Prepare one person represented by separate controlled address sources if the site supports them.
-2. Hard-bounce one address only.
-3. Resolve future recipients for both.
+1. Suppress one test address.
+2. Ensure another subscriber with a similar name/Channel/Joomla group remains deliverable.
 
-**Expected:** Suppression is attached to the failed normalized email. A separate valid address is not disabled merely because it belongs to the same person/user context.
+**Expected:** Suppression is tied to the normalized email address and does not leak to unrelated recipients.
 
-### PM-238 — Bounce history privacy and duplicate handling
+### PM-238 — Bounce history privacy
 
 **Steps:**
 
-1. Process the exact same DSN twice or leave it for a second task run.
-2. Search administrator lists/logs and open a public/browser page.
+1. Inspect Delivery returned-mail details and Subscriber delivery history.
+2. Search rendered pages/source for mailbox passwords, SMTP passwords, raw authentication tokens, or unnecessary full message content.
 
-**Expected:** The event is counted once. Necessary diagnostic text is administrator-only and sanitized; mailbox credentials, full raw private message, and subscriber tokens are not exposed publicly or in ordinary logs.
+**Expected:** Administrators get enough diagnostic information without secrets or excessive private mail content being exposed.
+
+### PM-239 — Allow delivery again and later bounce
+
+**Steps:**
+
+1. Clear a bounce suppression using **Allow delivery again**.
+2. Confirm address is deliverable and old bounce history remains.
+3. Generate/process another permanent bounce for the same address.
+
+**Expected:** Re-enabled address can be suppressed again by a later real bounce. Recovery does not disable future health checks.
+
+### PM-240 — Dashboard returned-mail warning lifecycle
+
+**Steps:**
+
+1. Cause a check to newly suppress an address.
+2. Confirm Dashboard warning.
+3. Mark it reviewed.
+4. Run a successful check with no new suppressions.
+5. Later create another new suppression.
+
+**Expected:** Old reviewed warning stays cleared; ordinary successful checks do not resurrect it; a genuinely new suppression creates a new attention item.
 
 ---
 
-### 0.6.2 focused acceptance — returned-mail status and editor context
-
-1. Open **Audience → Subscribers** and verify the former long delivery-block explanatory paragraph is no longer shown above the list.
-2. Open a Newsletter, switch to **Mail content**, select a Template, and choose **Apply template**. Verify the Newsletter reloads on **Mail content** with the Template values applied.
-3. Configure a controlled return mailbox and click **Check returned mail now**. Verify no `imap_fetchheader()` flag TypeError occurs.
-4. With no returned messages, verify Delivery still records a successful **Last returned-mail check** timestamp with zero counts.
-5. Process one controlled hard-bounce DSN for an otherwise deliverable subscriber. Verify Delivery reports one permanent failure and one newly excluded address, Recent returned mail contains the DSN, and the subscriber still exists with delivery suppressed.
-6. Open Dashboard and verify **Needs attention** reports the newly excluded recipient and links to Delivery's returned-mail area.
-7. Run another successful check with no new suppression. Verify the latest-check summary updates and the previous “newly excluded” Dashboard notice disappears.
-8. Cause a controlled mailbox connection failure. Verify Delivery records the failed latest check with a sanitized error and Dashboard surfaces the failed check under **Needs attention**.
-9. Run Joomla Scheduled Task **Punga Mail — Check returned mail** with a controlled DSN and verify it updates the same Delivery summary as the manual button.
-
-### 0.6.3 focused acceptance — outgoing mail, bounce clarity, and toolbar consistency
-
-1. Open **Automatic Newsletters**, **Design → Templates**, **Design → Content layouts**, **Delivery**, and **Tools**. Verify the main section toolbar provides Joomla's **Options** action wherever the current user has component-options permission.
-2. Upgrade an existing 0.6.2 installation and verify outgoing transport defaults to **Use Joomla settings**; send a controlled test and confirm behavior is unchanged.
-3. Configure **Custom SMTP** with a separate controlled newsletter account, save it with the section button, reopen Options, and confirm the password is not rendered. Send a successful test, then a controlled failing test and verify the failure is sanitized.
-4. Send a Newsletter through Custom SMTP and verify the configured Punga Mail From name/address and Reply-To are applied while Joomla system mail still uses Joomla's global mail configuration.
-5. Open Delivery diagnostics and verify it identifies **Custom SMTP**, its host, the resolved sender, and no password/credential secret. Switch back to Joomla settings and verify diagnostics update accordingly.
-6. Prepare one subscribed/deliverable address, one subscribed address with a permanent/hard bounce, and one subscribed address with a temporary/soft bounce below a threshold of 3. Verify Audience → Subscribers separately shows **Subscription** and **Delivery**: the hard-bounced address remains Subscribed but is **Delivery blocked — permanent failure**; the soft-bounced address remains Deliverable and shows **1 of 3** progress.
-7. Process enough distinct temporary bounces to reach the threshold and verify delivery becomes blocked only at the threshold. Process one permanent hard bounce on another address and verify delivery is blocked immediately, independent of the threshold.
-8. Open the Subscriber editor and Delivery returned-mail table for these addresses and verify the wording uses permanent/temporary language and explains immediate blocking versus threshold progress without relying only on `hard`/`soft` jargon.
-9. With a user who has `core.manage` but not `core.admin`, attempt direct POSTs to the SMTP/IMAP settings save/test controller tasks and verify they are rejected.
-10. Review `docs/USER_GUIDE.md` and this guide for the new transport choice, secure SMTP password behavior, separate Subscription/Delivery states, and permanent-vs-temporary bounce semantics.
-
-
 ## L. Subscriber CSV import and export
-
-Use only artificial test data. Spreadsheet programs can execute formula-like cells, so keep exported test files inside a safe test environment.
 
 ### PM-250 — Import preview and field mapping
 
 **Steps:**
 
-1. Prepare a UTF-8 CSV with columns in an unusual order: email, name, status, topics, and an ignored field.
-2. Upload it using comma, semicolon, and tab delimiters in separate runs.
-3. Map columns but stop at preview.
+1. Open **Tools → Import / Export**.
+2. Upload a controlled CSV containing name/email/subscription/Channel data as supported.
+3. Map columns and preview before committing.
 
-**Expected:** Delimiter/encoding are interpreted correctly, the first preview rows are legible, Email is required, ignored data is not imported, and preview makes no database changes.
+**Expected:** Preview clearly shows intended changes and does not modify data yet. Tools sidebar context remains active.
 
 ### PM-251 — Import new and existing subscribers
 
 **Steps:**
 
-1. Import one new valid address, one existing address with a changed name, one unchanged row, one malformed address, and one duplicate row.
-2. Commit and inspect the report and records.
+1. Import one new address and one existing address.
+2. Commit and inspect Audience → Subscribers.
 
-**Expected:** Added, updated, unchanged, skipped/duplicate, invalid, conflicts, and errors are counted accurately. Normalized duplicates produce one subscriber.
+**Expected:** New subscriber is created; existing subscriber is updated/merged according to documented rules without duplicate normalized addresses.
 
-### PM-252 — Topic mapping and membership merge
+### PM-252 — Channel mapping and membership merge
 
 **Steps:**
 
-1. Map topic/list values for a new and existing subscriber.
-2. Give the existing subscriber another topic not present in the CSV.
-3. Import using membership merge.
+1. Import Channel memberships for controlled addresses.
+2. Compare pre-existing memberships before/after.
 
-**Expected:** Mapped memberships are added without duplicates, existing unrelated memberships remain, unknown topics are clearly reported rather than silently invented, and topic counts update.
+**Expected:** Mapping/merge semantics match the import preview and do not silently erase unrelated membership data.
 
 ### PM-253 — Protected-state import safety
 
 **Steps:**
 
-1. Import rows marked Active for a globally unsubscribed, bounce-suppressed, hard-bounced, and ordinary active address.
-2. Leave **Explicitly reactivate protected addresses** off.
-3. Preview, commit, and resolve recipients.
+1. Include a globally unsubscribed or suppressed address in an import that otherwise appears subscribed.
+2. Import without choosing any explicit protected-address reactivation option.
 
-**Expected:** Protected addresses remain protected and are reported as conflicts/skipped; importing topic/name data cannot reactivate them. The ordinary record may update normally.
+**Expected:** Import does not silently bypass explicit opt-out/suppression protections. Protected states remain protected.
 
 ### PM-254 — Explicit import reactivation
 
 **Steps:**
 
-1. On controlled addresses only, map an explicit Active state and enable the clearly labelled reactivation option.
-2. Review preview carefully and commit.
+1. Use **Explicitly reactivate protected addresses** only on a controlled address where reactivation is intentional.
+2. Commit and inspect state.
 
-**Expected:** Only rows meeting all explicit conditions are reactivated. The report names the action. It does not clear unrelated bounce history or affect unselected addresses.
+**Expected:** Reactivation happens only because the administrator explicitly requested it, and resulting state is clear.
 
 ### PM-255 — Import limits and malformed files
 
 **Steps:**
 
-1. Try an empty file, missing-email mapping, invalid UTF-8/broken CSV, oversized file, and more rows than the documented limit on staging.
-2. Try an interrupted/failed commit if safely reproducible.
+1. Test missing required columns, invalid email values, duplicate rows, unusual quoting/Unicode, and an oversized file if practical.
 
-**Expected:** Each fails safely with an administrator-friendly message. No partial unknown state, PHP warning, memory dump, credential, or raw stack trace is exposed. Published limits (5 MiB/20,000 rows where shown) are enforced.
+**Expected:** Errors are reported safely; malformed input does not create partial/corrupt subscriber data.
 
 ### PM-256 — Export subsets and columns
 
 **Steps:**
 
-1. Export All, Active, Unsubscribed, Suppressed/Bounced, and members of selected topic(s).
-2. Open each as UTF-8 CSV and compare records with administrator filters.
+1. Filter Subscribers by Channel/state/search.
+2. Export the subset.
+3. Open CSV in a text editor and spreadsheet application.
 
-**Expected:** Each subset is accurate and deduplicated. Useful name, email, topics, effective state, and relevant suppression/bounce information are present without secret tokens.
+**Expected:** Export contains the intended subset and columns with correct UTF-8/CSV escaping.
 
-### PM-257 — CSV escaping and formula-injection protection
-
-**Steps:**
-
-1. On staging, use names/topic titles containing comma, semicolon, quotes, line breaks, non-ASCII German characters, and leading `=`, `+`, `-`, or `@`.
-2. Export and open in a text editor first, then a safe spreadsheet environment.
-
-**Expected:** UTF-8 and CSV quoting preserve the data. Formula-like cells are neutralized (for example with a leading apostrophe) and do not execute. Import/export does not corrupt umlauts.
-
-### PM-258 — Cancel an import preview
+### PM-257 — CSV formula-injection protection
 
 **Steps:**
 
-1. Upload a valid CSV and reach the mapping/preview step.
-2. Click Cancel.
-3. Reopen Import/Export and verify that the old preview cannot be committed accidentally.
+1. Use a controlled name/value beginning with `=`, `+`, `-`, or `@` where CSV export permits.
+2. Export and inspect raw CSV.
 
-**Expected:** The pending preview is cleared, no subscriber changes occur, and a later commit requires a newly uploaded preview.
+**Expected:** Spreadsheet-formula injection is neutralized according to Punga Mail’s export safety rules.
+
+### PM-258 — Cancel/clear import preview
+
+**Steps:**
+
+1. Create an import preview.
+2. Use Clear/Cancel.
+
+**Expected:** Preview/session state is removed without committing subscriber changes and the user remains in Tools.
 
 ---
 
@@ -1545,362 +1534,241 @@ Use only artificial test data. Spreadsheet programs can execute formula-like cel
 
 **Steps:**
 
-1. Open **System → Manage → Scheduled Tasks → New**.
-2. Search for Punga Mail task types.
+1. Open **System → Scheduled Tasks → New**.
+2. Inspect available Punga Mail task types.
 
-**Expected:** Exactly the expected types are discoverable and translated: Send pending newsletters, Newsletter reminder, Prepare scheduled newsletters, Create automatic newsletters, and Check returned mail. The description for **Prepare scheduled newsletters** explicitly says it handles ordinary newsletters manually scheduled for a specific date/time; **Create automatic newsletters** explicitly says it handles recurring Automatic Newsletters.
+**Expected:** At minimum the current task types appear with understandable names/descriptions: send pending newsletters, prepare scheduled newsletters, create Automatic Newsletters, check returned mail, and Newsletter reminder.
 
 ### PM-271 — Send-queue task
 
 **Steps:**
 
-1. Create/enable **Punga Mail — Send pending newsletters** at a safe interval.
-2. Queue a controlled mailing, resume the queue, and run the task.
-3. Inspect Joomla task history and Punga Mail statistics.
+1. Queue controlled mail.
+2. Run **Punga Mail — Send pending newsletters** while global queue is paused, then unpaused.
 
-**Expected:** It processes only an allowed batch, reports success/failure accurately, uses configured retry logic, and does not overlap into duplicate delivery.
+**Expected:** Paused run sends nothing and does not fail recipients. Unpaused run processes according to batch/retry settings.
 
 ### PM-272 — Scheduled-newsletter task
 
-Follow PM-179 and additionally verify Joomla task last-run/next-run/history values.
+**Steps:**
 
-**Expected:** Task result agrees with Punga Mail status and handles “nothing due” as a normal successful no-op.
+1. Schedule an ordinary Newsletter.
+2. Run **Punga Mail — Prepare scheduled newsletters** before and after due time.
 
-### PM-273 — Automatic-digest task
+**Expected:** This task handles ordinary scheduled Newsletters only and does not replace Automatic Newsletter generation.
 
-Follow PM-201, PM-208, and PM-213 using **Punga Mail — Create automatic newsletters**.
+### PM-273 — Automatic Newsletter task
 
-**Expected:** Task history distinguishes generated, no-content, and failed runs without exposing private data. A 5–15 minute task interval is accepted; the digest's own recurrence decides whether it is due.
+**Steps:**
 
-### PM-274 — Bounce-mailbox task
+1. Make an Automatic Newsletter due.
+2. Run **Punga Mail — Create automatic newsletters**.
 
-Follow PM-232 using **Punga Mail — Check returned mail**.
+**Expected:** Due enabled definitions run once under overlap protection, create Draft/queued Newsletter as configured, and record history.
 
-**Expected:** “No new mail” is a clean no-op. Connection/parse errors are useful and sanitized. Repeated runs are idempotent.
+### PM-274 — Returned-mail task
+
+**Steps:**
+
+1. Configure mailbox and place a controlled bounce.
+2. Run **Punga Mail — Check returned mail**.
+
+**Expected:** Task processes the mailbox using the same logic as the manual Delivery action and updates the latest-check summary/Dashboard attention state.
 
 ### PM-275 — Newsletter reminder task
 
-**Prerequisite:** Reminder settings from PM-020 and a staging database where dates can be prepared safely.
-
 **Steps:**
 
-1. Set the last successful newsletter inside the threshold and run the task.
-2. Set it older than the threshold and run again.
-3. Run repeatedly without a newer sent newsletter.
-4. Mark/send a newer controlled newsletter and repeat after preparing its threshold.
+1. Enable reminder with a short safe test age and controlled recipient.
+2. Run the reminder task when conditions are not met, then when they are met.
 
-**Expected:** No early reminder is sent. One reminder is sent after threshold with correct placeholders. Repeated task runs do not flood daily reminders for the same sent-newsletter cycle. A new sent cycle can generate a later reminder.
+**Expected:** Reminder sends only when due and renders configured subject/Markdown placeholders correctly.
 
 ### PM-276 — Task overlap and stale-worker recovery
 
-**Prerequisite:** Staging only; use controlled task concurrency or a deliberately interrupted worker.
-
 **Steps:**
 
-1. Trigger overlapping queue/digest task attempts.
-2. Interrupt a queue worker after claiming work, then wait/configure the documented stale recovery interval and run again.
+1. In a safe staging environment, attempt overlapping task execution or simulate stale processing state if supported by the test setup.
 
-**Expected:** Database-level claiming/uniqueness prevents duplicate recipients or digests. Recoverable stale work eventually continues without resending rows already marked handed off.
+**Expected:** Duplicate workers do not send the same recipient twice. Stale recovery follows the component’s guarded retry/queue semantics.
 
 ---
 
-### 0.4.0 focused acceptance
-
-- Create Channels for **Everyone**, **Registered users**, and selected **Manager / Administrator** Joomla groups. Verify guests see only Everyone, ordinary registered users cannot save group-only memberships, eligible administrators can subscribe, and removing the Joomla group prevents that Channel from resolving at send time.
-- Create a new Newsletter and verify no audience source is selected by default. Preflight must block until an audience is chosen. Existing newsletters must retain their stored audience.
-- Exercise the Markdown toolbar, placeholder menu, collapsible help, CodeMirror source editor (when available), and Punga-renderer Preview in Newsletter, Template, confirmation/reminder and selected-content-layout fields.
-- Generate an Automatic Newsletter in draft mode with review notification enabled. Verify the configured reviewer receives the draft link and counts; repeat in automatic-send mode and verify no review notification is sent.
-- Export subscribers with zero, one, and at least two selected Channels. Each CSV download must complete without a prepared-statement binding error and the multi-Channel result must use OR membership semantics.
-- Send/preview a newsletter with mail-heading background and confirm the background spans the full content container while the heading text remains aligned to the configured body padding.
-- Review the Dashboard with healthy data and with a deliberately missing Scheduled Task/failed queue row; only actionable warnings should appear.
-
-## N. ACL, CSRF, privacy, language, and regression sweep
+## N. ACL, CSRF, privacy, language, responsive UI, and regression sweep
 
 ### PM-290 — Administrator ACL
 
 **Steps:**
 
-1. Log in as Test Manager and verify only actions granted in Joomla permissions.
-2. Log in as Test Restricted and try direct URLs for lists, edit/save, send, import, export, clear suppression, queue controls, bounce processing, and Options.
+1. Compare Super User, Test Manager, and Test Restricted.
+2. Attempt view/edit/delete/send/import/export/secure-mail-settings actions appropriate to their permissions.
 
-**Expected:** Joomla ACL is enforced both in the interface and controller. Hiding a button is not the only protection. Unauthorized direct requests make no changes and reveal no private data.
+**Expected:** Joomla ACL is enforced server-side, not just by hiding buttons. Secure SMTP/IMAP credential save/test actions require the stronger component-options/admin permission intended by Punga Mail.
 
 ### PM-291 — CSRF protection
 
 **Steps:**
 
-1. In staging developer tools, repeat state-changing administrator and frontend requests with the Joomla form token removed or altered.
-2. Include save, publish, delete, subscribe, unsubscribe POST, import commit, send, queue pause/cancel, and suppression clearing where safely possible.
+1. Inspect/attempt representative state-changing actions without a valid Joomla form token in a controlled environment: save, delete, Archive, queue action, Allow delivery again, Mark as reviewed, import commit.
 
-**Expected:** Requests fail safely and make no change. Valid forms still work. GET requests do not perform administrator destructive actions.
+**Expected:** State-changing requests without a valid token are rejected and no data changes.
 
 ### PM-292 — Secret and private-data exposure audit
 
 **Steps:**
 
-1. Search rendered page source, browser network responses, received mail, browser newsletter, Joomla messages/logs, and CSV exports for bounce passwords, mailbox usernames where inappropriate, confirmation/unsubscribe tokens, full subscriber tokens, and backend-only fields.
-2. Trigger one controlled error in each mail/bounce/import area.
+1. Search rendered administrator HTML, page source, logs, error messages, exported configuration, and normal component params for SMTP/IMAP passwords and confirmation/unsubscribe tokens.
 
-**Expected:** Passwords and credentials are absent; stored password is never echoed. Tokens appear only in the specific secure subscriber action URL that requires them, never in browser archive/log/error output. Errors are sanitized.
+**Expected:** Stored secrets are not exposed. Subscriber data appears only on authorized surfaces and to the minimum extent needed.
 
 ### PM-293 — Frontend authorization and draft enumeration
 
 **Steps:**
 
-1. Logged out, try direct component URLs for administrator actions, subscriber detail, newsletter IDs, digest IDs, queue rows, CSV, and draft browser views.
-2. Vary numeric IDs and invalid random browser keys.
+1. Attempt to access administrator URLs logged out.
+2. Guess browser-view/newsletter IDs without valid public keys.
+3. Attempt to retrieve Draft content through public routes.
 
-**Expected:** Private resources remain unavailable; responses do not reveal existence, email, status, or content of private records. Only intended public subscription/token/sent-browser endpoints work.
+**Expected:** Unauthorized access fails safely and Draft/private mailing content cannot be enumerated.
 
 ### PM-294 — Content output safety
 
 **Steps:**
 
-1. Repeat PM-106 in template, newsletter, imported text where applicable, selected-content title/excerpt override, email, and browser view.
-2. Test malformed HTML and dangerous URL schemes.
+1. Put controlled script-like HTML, dangerous URLs, malformed Markdown, and unusual Unicode into authoring/source fields.
+2. Preview/test send/browser view.
 
-**Expected:** No executable injection reaches administrator preview, outgoing HTML, plain text, or frontend browser page. Safe formatting remains intact.
+**Expected:** Output is safely sanitized/escaped while legitimate Markdown and Unicode remain functional.
 
 ### PM-295 — Consent cannot be bypassed by alternate audience sources
 
 **Steps:**
 
-1. Globally unsubscribe and separately suppress controlled Joomla users who belong to a targeted group and topic.
-2. Target all-confirmed, their topic, their Joomla group, and a digest.
+1. Globally unsubscribe a controlled subscriber who is still in a Channel and Joomla group.
+2. Target that Channel/group.
+3. Repeat with an actively suppressed address.
 
-**Expected:** Every route excludes protected addresses with the correct reason. Group membership, topic membership, profile save, CSV, digest, and duplicate email cannot bypass consent/suppression.
+**Expected:** Global unsubscribe and suppression always win over alternate audience sources.
 
 ### PM-296 — English and German interface/mail strings
 
 **Steps:**
 
-1. Switch administrator and site language between English and German.
-2. Visit every Punga Mail page, module mode, profile field, menu-item type, task type, error/empty state, confirmation/unsubscribe page, and generated standard mail text.
-3. Search visible output for `COM_PUNGAMAIL_`, `MOD_PUNGAMAIL_`, and `PLG_...` keys.
+1. Switch administrator/site language between English and German.
+2. Visit every Punga Mail main page and major frontend flow.
+3. Send confirmation/test/Newsletter messages in each relevant site language context.
 
-**Expected:** Natural English/German strings appear; no raw language key is visible. Subscriber-facing standard strings use the site/frontend language catalog even when mail is generated by administrator or Scheduled Tasks.
+**Expected:** No raw `COM_PUNGAMAIL_*`, `JTOOLBAR_*`, or other untranslated keys appear. Terminology is understandable and consistent.
 
 ### PM-297 — Website language overrides
 
 **Steps:**
 
-1. Add a Joomla Website language override for a standard Punga Mail mail string such as footer reason, unsubscribe, or read-more.
-2. Generate preview, test mail, queued mail via task, digest mail, and browser view.
+1. Create a Joomla language override for a visible Punga Mail frontend/mail string.
+2. Trigger the surface.
 
-**Expected:** The appropriate website-language override is honored consistently in every generation context.
+**Expected:** Standard Joomla language overrides are respected.
 
 ### PM-298 — Light/dark administrator themes and responsive UI
 
 **Steps:**
 
-1. Use Atum light and dark modes where available.
-2. Inspect all lists, forms, toolbars, notices, preflight tables, recipient detail, digest history, and trashed rows at desktop and narrow viewport widths.
+1. Test major admin pages in Joomla light and dark modes.
+2. Narrow the browser viewport/tablet width.
+3. Inspect Markdown toolbar, Dashboard cards, grouped tabs, filters, queue table, and Content Layout placeholder panel.
 
-**Expected:** Text/actions remain legible and reachable. Punga Mail follows Joomla styling without hard-coded colours breaking state rows. Routine composition is not obscured by advanced areas.
+**Expected:** Text remains readable, controls do not become indistinguishable, tables/sidebars remain usable, and no important control is hidden off-screen without a usable responsive path.
 
-### PM-299 — Error handling and recovery
-
-**Steps:**
-
-1. Cause controlled invalid inputs, missing content, mail transport failure, mailbox failure, malformed CSV, and concurrent lock conditions.
-2. Correct each issue and retry.
-
-**Expected:** No raw exception, SQL, filesystem path, credential, or unstyled 500 page is exposed. Messages are actionable; recovery succeeds without reinstalling or duplicating data.
-
-### PM-300 — End-to-end manual newsletter regression
+### PM-299 — Error handling and grouped-route recovery
 
 **Steps:**
 
-1. Subscribe a new guest through email confirmation and choose a Channel.
-2. Compose from a template, select registered content, apply local overrides, preview, send test, inspect preflight/recipients, schedule or queue, process through Scheduled Tasks, inspect received HTML/text/headers/browser view/statistics, then unsubscribe.
+1. Trigger safe validation errors in Audience and Design editors.
+2. Use filters, Save, Save & Close, Cancel, inline actions, and toolbar actions in Subscribers, Channels, Templates, and Content Layouts.
+3. Observe URL/sidebars after each action.
 
-**Expected:** The entire chain works once, respects access/consent, uses an immutable snapshot, and excludes the subscriber from a later mailing.
+**Expected:** Error messages are useful and retain entered data where appropriate. Grouped routes preserve `Audience`/`Design` context instead of falling back to Dashboard or collapsing the sidebar.
+
+### PM-300 — End-to-end manual Newsletter regression
+
+**Steps:**
+
+1. Create a Channel and controlled subscribers.
+2. Create/configure a Template and central Content Layout.
+3. Create a Newsletter, apply the Template, select/reorder mixed content, choose audience, preview, test, Preflight, schedule or queue, process delivery, inspect statistics/browser view, then archive the sent Newsletter.
+
+**Expected:** Entire manual lifecycle works coherently with no stale navigation, unexpected data loss, duplicate delivery, or mismatch between preview and frozen sent output.
 
 ### PM-301 — End-to-end Joomla user/profile regression
 
 **Steps:**
 
-1. Register a Joomla user, set Receive newsletters and topics in profile, target by topic plus Joomla group, and send a controlled newsletter.
-2. Change one topic, save profile, and resolve the next newsletter.
+1. Create a Joomla user, choose newsletter reception/Channels in profile, update memberships from frontend module/backend, send targeted mail, globally unsubscribe, and verify later exclusion.
 
-**Expected:** One canonical address/recipient is used, profile saves correctly, deduplication works, personalization uses Joomla display name, and topic preference changes affect only future audience resolution.
+**Expected:** Joomla account integration, master permission, Channel choices, eligibility, and consent precedence remain coherent across all surfaces.
 
-### PM-302 — End-to-end digest regression with access levels
+### PM-302 — End-to-end Automatic Newsletter regression with access levels
 
 **Steps:**
 
-1. Run the mixed-access draft test, confirm restricted content is absent, then run an automatic public-only digest through queue delivery.
-2. Inspect history, newsletter, recipient snapshot, received content, browser view, and statistics.
+1. Configure mixed-access content and recipients.
+2. Generate a Draft Automatic Newsletter, inspect history/notification, then test automatic sending in a controlled second run.
 
-**Expected:** Generic content discovery works, access fails closed, no item repeats under since-last-success mode, and delivery uses the normal immutable queue.
+**Expected:** Access-safe content selection, recurrence, min/max/order rules, normal queue transport, and history all work together.
 
 ### PM-303 — Existing feature regression checklist
 
-Complete this final checklist after all tests:
+Before declaring the release ready, confirm at least once that all of these still work:
 
-- existing subscribers, IDs, global states, topic memberships, and bounce history remain intact;
-- email confirmation and human/RFC 8058 unsubscribe work;
-- signup module, Joomla-user integration, profile topic selector, and Joomla group targeting work;
-- template apply/copy semantics and design hierarchy work;
-- Markdown, HTML/plain text, images, tables, custom CSS, `{recipient}`, and `{new_content}` render correctly;
-- registered content types, filters, selected-content persistence, ordering/overrides, and migrated article selections work;
-- preview and test send are non-destructive;
-- preflight blocks real errors and explains exclusions;
-- queue batch/rate/retry settings, manual processing, Scheduled Tasks, pause/resume/cancel, and stale recovery work;
-- scheduled sending, digest automation/history/access checks, and empty handling work;
-- SEF routes and immutable sent browser snapshots work;
-- statistics remain tied to the historic mailing;
-- import/export preserves protected consent states;
-- bounce handling suppresses at address level and retains history;
-- English and German strings contain no visible untranslated keys.
+- package install/update and database migration;
+- compact grouped administrator navigation and **Options** access;
+- Dashboard counts, upcoming ordinary/Automatic mail, Quick Actions, attention acknowledgement;
+- Channels including eligibility restrictions and Joomla-group rechecks;
+- Subscribers including explicit consent, separate Subscription/Delivery states, and Allow delivery again;
+- frontend signup module and Newsletter subscription menu item;
+- Joomla user-profile integration;
+- Templates and central Content Layouts with database placeholders;
+- Markdown editor including Table/Image insertion and no line numbers;
+- manual content selection, drag/drop marker, order persistence, overrides;
+- Newsletter Template application returning to Mail content;
+- unsaved-change warning without false pristine warnings;
+- preview, test mail, Preflight, direct scheduling, Preflight schedule synchronization;
+- Duplicate as new draft from editor and bulk list;
+- Archive/Unarchive separate from Trash and delivery status;
+- queue inspection/filter/retry/cancel safeguards and immutable snapshots;
+- Joomla transport and Punga Mail Custom SMTP;
+- Automatic Newsletter recurrence, minimum/maximum/order, history, and draft notification;
+- returned-mail manual/task processing, latest-check summary, hard/soft classification, suppression, recovery, and Dashboard warning lifecycle;
+- CSV import/export and protected-state safeguards;
+- Scheduled Tasks, ACL, CSRF, language strings, SEF/public routes, and dark/responsive admin UI.
 
-**Expected:** Every applicable item has a corresponding passed test and recorded evidence. Any failure is filed before enabling unattended Scheduled Tasks or broad live audiences.
+**Expected:** No feature that worked in the previous accepted release regresses silently.
 
 ---
 
-
-### 0.4.1 focused acceptance — restricted Channel persistence
-
-1. Open **Punga Mail → Channels** and create a new Channel.
-2. Set **Who can subscribe?** to **Selected Joomla user groups**.
-3. Select at least **Manager**, **Administrator**, and **Super Users**.
-4. Save the Channel.
-5. Confirm Joomla reports a successful save with no database exception.
-6. Reopen the Channel and confirm all selected user groups are still checked.
-7. Change the selection (remove one group and add another), save, reopen, and verify the edited selection persists exactly.
-8. Change **Who can subscribe?** to **Everyone**, save, reopen, and confirm the old group relation no longer affects eligibility.
-9. Repeat with **Registered users**.
-
-**Expected:** Channel metadata and group restrictions save as one atomic operation. No partially saved Channel is left behind if relation persistence fails, and selected groups survive create/edit/reload correctly.
-
 ## Final live-site release gate
 
-Do not enable routine live sending until all of the following are true:
+Do not approve the release for production until all applicable items below are true:
 
-1. There are no open **Critical** failures involving consent, suppression, access permissions, tokens, credentials, recipient resolution, duplicate sending, or immutable snapshots.
-2. Installation/update and Joomla Database checks are clean.
-3. A controlled end-to-end manual mailing and digest run have passed.
-4. The global and per-mailing pause/cancel controls have been demonstrated.
-5. Required Scheduled Tasks exist, run under cron, and have clean history.
-6. Bounce mailbox connection and a controlled DSN test have passed if bounce processing will be enabled.
-7. Sender, Reply-To, List-ID, unsubscribe headers, SEF URLs, and browser view have been inspected from a real received message.
-8. The queue is still limited to the private test topic until the administrator deliberately selects a production audience.
-
-After approval, restore production-safe batch/rate/retry values, remove or unpublish test content/topics/module positions, delete only disposable test records, resume the queue deliberately, and monitor the first production task runs and delivery statistics.
+- no unresolved **Fail** remains in a critical consent, access-control, queue, SMTP, bounce, or security test;
+- a real controlled test Newsletter was rendered, validated, queued, transported, and recorded successfully;
+- at least one mixed-access content test proved restricted content is not leaked;
+- Custom SMTP has been tested if the site intends to use it; otherwise Joomla transport has been tested;
+- Scheduled Tasks required by the site’s enabled features exist, are enabled, and have a recent successful run;
+- returned-mail processing has been tested if enabled, including at least one known classification;
+- backup/restore procedure is current;
+- administrator and frontend terminology contains no raw translation keys or obsolete “topic/list” wording where the current UI says **Channel**;
+- grouped Audience/Design navigation remains stable after actions and validation errors;
+- `docs/USER_GUIDE.md` and this test guide match the installed behavior.
 
 ## Related documentation
 
-- [Administrator User Guide](USER_GUIDE.md)
-- [Newsletter Tutorial](TUTORIAL_NEWSLETTER.md)
-- [Digest Tutorial](TUTORIAL_DIGEST.md)
-- [Topics and Signup Tutorial](TUTORIAL_TOPICS_AND_SIGNUP.md)
-- [Templates Tutorial](TUTORIAL_TEMPLATES.md)
-- [Delivery Health Tutorial](TUTORIAL_DELIVERY_HEALTH.md)
-- [Import/Export Tutorial](TUTORIAL_IMPORT_EXPORT.md)
-
-
-### 0.4.2 focused acceptance — Automatic Newsletter timezone and time picker
-
-1. Set Joomla's site timezone to a zone that differs from UTC, for example **Europe/Berlin** during daylight-saving time.
-2. Create or edit an Automatic Newsletter and open **Next run**. Confirm Joomla's calendar control offers both date selection and a **24-hour time picker**.
-3. Choose a future date and set the time to **10:00**, then save.
-4. Reopen the Automatic Newsletter. Confirm the editor still shows **10:00**.
-5. Return to the **Automatic Newsletters** list. Confirm **Next run** shows **10:00**, not the corresponding UTC value (for example 08:00 during CEST).
-6. Open the Punga Mail Dashboard. Confirm the same Automatic Newsletter also shows **10:00** there.
-7. If a normal Newsletter is manually scheduled, confirm its scheduled time is likewise displayed in the Joomla site timezone in administrator views.
-8. Confirm the Scheduled Task still evaluates due Automatic Newsletters correctly; the database representation remains UTC.
-
-
-### 0.4.3 focused acceptance — Scheduled Tasks and unsubscribe
-
-1. Open Joomla **System → Scheduled Tasks** and verify **Punga Mail — Send pending newsletters** exists and is enabled/configured.
-2. Queue a small newsletter, wait for the task to run, and verify at least one pending recipient is delivered without using **Send pending mail now**.
-3. Run the task manually from Joomla Scheduled Tasks and verify its execution status is successful and no plugin-construction/type error is logged.
-4. Open the HTTPS URL from the newsletter's `List-Unsubscribe` header in a normal browser using GET. Verify it opens the normal unsubscribe confirmation page and does **not** unsubscribe immediately.
-5. Submit that confirmation form and verify the recipient is unsubscribed.
-6. With a standards-capable mail client/provider, trigger its one-click unsubscribe action and verify the RFC 8058 POST returns successfully without a redirect.
-7. Verify an invalid unsubscribe token is rejected and cannot unsubscribe a recipient.
-
-### 0.4.4 focused acceptance — editor workflow, queue visibility, and Markdown controls
-
-1. Open the Dashboard with at least one manually Scheduled Newsletter and one enabled Automatic Newsletter. Confirm both appear distinctly in the upcoming summary with their correct site-timezone dates.
-2. Open a Subscriber with one or more Channels selected. Confirm the “no Channels selected” note is hidden; clear all Channel checkboxes and confirm it appears immediately, then select one and confirm it disappears again.
-3. Open **Delivery / Bounces** with queued, failed, and sent test rows. Filter by state, Newsletter, and recipient search; verify attempts/timestamps/errors match the underlying queue.
-4. Select a failed row and use **Retry selected**. Confirm it returns to the normal pending/retry path. Select a pending/failed unsent row and use **Cancel selected**. Confirm processing/sent rows cannot be cancelled by that action.
-5. Open a Template and Newsletter Markdown editor. Confirm no CodeMirror line-number gutter is shown. Use **Table** and confirm a starter Markdown pipe table is inserted. Use **Image**, select an image through Joomla's media picker, and confirm Markdown image syntax is inserted.
-6. Open Newsletters and Templates lists and confirm neither displays a meaningless always-Active Status column.
-7. Open a Template and confirm its message settings appear in the right sidebar without an artificial publish state. Open a Newsletter and confirm lifecycle status, Template selection, and scheduling controls appear in its right sidebar.
-8. Schedule a valid Draft directly from the Newsletter sidebar, reschedule it, then cancel the schedule. Confirm the state returns to Draft. Try scheduling an invalid Newsletter and confirm blocking Preflight/sendability validation prevents it.
-9. Duplicate a Draft and a sent Newsletter from the top toolbar, then bulk-duplicate multiple selected rows in the Newsletters list. Confirm all copies are independent Drafts and sources remain untouched.
-
-**Expected:** The 0.4.4 administrator workflow behaves consistently with Joomla conventions, exposes the real queue safely, and preserves Punga Mail's existing validation and immutable-send semantics.
-
-### 0.4.5 focused acceptance — Markdown media insertion and authoring layout
-
-1. Open a Newsletter and confirm **Template** plus **Apply template** appear on **Mail content**, not in the right sidebar. Apply a Template while on that tab and verify subject/body changes are immediately visible.
-2. In any Punga Mail Markdown editor, verify the **Insert table** and **Insert image** toolbar buttons are visually distinguishable by icon and label. Insert a table and confirm the starter Markdown table is written at the cursor.
-3. Click **Insert image**, choose an image in Joomla Media Manager, click **Select**, provide or accept alt text, and verify `![alt](images/...)` is inserted at the current editor cursor/selection. Repeat with the same image to ensure the hidden media field is reset after insertion.
-4. Schedule a Newsletter, open Preflight, and verify the **Schedule send** date/time field contains the existing scheduled time in the Joomla site timezone.
-5. On the Dashboard, verify **Templates** appears next to **Channels** in Quick Actions and opens the Templates list.
-6. Open a Subscriber with no bounce history or active delivery suppression and verify no delivery-health card is shown. Open a Subscriber with bounce history and verify the card is shown with plain-language permanent/temporary failure wording. For an active bounce-based suppression, verify **Allow delivery again** is available.
-
-**Expected:** The 0.4.5 changes make Template application contextual, Media Manager image insertion reliable, scheduling state consistent between editor and Preflight, and Subscriber diagnostics visible only when useful.
-
-### 0.5.1 focused acceptance — Cancel warning and drag insertion marker
-
-1. Open an existing Newsletter, change its title or subject, then click Joomla **Cancel**. Confirm a discard warning appears. Choose **Cancel/Stay** in the browser confirmation and confirm the editor remains open with the change intact; repeat and choose to discard, then confirm the Newsletter list opens.
-2. Repeat the same Cancel-warning check in a Template and an Automatic Newsletter editor.
-3. In a Newsletter with at least three selected content items, drag the middle item upward and downward. Confirm a clearly visible **Drop here** marker follows the intended insertion point, the row itself is not reordered until it is dropped, and the final order persists after Save.
-4. In an Automatic Newsletter, set **Minimum items** to `0` and **If no new content is found** to **Do nothing**. Run it with no matching content and confirm no Newsletter is created or sent. Then set a positive minimum above the number of available items and confirm the run is skipped without advancing the **Since last** cutoff.
-
-**Expected:** 0.5.1 warns before Joomla Cancel discards authoring changes, gives drag-and-drop an unambiguous insertion target, and makes the relationship between Minimum items and empty-content handling clear.
-
-### 0.5.0 focused acceptance — unsaved edits, Automatic Newsletter history, and content selection
-
-1. Open a Draft Newsletter, change a field, then try to close/reload/navigate away without saving. Confirm the browser warns about unsaved changes. Repeat with a Template and Automatic Newsletter. Confirm **Save**, **Save & Close**, Preview, and other intentional Joomla toolbar submissions are not blocked by the warning.
-2. In a Newsletter's **Content selection** tab, select several items and confirm they move into **Selected content** while unselected candidates remain in **Available content**. Search and sort the available list; verify selected-item order is unaffected.
-3. Drag selected content into a new order, save, reopen, and confirm that order persists and `{new_content}` renders in the same order. Verify **Select visible** affects only currently visible candidates and **Clear selected** removes all selected items.
-4. Confirm title/excerpt override fields are shown for selected items and hidden for unselected candidates.
-5. Create an Automatic Newsletter with **Order = Oldest first** and a small **Maximum items** value. Run it against more eligible items than the maximum and verify the generated Newsletter contains exactly the capped number in the requested order. Repeat with Newest first.
-6. Configure **Minimum items** above the number currently eligible, using **Since last** cutoff mode. Run the task and confirm history shows **Skipped — not enough content**, no Newsletter is created, and `last_cutoff_at` is not advanced. Add enough later content, run at the next due occurrence, and confirm the previously accumulated eligible items can be included.
-7. Open the Automatic Newsletter history and confirm each run clearly shows run result, generated Newsletter title/link where applicable, the Newsletter's current lifecycle state, content count, duration, and details. Verify the empty-history state is understandable for an Automatic Newsletter that has never run.
-
-**Expected:** 0.5.0 protects unsaved authoring work, makes manual content selection/order explicit, gives Automatic Newsletters bounded content-generation rules without losing rolling content, and makes automation history useful for diagnosis.
-
-### 0.5.2 focused acceptance — pristine editor dirty-state
-
-1. Open an existing Newsletter and immediately click **Cancel** without touching any field. No discard warning should appear.
-2. Repeat for a Template and an Automatic Newsletter. No discard warning should appear.
-3. Open a Newsletter, edit a persisted field, then click **Cancel**. The unsaved-changes warning should appear.
-4. Open a Newsletter, change a persisted field, then change it back exactly to its saved value. **Cancel** should not warn.
-5. Type in a Markdown/CodeMirror field and verify that **Cancel** warns.
-6. Use a Markdown toolbar action (for example **Bold** or **Table**) and verify that **Cancel** warns if the content changed.
-
-**Expected:** Joomla/editor initialization alone never marks a form dirty; genuine authoring changes remain protected.
-
-
-### 0.6.0 focused acceptance — central content-type layouts
-
-1. Upgrade from 0.5.2 with a non-default Component Options Selected Content Layout and confirm it becomes the **Default content layout**.
-2. Verify the old Selected Content Layout controls are absent from Component Options, Newsletter editors, and Template editors.
-3. Open **Content layouts** and verify all currently usable registered content types appear.
-4. Open a third-party type and compare the shown database placeholders with its real backing table. Confirm obvious secret/token/password fields are not exposed.
-5. Create a custom layout using at least one source-table field and send/preview a mixed-content Newsletter.
-6. Reset that content type to Default and verify subsequent rendering uses Default again.
-7. If old per-Newsletter/per-Template overrides existed before upgrade, confirm the Content layouts overview warns that those values remain preserved as legacy data.
-
-**Expected:** Punga Mail can lay out third-party registered content types without requiring any plugin, callback, provider, or placeholder declaration from the originating extension. The administrator can see exactly which placeholders are available for the content type being edited.
-### 0.6.1 focused acceptance — grouped navigation and Newsletter archive
-
-1. Update from 0.6.0 and confirm the Punga Mail sidebar contains, in order: Dashboard, Newsletters, Automatic Newsletters, Audience, Design, Delivery, Tools. Confirm Templates, Content layouts, Channels, Subscribers and Import / Export are no longer separate first-level entries.
-2. Open **Audience**. Confirm Subscribers opens by default and the **Subscribers / Channels** tabs switch views while Audience remains highlighted in the Joomla sidebar. Open and save/edit one Subscriber and one Channel and confirm the parent sidebar context is preserved.
-3. Open **Design**. Confirm Templates opens by default and the **Templates / Content layouts** tabs switch views while Design remains highlighted. Open a Template and a Content layout and confirm the same context is preserved.
-4. Open **Tools** and confirm Subscriber Import / Export appears. Exercise Preview/Clear for an import and confirm the redirect remains in Tools.
-5. In Newsletters, select a Draft, Sent, Failed or Cancelled newsletter and choose **Archive**. Confirm it disappears from the default **Current** list but remains available under the **Archived** filter with its original delivery status plus an Archived indication.
-6. Select an archived newsletter and choose **Unarchive**. Confirm it returns to the Current list unchanged.
-7. Archive a Sent newsletter, open it from the Archived filter, and confirm its immutable snapshot, frozen recipients/statistics, and **Duplicate as new draft** workflow remain available.
-8. Attempt to archive a Scheduled, Queued, or Sending newsletter. Confirm Punga Mail refuses with a clear explanation and does not change its record state.
-9. Move an archived newsletter to Trash and confirm Trash remains separate from Archived. Restore it and confirm it returns to Current.
-10. Confirm Dashboard active/draft/sent summary counts exclude archived newsletters, while historical delivery statistics remain intact.
-
-
+- [Administrator/User Guide](USER_GUIDE.md)
+- [Newsletter tutorial](TUTORIAL_NEWSLETTER.md)
+- [Automatic Newsletter tutorial](TUTORIAL_DIGEST.md)
+- [Channels and signup tutorial](TUTORIAL_TOPICS_AND_SIGNUP.md)
+- [Template tutorial](TUTORIAL_TEMPLATES.md)
+- [Delivery health / returned-mail tutorial](TUTORIAL_DELIVERY_HEALTH.md)
+- [Import / Export tutorial](TUTORIAL_IMPORT_EXPORT.md)
+- [Concept and design notes](CONCEPT.md)
+- [Database notes](DATABASE.md)

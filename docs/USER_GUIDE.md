@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.3. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.7. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -93,13 +93,15 @@ Punga Mail keeps the primary Joomla sidebar compact by grouping related work:
 | Delivery | Queue inspection, bounce handling and delivery diagnostics. |
 | Tools | Subscriber **Import / Export** and future infrequent maintenance tools. |
 
-When you move between Subscribers and Channels, or between Templates and Content layouts, the parent sidebar entry remains selected. Existing old administrator bookmarks continue to work, but normal navigation uses these grouped sections.
+When you move between Subscribers and Channels, or between Templates and Content layouts, the parent sidebar entry remains selected. Save/Cancel actions, filters, inline actions, and editor redirects preserve the same grouped parent context. Existing old administrator bookmarks continue to work, but normal navigation uses these grouped sections.
 
 ## Dashboard
 
 Open **Components → Punga Mail** to reach the Dashboard. The 0.4 Dashboard is designed as a control centre rather than a database-status page.
 
-The top cards show active recipients and Channels, the last sent newsletter, the next enabled Automatic Newsletter, and recent delivery health. **Needs your attention** stays quiet when everything is healthy and surfaces only actionable problems such as a missing Scheduled Task, an incomplete database update, or failed deliveries.
+The top cards show active recipients and Channels, the last sent newsletter, the next enabled Automatic Newsletter, and recent delivery health. **Needs your attention** stays quiet when everything is healthy and surfaces only actionable problems such as a missing Scheduled Task, an incomplete database update, failed deliveries, or addresses newly excluded after a returned-mail check.
+
+Returned-mail exclusion warnings include **Review** and **Mark as reviewed**. Reviewing opens the Delivery details; marking the warning as reviewed only removes that Dashboard attention item. It does **not** re-enable delivery, delete the subscriber, or erase bounce history. If a later returned-mail check excludes another address, Punga Mail shows a new attention warning.
 
 **Quick actions** provide direct paths to a new Newsletter, new Automatic Newsletter, recipient creation, Channels, and Templates. When pending mail exists or the normal queue task is unavailable, a manual **Process queue now** action remains available as a recovery/testing tool.
 
@@ -308,7 +310,11 @@ The creation form also accepts an optional external recipient name and published
 
 **Send confirmation selected** sends or resends confirmation for the selected records, subject to the configured validity and resend rules.
 
+**Delete permanently** removes obsolete/test subscriber records from the live Subscribers list. It removes the subscriber row, Channel memberships, and pending preference requests. Existing delivery/bounce history and address-level delivery blocks are deliberately preserved, so deleting a hard-bounced test address does not make that address deliverable again. Pending or failed queue entries are cancelled first; a subscriber whose message is currently being processed cannot be deleted until that attempt finishes.
+
 For a record suppressed by a permanent delivery failure or temporary-failure threshold, **Clear bounce suppression** appears in the Bounce column. Use it only after the address has been corrected or you have good reason to believe it can receive mail again. Bounce history is retained; the suppression block and active temporary-failure count are cleared.
+
+If a subscriber is blocked because of a hard bounce or because the temporary-failure threshold was reached, **Allow delivery again** removes only that bounce-origin delivery block and resets the temporary-bounce counter. Previous returned-mail history is preserved. If no such block exists anymore, Punga Mail reports that nothing was cleared instead of claiming success. The action returns to the same Audience context rather than sending you back to the Dashboard.
 
 ### Subscriber editor and Channel choices
 
@@ -320,6 +326,8 @@ Select an email address in the list to edit that subscriber. The editor shows:
 | Recipient name | Optional name for an external email-only subscriber. Linked accounts use the Joomla display name. |
 | Newsletter permission | The master state: Pending, Subscribed, or Unsubscribed. Pending can be retained for an existing confirmation request but cannot be assigned manually. |
 | Channels | All non-trashed Channels. Unpublished Channels remain visible to administrators. For a linked Joomla user, Channels the user is not eligible for are disabled and explain the required account/group access; external subscribers cannot be assigned registered/group-restricted Channels. |
+
+When creating a **new Joomla User subscriber**, Channel eligibility updates immediately after you select the Joomla account. You do not have to save the subscriber first; Punga Mail reacts to the actual selected Joomla account ID, not merely the displayed account name: registered-user Channels and Channels restricted to one of that user's Joomla groups become selectable as soon as the account is chosen. Changing the selected Joomla user updates the Channel controls again. Save still performs the same server-side eligibility check, so the live UI cannot bypass Channel access rules.
 
 **Apply** saves and keeps the editor open. **Save & Close** saves and returns to Subscribers. **Cancel** discards unsaved changes.
 
@@ -563,7 +571,7 @@ Keep a published Punga Mail subscription menu item so Joomla can produce a clean
 
 An Automatic Newsletter is a recurring definition that creates newsletters from newly published registered Joomla content.
 
-The Automatic Newsletters list supports search, enabled/disabled filtering, sorting, pagination, enable, disable, trash, restore, and delete. It shows the chosen template, generation mode, next run, and status.
+The Automatic Newsletters list supports search, enabled/disabled filtering, sorting, pagination, enable, disable, trash, restore, and delete. Each normal row has Joomla's enabled/disabled state icon immediately after the selection checkbox. Click that icon to enable or disable the Automatic Newsletter without opening its editor; the icon is read-only when your account lacks state-edit permission. The list also shows the chosen template, generation mode, and next run. A separate text Status column is not needed because the state icon carries that information and action.
 
 ### Automatic Newsletter fields
 
@@ -634,7 +642,7 @@ The card shows whether the mailbox is configured and the current server without 
 
 The same card also shows the **last returned-mail check**. Manual checks and **Punga Mail — Check returned mail** Scheduled Task runs update the same summary: check time, number of returned messages processed, permanent failures, temporary failures, and addresses newly excluded from future delivery. A failed mailbox check is shown with its sanitized error instead of silently disappearing into the scheduler log.
 
-If the most recent successful check newly excluded one or more addresses, the Dashboard also surfaces this under **Needs attention** with a link back to Delivery. Punga Mail suppresses delivery to those addresses; it does **not** delete subscriber records, Channel memberships, or bounce history.
+If the most recent successful check newly excluded one or more addresses, the Dashboard also surfaces this under **Needs attention** with a link back to Delivery. Use **Mark as reviewed** after you have inspected the case; that only acknowledges the Dashboard warning. Punga Mail suppresses delivery to those addresses; it does **not** delete subscriber records, Channel memberships, or bounce history. A later check that excludes new addresses creates a fresh warning.
 
 The recent-bounces table shows timestamp, address, classification, SMTP/status code, diagnostic message, and whether the address is now suppressed.
 

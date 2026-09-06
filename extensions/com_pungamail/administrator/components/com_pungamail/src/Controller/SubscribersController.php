@@ -15,6 +15,8 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
+use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
+use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 use Punga\Component\PungaMail\Administrator\Service\SubscriberRepository;
 
@@ -47,7 +49,7 @@ final class SubscribersController extends BaseController
 		}
 
 		$this->setRedirect(
-			Route::_('index.php?option=com_pungamail&view=audience&screen=subscribers', false),
+			Route::_(AdministratorRoute::subscribers(), false),
 			Text::plural('COM_PUNGAMAIL_SUBSCRIBERS_SUPPRESSED', $count)
 		);
 	}
@@ -89,9 +91,55 @@ final class SubscribersController extends BaseController
 		}
 
 		$this->setRedirect(
-			Route::_('index.php?option=com_pungamail&view=audience&screen=subscribers', false),
+			Route::_(AdministratorRoute::subscribers(), false),
 			Text::plural('COM_PUNGAMAIL_CONFIRMATIONS_SENT', $count)
 		);
+	}
+
+	/**
+	 * Permanently removes selected live subscriber records.
+	 *
+	 * Delivery/bounce history and address-level suppressions are preserved. Pending
+	 * or failed queue rows are cancelled first; an actively processing row prevents
+	 * deletion to avoid racing the queue worker.
+	 *
+	 * @return void
+	 */
+	public function delete(): void
+	{
+		$this->guard('core.delete');
+		$repo = ServiceFactory::subscribers();
+		$count = 0;
+
+		try
+		{
+			foreach ($this->selectedIds() as $id)
+			{
+				if ($repo->findById($id) === null)
+				{
+					continue;
+				}
+
+				if (!ServiceFactory::queue()->cancelForSubscriber($id))
+				{
+					throw new \RuntimeException(Text::_('COM_PUNGAMAIL_SUBSCRIBER_DELETE_PROCESSING'));
+				}
+
+				if ($repo->deleteSubscriber($id))
+				{
+					$count++;
+				}
+			}
+
+			$this->setRedirect(
+				Route::_(AdministratorRoute::subscribers(), false),
+				Text::plural('COM_PUNGAMAIL_SUBSCRIBERS_DELETED', $count)
+			);
+		}
+		catch (\Throwable $e)
+		{
+			$this->setRedirect(Route::_(AdministratorRoute::subscribers(), false), ErrorMessage::sanitize($e), 'error');
+		}
 	}
 
 	/** @return array<int,int> */
@@ -111,9 +159,9 @@ final class SubscribersController extends BaseController
 	}
 
 	/** @return void */
-	private function guard(): void
+	private function guard(string $permission = 'core.manage'): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise('core.manage', 'com_pungamail'))
+		if (!Factory::getApplication()->getIdentity()->authorise($permission, 'com_pungamail'))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}

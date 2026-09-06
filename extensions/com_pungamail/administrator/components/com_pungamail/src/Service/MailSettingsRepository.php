@@ -50,7 +50,8 @@ final class MailSettingsRepository
 			$row->bounce_password_cipher,
 			$row->smtp_password_cipher,
 			$row->bounce_last_check_result,
-			$row->bounce_last_check_error
+			$row->bounce_last_check_error,
+			$row->bounce_last_check_acknowledged_at
 		);
 		$row->password_configured = $this->hasBouncePassword();
 
@@ -109,8 +110,12 @@ final class MailSettingsRepository
 			$result = [];
 		}
 
+		$checkedAt = (string) $row->bounce_last_check_at;
+		$acknowledgedAt = trim((string) ($row->bounce_last_check_acknowledged_at ?? ''));
+		$suppressed = (int) ($result['suppressed'] ?? 0);
+
 		return (object) [
-			'checked_at' => (string) $row->bounce_last_check_at,
+			'checked_at' => $checkedAt,
 			'ok' => (string) ($row->bounce_last_check_status ?? '') === 'ok',
 			'checked' => (int) ($result['checked'] ?? 0),
 			'processed' => (int) ($result['processed'] ?? 0),
@@ -118,8 +123,10 @@ final class MailSettingsRepository
 			'soft' => (int) ($result['soft'] ?? 0),
 			'unknown' => (int) ($result['unknown'] ?? 0),
 			'duplicates' => (int) ($result['duplicates'] ?? 0),
-			'suppressed' => (int) ($result['suppressed'] ?? 0),
+			'suppressed' => $suppressed,
 			'error' => trim((string) ($row->bounce_last_check_error ?? '')),
+			'acknowledged_at' => $acknowledgedAt,
+			'attention_pending' => $suppressed > 0 && ($acknowledgedAt === '' || $acknowledgedAt < $checkedAt),
 		];
 	}
 
@@ -166,6 +173,7 @@ final class MailSettingsRepository
 			->set($this->db->quoteName('bounce_last_check_status') . ' = :status')
 			->set($this->db->quoteName('bounce_last_check_result') . ' = :result')
 			->set($this->db->quoteName('bounce_last_check_error') . ($errorValue === null ? ' = NULL' : ' = :error'))
+			->set($this->db->quoteName('bounce_last_check_acknowledged_at') . ' = NULL')
 			->set($this->db->quoteName('modified') . ' = :modified')
 			->where($this->db->quoteName('id') . ' = :id')
 			->bind(':checkedAt', $now)
@@ -180,6 +188,41 @@ final class MailSettingsRepository
 		}
 
 		$this->db->setQuery($query)->execute();
+	}
+
+
+	/**
+	 * Marks one specific returned-mail result as reviewed on the Dashboard.
+	 *
+	 * The check timestamp is used as an optimistic-concurrency token: if a
+	 * newer mailbox check completed before the administrator clicked the
+	 * button, the newer attention item remains visible.
+	 *
+	 * @param string $checkedAt UTC SQL timestamp of the reviewed check.
+	 *
+	 * @return bool True when that exact check was acknowledged.
+	 */
+	public function acknowledgeBounceCheck(string $checkedAt): bool
+	{
+		$checkedAt = trim($checkedAt);
+
+		if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $checkedAt) !== 1)
+		{
+			return false;
+		}
+
+		$id = 1;
+		$query = $this->db->getQuery(true)
+			->update($this->db->quoteName('#__pungamail_mail_settings'))
+			->set($this->db->quoteName('bounce_last_check_acknowledged_at') . ' = :acknowledgedAt')
+			->where($this->db->quoteName('id') . ' = :id')
+			->where($this->db->quoteName('bounce_last_check_at') . ' = :checkedAt')
+			->bind(':acknowledgedAt', $checkedAt)
+			->bind(':checkedAt', $checkedAt)
+			->bind(':id', $id, ParameterType::INTEGER);
+		$this->db->setQuery($query)->execute();
+
+		return $this->db->getAffectedRows() === 1;
 	}
 
 	/** @return object */
@@ -492,6 +535,7 @@ final class MailSettingsRepository
 			'bounce_last_check_status' => '',
 			'bounce_last_check_result' => null,
 			'bounce_last_check_error' => null,
+			'bounce_last_check_acknowledged_at' => null,
 			'created' => $now,
 			'modified' => $now,
 		];

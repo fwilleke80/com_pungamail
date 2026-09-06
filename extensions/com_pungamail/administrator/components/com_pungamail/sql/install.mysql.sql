@@ -281,6 +281,7 @@ CREATE TABLE IF NOT EXISTS `#__pungamail_mail_settings` (
   `bounce_last_check_status` VARCHAR(16) NOT NULL DEFAULT '',
   `bounce_last_check_result` TEXT NULL,
   `bounce_last_check_error` TEXT NULL,
+  `bounce_last_check_acknowledged_at` DATETIME NULL,
   `created` DATETIME NOT NULL,
   `modified` DATETIME NOT NULL,
   PRIMARY KEY (`id`)

@@ -7,6 +7,7 @@ use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
+use Joomla\CMS\Session\Session;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 
 $softBounceThreshold = max(1, (int) ComponentHelper::getParams('com_pungamail')->get('soft_bounce_threshold', 3));
@@ -64,8 +65,8 @@ $softBounceThreshold = max(1, (int) ComponentHelper::getParams('com_pungamail')-
 								<?php if ((int) $topic->state !== 1) : ?><span class="badge bg-secondary ms-1"><?php echo Text::_('JUNPUBLISHED'); ?></span><?php endif; ?>
 							</label>
 							<?php if (trim((string) $topic->description) !== '') : ?><div class="form-text"><?php echo htmlspecialchars((string) $topic->description, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-							<?php if (!($topic->eligible ?? true)) : ?>
-								<div class="form-text text-warning">
+							<?php if ((string) ($topic->audience_mode ?? 'everyone') !== 'everyone') : ?>
+								<div class="form-text text-warning pm-topic-eligibility" data-topic-id="<?php echo (int) $topic->id; ?>" <?php echo ($topic->eligible ?? true) ? 'hidden' : ''; ?>>
 								<?php if ((string) ($topic->audience_mode ?? '') === 'groups') : ?>
 									<?php echo Text::sprintf('COM_PUNGAMAIL_CHANNEL_REQUIRES_GROUPS', htmlspecialchars(implode(', ', (array) ($topic->audience_group_titles ?? [])), ENT_QUOTES, 'UTF-8')); ?>
 								<?php else : ?>
@@ -98,7 +99,7 @@ $softBounceThreshold = max(1, (int) ComponentHelper::getParams('com_pungamail')-
 						}; ?>
 						<div class="alert alert-danger"><?php echo Text::_($blockMessageKey); ?></div>
 						<?php if (in_array((string) $this->suppressionReason, ['hard-bounce', 'soft-bounce-threshold'], true)) : ?>
-							<button class="btn btn-outline-warning btn-sm mb-3" type="submit" name="id" value="<?php echo (int) $this->item->id; ?>" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=subscriber.clearBounceSuppression'); ?>" formmethod="post" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CLEAR_BOUNCE_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CLEAR_BOUNCE_SUPPRESSION'); ?></button>
+							<button class="btn btn-outline-warning btn-sm mb-3" type="submit" form="pm-clear-bounce-form" name="subscriber_id" value="<?php echo (int) $this->item->id; ?>" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CLEAR_BOUNCE_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CLEAR_BOUNCE_SUPPRESSION'); ?></button>
 						<?php endif; ?>
 					<?php endif; ?>
 					<?php if ((int) ($this->item->bounce_count ?? 0) > 0) : ?>
@@ -126,12 +127,30 @@ $softBounceThreshold = max(1, (int) ComponentHelper::getParams('com_pungamail')-
 	<input type="hidden" name="task" value="">
 	<?php echo HTMLHelper::_('form.token'); ?>
 </form>
+<?php if ($this->item !== null) : ?>
+<form action="<?php echo Route::_(AdministratorRoute::subscriber((int) $this->item->id)); ?>" method="post" id="pm-clear-bounce-form" class="d-none">
+	<input type="hidden" name="task" value="subscriber.clearBounceSuppression">
+	<input type="hidden" name="return_context" value="subscriber">
+	<?php echo HTMLHelper::_('form.token'); ?>
+</form>
+<?php endif; ?>
 <script>
 document.addEventListener('DOMContentLoaded', function ()
 {
 	const checks = Array.from(document.querySelectorAll('.pm-subscriber-topic'));
 	const note = document.getElementById('pm-subscriber-no-topics');
-	const update = function ()
+	// Joomla's User field renders #jform_user_id as the read-only display name.
+	// The actual selected account ID lives in the hidden field-user-input.
+	const userInput = document.querySelector('input[name="jform[user_id]"].field-user-input')
+		|| document.getElementById('jform_user_id_id');
+	const recipientTypeInputs = Array.from(document.querySelectorAll('input[name="jform[recipient_type]"]'));
+	const endpoint = <?php echo json_encode(Route::_('index.php?option=com_pungamail&task=subscriber.channelEligibility&format=json', false)); ?>;
+	const csrfToken = <?php echo json_encode(Session::getFormToken()); ?>;
+	let lastRecipientType = '';
+	let lastUserId = '';
+	let requestSerial = 0;
+
+	const updateEmptyNote = function ()
 	{
 		if (note)
 		{
@@ -142,10 +161,124 @@ document.addEventListener('DOMContentLoaded', function ()
 		}
 	};
 
+	const currentRecipientType = function ()
+	{
+		const checked = recipientTypeInputs.find(function (input)
+		{
+			return input.checked;
+		});
+
+		return checked ? checked.value : 'email';
+	};
+
+	const applyEligibility = function (eligibleIds)
+	{
+		const eligible = new Set((eligibleIds || []).map(function (id)
+		{
+			return Number(id);
+		}));
+
+		checks.forEach(function (check)
+		{
+			const id = Number(check.value);
+			const allowed = eligible.has(id);
+			check.disabled = !allowed;
+
+			if (!allowed)
+			{
+				check.checked = false;
+			}
+
+			const help = document.querySelector('.pm-topic-eligibility[data-topic-id="' + id + '"]');
+
+			if (help)
+			{
+				help.hidden = allowed;
+			}
+		});
+
+		updateEmptyNote();
+	};
+
+	const refreshEligibility = async function (force)
+	{
+		if (!recipientTypeInputs.length)
+		{
+			return;
+		}
+
+		const recipientType = currentRecipientType();
+		const userId = userInput ? String(userInput.value || '') : '';
+
+		if (!force && recipientType === lastRecipientType && userId === lastUserId)
+		{
+			return;
+		}
+
+		lastRecipientType = recipientType;
+		lastUserId = userId;
+		const serial = ++requestSerial;
+		const body = new URLSearchParams();
+		body.set('recipient_type', recipientType);
+		body.set('user_id', recipientType === 'user' ? userId : '0');
+		body.set(csrfToken, '1');
+
+		try
+		{
+			const response = await fetch(endpoint,
+			{
+				method: 'POST',
+				headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+				body: body.toString(),
+				credentials: 'same-origin'
+			});
+			const payload = await response.json();
+
+			if (serial !== requestSerial || !response.ok || payload.success === false)
+			{
+				return;
+			}
+
+			applyEligibility(payload.data && payload.data.eligible_ids ? payload.data.eligible_ids : []);
+		}
+		catch (error)
+		{
+			// Save remains authoritative; a transient AJAX failure must not break the editor.
+		}
+	};
+
 	checks.forEach(function (check)
 	{
-		check.addEventListener('change', update);
+		check.addEventListener('change', updateEmptyNote);
 	});
-	update();
+
+	recipientTypeInputs.forEach(function (input)
+	{
+		input.addEventListener('change', function ()
+		{
+			refreshEligibility(true);
+		});
+	});
+
+	if (userInput)
+	{
+		userInput.addEventListener('change', function ()
+		{
+			refreshEligibility(true);
+		});
+		userInput.addEventListener('input', function ()
+		{
+			refreshEligibility(true);
+		});
+
+		// Joomla's user-selection modal may update the hidden ID without a native
+		// change event, so cheaply observe the value while this editor is open.
+		window.setInterval(function ()
+		{
+			refreshEligibility(false);
+		}, 500);
+	}
+
+	updateEmptyNote();
 });
 </script>

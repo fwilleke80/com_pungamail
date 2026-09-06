@@ -14,6 +14,7 @@ use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Helper\MarkdownEditorHelper;
+use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 
 $item = $this->item;
 $style = $this->styleOverrides;
@@ -38,7 +39,7 @@ $styleFields = [
 <style>
 </style>
 <div class="container-fluid">
-	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm" data-pm-unsaved-warning="1">
+	<form action="<?php echo Route::_(AdministratorRoute::template((int) ($item->id ?? 0))); ?>" method="post" name="adminForm" id="adminForm" data-pm-unsaved-warning="1">
 		<input type="hidden" name="id" value="<?php echo (int) ($item->id ?? 0); ?>">
 		<div class="row g-4 align-items-start">
 			<div class="col-12 col-xl-9">

@@ -1,5 +1,67 @@
 # Changelog
 
+## 0.6.7 — 2026-09-06
+
+- Fixed live Channel eligibility for new Joomla User subscribers before the first save.
+- The Subscriber editor now reads Joomla's hidden numeric user-ID field instead of the visible read-only display-name field when requesting Channel eligibility.
+- Registered-user and Joomla-group-restricted Channels therefore unlock immediately for the selected Joomla account.
+- Added a release regression guard for Joomla User field ID handling.
+- Updated USER_GUIDE and TEST_GUIDE acceptance coverage.
+- Added the 0.6.7 database-version marker; no schema change is required.
+
+## 0.6.6 — 2026-09-06
+
+### Automatic Newsletter list
+
+- Replaced the redundant text Status column with Joomla's standard enabled/disabled state icon directly beside the row selector.
+- The state icon is clickable for administrators with `core.edit.state` permission, allowing an Automatic Newsletter to be enabled or disabled without opening its editor.
+- The toggle uses the existing CSRF-protected `digests.publish` / `digests.unpublish` actions, so it preserves the established enable/disable scheduling semantics. Trashed rows remain non-toggleable from the state icon.
+
+### Documentation and database
+
+- Updated the USER_GUIDE and TEST_GUIDE for direct state toggling from the Automatic Newsletters list.
+- Added the 0.6.6 database-version marker; no schema change is required.
+
+## 0.6.5 — 2026-09-06
+
+### Subscriber editor
+
+- New Joomla-user subscribers now re-evaluate Channel eligibility immediately when the selected Joomla account changes, before the subscriber is saved. Registered-user and Joomla-group-restricted Channels become selectable as soon as the chosen account is eligible.
+- The editor uses Punga Mail's existing server-side Channel eligibility logic through an administrator AJAX endpoint; final Save still performs the authoritative eligibility check.
+
+### Subscriber cleanup
+
+- Added a guarded **Delete permanently** action to Audience → Subscribers for obsolete/test subscriber records.
+- Deletion removes the live subscriber row, Channel memberships, and pending preference requests. Address-level suppressions and historical queue/bounce/event data are preserved so deleting a record does not revive a known-bad address or erase delivery history.
+- Pending/failed queue entries for a deleted subscriber are cancelled first. A subscriber with a delivery currently being processed cannot be deleted until that attempt finishes.
+
+### Documentation
+
+- Updated the USER_GUIDE and TEST_GUIDE for live Channel eligibility on unsaved Joomla-user subscribers and permanent subscriber deletion.
+- Added the 0.6.5 database-version marker; no schema change is required.
+
+## 0.6.4 — 2026-09-06
+
+### Dashboard attention workflow
+
+- Added **Mark as reviewed** to the Dashboard returned-mail suppression warning. Acknowledging the warning only clears that Dashboard attention item; it does not alter subscribers, suppression state, or bounce history.
+- Acknowledgment is tied to the exact returned-mail check timestamp, so a later check that excludes new recipients produces a fresh warning instead of being accidentally hidden by an earlier acknowledgment.
+
+### Audience delivery recovery
+
+- Fixed **Allow delivery again** for bounce-suppressed subscribers. The action now posts through its own dedicated form, uses an explicit subscriber ID, verifies that a bounce-origin suppression was actually removed, resets the temporary-bounce counter, and reports an error when nothing was cleared.
+- The action returns to the same Audience context: the Subscribers list stays on Subscribers, while the Subscriber editor returns to that subscriber.
+
+### Grouped administrator routing
+
+- Hardened Audience and Design child-screen routing so editor forms, list actions, filters, redirects, and inline recovery actions preserve their parent `view`/`screen` context.
+- Template and Content layout editor forms now submit through their grouped Design routes instead of the bare component URL, reducing the chance of falling back to Dashboard or losing Joomla sidebar selection.
+
+### Documentation and database
+
+- Updated the USER_GUIDE and test guide for Dashboard attention acknowledgment, bounce-suppression recovery, and grouped section routing.
+- Added one acknowledgment timestamp to the singleton mail-settings row; Joomla Scheduled Tasks remains the authoritative execution history.
+
 ## 0.6.3 — 2026-09-06
 
 ### Independent outgoing mail

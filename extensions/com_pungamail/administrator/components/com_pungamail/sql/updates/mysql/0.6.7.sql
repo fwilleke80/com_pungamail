@@ -1,0 +1,2 @@
+-- Punga Mail 0.6.7
+-- Subscriber editor Joomla-user Channel eligibility fix; no schema change required.
