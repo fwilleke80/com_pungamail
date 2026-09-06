@@ -34,6 +34,7 @@ $styleFields = [
 	'footer_color' => 'COM_PUNGAMAIL_STYLE_FOOTER_COLOR',
 ];
 ?>
+<?php echo \Joomla\CMS\Layout\LayoutHelper::render('pungamail.section_navigation', ['section' => 'design', 'active' => 'templates'], JPATH_ADMINISTRATOR . '/components/com_pungamail/layouts'); ?>
 <style>
 </style>
 <div class="container-fluid">

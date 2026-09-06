@@ -46,12 +46,26 @@ final class DisplayController extends BaseController
 		$screen = $input->getCmd('screen', '');
 		$screenViews = [
 			'newsletters' => ['newsletter', 'preview', 'preflight'],
+			'digests' => ['digest'],
+			'audience' => ['subscribers', 'subscriber', 'topics', 'topic'],
+			'design' => ['templates', 'template', 'templatepreview', 'contentlayouts', 'contentlayout'],
+			'tools' => ['import'],
+			// Legacy flat URLs remain valid for bookmarks and old administrator links.
 			'templates' => ['template', 'templatepreview'],
 			'contentlayouts' => ['contentlayout'],
 			'subscribers' => ['subscriber'],
 			'topics' => ['topic'],
-			'digests' => ['digest'],
 		];
+		$defaultScreens = [
+			'audience' => 'subscribers',
+			'design' => 'templates',
+			'tools' => 'import',
+		];
+
+		if ($screen === '' && isset($defaultScreens[$contextView]))
+		{
+			$screen = $defaultScreens[$contextView];
+		}
 
 		if ($screen !== '' && in_array($screen, $screenViews[$contextView] ?? [], true))
 		{

@@ -10,6 +10,7 @@ use Punga\Component\PungaMail\Administrator\Service\ContentLayoutRepository;
 
 $legacyCount = (int) ($this->legacyOverrides['newsletters'] ?? 0) + (int) ($this->legacyOverrides['templates'] ?? 0);
 ?>
+<?php echo \Joomla\CMS\Layout\LayoutHelper::render('pungamail.section_navigation', ['section' => 'design', 'active' => 'contentlayouts'], JPATH_ADMINISTRATOR . '/components/com_pungamail/layouts'); ?>
 <div class="container-fluid">
 	<div class="card mb-3">
 		<div class="card-body">

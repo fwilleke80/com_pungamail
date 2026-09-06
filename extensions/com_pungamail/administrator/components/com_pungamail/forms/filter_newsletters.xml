@@ -3,8 +3,8 @@
 	<fields name="filter">
 		<field name="search" type="text" label="COM_PUNGAMAIL_FILTER_SEARCH" hint="JSEARCH_FILTER" />
 		<field name="state" type="list" label="JSTATUS" onchange="this.form.submit();">
-			<option value="">COM_PUNGAMAIL_FILTER_STATE_ACTIVE</option>
-			<option value="1">COM_PUNGAMAIL_STATE_ACTIVE</option>
+			<option value="">COM_PUNGAMAIL_FILTER_STATE_CURRENT</option>
+			<option value="2">JARCHIVED</option>
 			<option value="-2">JTRASHED</option>
 		</field>
 		<field name="status" type="list" label="COM_PUNGAMAIL_DELIVERY_STATUS" onchange="this.form.submit();">

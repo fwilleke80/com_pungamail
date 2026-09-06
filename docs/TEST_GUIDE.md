@@ -1849,3 +1849,17 @@ After approval, restore production-safe batch/rate/retry values, remove or unpub
 7. If old per-Newsletter/per-Template overrides existed before upgrade, confirm the Content layouts overview warns that those values remain preserved as legacy data.
 
 **Expected:** Punga Mail can lay out third-party registered content types without requiring any plugin, callback, provider, or placeholder declaration from the originating extension. The administrator can see exactly which placeholders are available for the content type being edited.
+### 0.6.1 focused acceptance — grouped navigation and Newsletter archive
+
+1. Update from 0.6.0 and confirm the Punga Mail sidebar contains, in order: Dashboard, Newsletters, Automatic Newsletters, Audience, Design, Delivery, Tools. Confirm Templates, Content layouts, Channels, Subscribers and Import / Export are no longer separate first-level entries.
+2. Open **Audience**. Confirm Subscribers opens by default and the **Subscribers / Channels** tabs switch views while Audience remains highlighted in the Joomla sidebar. Open and save/edit one Subscriber and one Channel and confirm the parent sidebar context is preserved.
+3. Open **Design**. Confirm Templates opens by default and the **Templates / Content layouts** tabs switch views while Design remains highlighted. Open a Template and a Content layout and confirm the same context is preserved.
+4. Open **Tools** and confirm Subscriber Import / Export appears. Exercise Preview/Clear for an import and confirm the redirect remains in Tools.
+5. In Newsletters, select a Draft, Sent, Failed or Cancelled newsletter and choose **Archive**. Confirm it disappears from the default **Current** list but remains available under the **Archived** filter with its original delivery status plus an Archived indication.
+6. Select an archived newsletter and choose **Unarchive**. Confirm it returns to the Current list unchanged.
+7. Archive a Sent newsletter, open it from the Archived filter, and confirm its immutable snapshot, frozen recipients/statistics, and **Duplicate as new draft** workflow remain available.
+8. Attempt to archive a Scheduled, Queued, or Sending newsletter. Confirm Punga Mail refuses with a clear explanation and does not change its record state.
+9. Move an archived newsletter to Trash and confirm Trash remains separate from Archived. Restore it and confirm it returns to Current.
+10. Confirm Dashboard active/draft/sent summary counts exclude archived newsletters, while historical delivery statistics remain intact.
+
+

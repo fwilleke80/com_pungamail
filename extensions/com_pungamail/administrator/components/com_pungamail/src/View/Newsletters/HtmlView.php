@@ -58,7 +58,9 @@ final class HtmlView extends BaseHtmlView
 			ToolbarHelper::custom('newsletters.duplicate', 'copy', '', Text::_('COM_PUNGAMAIL_DUPLICATE_AS_DRAFT'), true);
 		}
 
-		if ((string) $this->state->get('filter.state') === '-2')
+		$recordState = (string) $this->state->get('filter.state');
+
+		if ($recordState === '-2')
 		{
 			if ($user->authorise('core.edit.state', 'com_pungamail'))
 			{
@@ -70,8 +72,17 @@ final class HtmlView extends BaseHtmlView
 				ToolbarHelper::deleteList(Text::_('COM_PUNGAMAIL_CONFIRM_DELETE_NEWSLETTERS'), 'newsletters.delete');
 			}
 		}
+		elseif ($recordState === '2')
+		{
+			if ($user->authorise('core.edit.state', 'com_pungamail'))
+			{
+				ToolbarHelper::custom('newsletters.unarchive', 'unarchive', '', Text::_('COM_PUNGAMAIL_UNARCHIVE'), true);
+				ToolbarHelper::trash('newsletters.trash');
+			}
+		}
 		elseif ($user->authorise('core.edit.state', 'com_pungamail'))
 		{
+			ToolbarHelper::custom('newsletters.archive', 'archive', '', Text::_('COM_PUNGAMAIL_ARCHIVE'), true);
 			ToolbarHelper::trash('newsletters.trash');
 		}
 

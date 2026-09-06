@@ -47,7 +47,7 @@ final class SubscribersController extends BaseController
 		}
 
 		$this->setRedirect(
-			Route::_('index.php?option=com_pungamail&view=subscribers', false),
+			Route::_('index.php?option=com_pungamail&view=audience&screen=subscribers', false),
 			Text::plural('COM_PUNGAMAIL_SUBSCRIBERS_SUPPRESSED', $count)
 		);
 	}
@@ -89,7 +89,7 @@ final class SubscribersController extends BaseController
 		}
 
 		$this->setRedirect(
-			Route::_('index.php?option=com_pungamail&view=subscribers', false),
+			Route::_('index.php?option=com_pungamail&view=audience&screen=subscribers', false),
 			Text::plural('COM_PUNGAMAIL_CONFIRMATIONS_SENT', $count)
 		);
 	}

@@ -526,6 +526,42 @@ final class NewsletterRepository
 		$this->db->setQuery($query)->execute();
 	}
 
+	/**
+	 * Archive newsletters that are not currently operational.
+	 *
+	 * Scheduled, queued, and actively sending newsletters must remain visible until
+	 * their operational state has been cancelled or completed.
+	 *
+	 * @param array<int,int> $ids Newsletter IDs.
+	 * @return void
+	 */
+	public function archive(array $ids): void
+	{
+		$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+		if ($ids === [])
+		{
+			return;
+		}
+
+		$query = $this->db->getQuery(true)
+			->select([$this->db->quoteName('id'), $this->db->quoteName('title'), $this->db->quoteName('status')])
+			->from($this->db->quoteName('#__pungamail_newsletters'))
+			->whereIn($this->db->quoteName('id'), $ids);
+		$rows = $this->db->setQuery($query)->loadObjectList();
+		$operational = [self::STATUS_SCHEDULED, self::STATUS_QUEUED, self::STATUS_SENDING];
+
+		foreach ($rows as $row)
+		{
+			if (in_array((int) $row->status, $operational, true))
+			{
+				throw new \RuntimeException(Text::sprintf('COM_PUNGAMAIL_ERROR_ARCHIVE_ACTIVE_NEWSLETTER', (string) $row->title));
+			}
+		}
+
+		$this->setState($ids, 2);
+	}
+
 	/** @return void */
 	public function setState(array $ids, int $state): void
 	{

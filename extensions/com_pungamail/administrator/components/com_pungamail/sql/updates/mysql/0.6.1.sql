@@ -1,0 +1,2 @@
+-- Punga Mail 0.6.1
+-- No schema change is required. Newsletter archiving uses Joomla's existing record state value 2.

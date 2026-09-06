@@ -52,7 +52,10 @@ $siteTimezone=(string)Factory::getApplication()->get('offset','UTC');
 						</a>
 					</th>
 					<td><?php echo htmlspecialchars((string) $item->subject, ENT_QUOTES, 'UTF-8'); ?></td>
-					<td><?php echo htmlspecialchars($statusLabels[(int) $item->status] ?? Text::_('COM_PUNGAMAIL_STATUS_UNKNOWN'), ENT_QUOTES, 'UTF-8'); ?></td>
+					<td>
+						<?php echo htmlspecialchars($statusLabels[(int) $item->status] ?? Text::_('COM_PUNGAMAIL_STATUS_UNKNOWN'), ENT_QUOTES, 'UTF-8'); ?>
+						<?php if ((int) $item->state === 2) : ?><span class="badge bg-secondary ms-2"><?php echo Text::_('JARCHIVED'); ?></span><?php endif; ?>
+					</td>
 					<td class="text-end"><?php echo (int) $item->recipient_count; ?></td>
 					<td class="text-end"><?php echo (int) $item->sent_count; ?></td>
 					<td class="text-end"><?php echo (int) $item->failed_count; ?></td>

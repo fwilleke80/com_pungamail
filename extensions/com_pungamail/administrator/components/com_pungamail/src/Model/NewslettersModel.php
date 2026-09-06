@@ -87,18 +87,9 @@ final class NewslettersModel extends ListModel
 
 		$state = (string) $this->getState('filter.state');
 
-		if ($state === '')
-		{
-			$trashed = -2;
-			$query->where($db->quoteName('a.state') . ' <> :trashed')
-				->bind(':trashed', $trashed, ParameterType::INTEGER);
-		}
-		else
-		{
-			$stateValue = (int) $state;
-			$query->where($db->quoteName('a.state') . ' = :state')
-				->bind(':state', $stateValue, ParameterType::INTEGER);
-		}
+		$stateValue = $state === '' ? 1 : (int) $state;
+		$query->where($db->quoteName('a.state') . ' = :state')
+			->bind(':state', $stateValue, ParameterType::INTEGER);
 
 		$status = (string) $this->getState('filter.status');
 

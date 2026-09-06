@@ -38,7 +38,7 @@ final class TemplateController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=templates', false), ErrorMessage::sanitize($e), 'error');
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=design&screen=templates', false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -81,7 +81,7 @@ final class TemplateController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=templates', false), ErrorMessage::sanitize($e), 'error');
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=design&screen=templates', false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 

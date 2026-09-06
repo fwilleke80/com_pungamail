@@ -107,6 +107,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.5.1.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.5.2.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.0.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.1.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/MarkdownEditorHelper.php",
@@ -584,17 +585,28 @@ def check_new_content_pipeline() -> None:
 
 
 def check_administrator_sidebar_routes() -> None:
-    """Require secondary administrator screens to preserve submenu URL context."""
+    """Require secondary administrator screens to preserve grouped sidebar context."""
 
     route_service = (ROOT / "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/AdministratorRoute.php").read_text(encoding="utf-8")
     display_controller = (ROOT / "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DisplayController.php").read_text(encoding="utf-8")
-    for token in ("view=newsletters", "screen=newsletter", "screen=preview", "screen=preflight", "view=templates", "screen=template", "screen=templatepreview", "view=subscribers", "screen=subscriber"):
+    route_tokens = (
+        "view=newsletters", "screen=newsletter", "screen=preview", "screen=preflight",
+        "view=digests", "screen=digest",
+        "view=audience", "screen=subscribers", "screen=subscriber", "screen=topics", "screen=topic",
+        "view=design", "screen=templates", "screen=template", "screen=templatepreview", "screen=contentlayouts", "screen=contentlayout",
+        "view=tools", "screen=import",
+    )
+    for token in route_tokens:
         if token not in route_service:
             fail(f"Administrator sidebar route contract is missing {token!r}")
-    for screen in ("newsletter", "preview", "preflight", "template", "templatepreview", "subscriber"):
+
+    for context in ("audience", "design", "tools"):
+        if f"'{context}'" not in display_controller:
+            fail(f"DisplayController does not map grouped administrator context {context!r}")
+
+    for screen in ("newsletter", "preview", "preflight", "digest", "subscribers", "subscriber", "topics", "topic", "templates", "template", "templatepreview", "contentlayouts", "contentlayout", "import"):
         if screen not in display_controller:
             fail(f"DisplayController does not map administrator screen {screen!r}")
-
 
 
 def check_editor_toolbars() -> None:
@@ -1112,12 +1124,12 @@ def check_ux_and_fixes_037() -> None:
     """Protect the 0.3.7 Channel UX and form-state regressions."""
 
     component_manifest = (ROOT / "extensions/com_pungamail/pungamail.xml").read_text(encoding="utf-8")
-    templates_pos = component_manifest.find('<menu view="templates">')
-    channels_pos = component_manifest.find('<menu view="topics">')
-    subscribers_pos = component_manifest.find('<menu view="subscribers">')
+    section_navigation = (ROOT / "extensions/com_pungamail/administrator/components/com_pungamail/layouts/pungamail/section_navigation.php").read_text(encoding="utf-8")
 
-    if min(templates_pos, channels_pos, subscribers_pos) < 0 or not (templates_pos < channels_pos < subscribers_pos):
-        fail("Channels are not positioned directly after Templates in the administrator submenu")
+    if '<menu view="audience">' not in component_manifest:
+        fail("Audience grouping is missing from the administrator submenu")
+    if "AdministratorRoute::subscribers()" not in section_navigation or "AdministratorRoute::topics()" not in section_navigation:
+        fail("Audience section no longer groups Subscribers and Channels")
 
     admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
     site_root = ROOT / "extensions/com_pungamail/components/com_pungamail"
@@ -2095,9 +2107,9 @@ def check_release_ux_0600() -> None:
     if 'name="new_content_item_template"' in config:
         fail("0.6.0 still exposes the old component-level Selected Content Layout setting")
 
-    manifest = (ROOT / "extensions/com_pungamail/pungamail.xml").read_text(encoding="utf-8")
-    if 'view="contentlayouts"' not in manifest:
-        fail("0.6.0 does not expose Content layouts in the administrator submenu")
+    section_navigation = (admin_root / "layouts/pungamail/section_navigation.php").read_text(encoding="utf-8")
+    if "AdministratorRoute::contentLayouts()" not in section_navigation:
+        fail("0.6.0 Content layouts are no longer reachable from the Design section")
 
     for locale in ("en-GB", "de-DE"):
         values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
@@ -2114,6 +2126,65 @@ def check_release_ux_0600() -> None:
     test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
     if "0.6.0 focused acceptance — central content-type layouts" not in test_guide:
         fail("0.6.0 focused Content layouts acceptance guide missing")
+
+def check_release_ux_0601() -> None:
+    """Protect the 0.6.1 grouped navigation and Newsletter archive workflow."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    manifest = (ROOT / "extensions/com_pungamail/pungamail.xml").read_text(encoding="utf-8")
+    display = (admin_root / "src/Controller/DisplayController.php").read_text(encoding="utf-8")
+    routes = (admin_root / "src/Service/AdministratorRoute.php").read_text(encoding="utf-8")
+    section_navigation = (admin_root / "layouts/pungamail/section_navigation.php").read_text(encoding="utf-8")
+    list_model = (admin_root / "src/Model/NewslettersModel.php").read_text(encoding="utf-8")
+    list_view = (admin_root / "src/View/Newsletters/HtmlView.php").read_text(encoding="utf-8")
+    controller = (admin_root / "src/Controller/NewslettersController.php").read_text(encoding="utf-8")
+    repository = (admin_root / "src/Service/NewsletterRepository.php").read_text(encoding="utf-8")
+    filter_form = (admin_root / "forms/filter_newsletters.xml").read_text(encoding="utf-8")
+
+    expected_menu = (
+        '<menu view="dashboard">', '<menu view="newsletters">', '<menu view="digests">',
+        '<menu view="audience">', '<menu view="design">', '<menu view="delivery">', '<menu view="tools">',
+    )
+    positions = [manifest.find(token) for token in expected_menu]
+    if min(positions) < 0 or positions != sorted(positions):
+        fail("0.6.1 grouped administrator menu is missing or out of order")
+    for old in ('<menu view="templates">', '<menu view="contentlayouts">', '<menu view="topics">', '<menu view="subscribers">', '<menu view="import">'):
+        if old in manifest:
+            fail(f"0.6.1 still exposes obsolete flat submenu item {old}")
+
+    for token in ("'audience' => 'subscribers'", "'design' => 'templates'", "'tools' => 'import'"):
+        if token not in display:
+            fail(f"0.6.1 grouped navigation is missing default screen mapping {token!r}")
+    for token in ("AdministratorRoute::subscribers()", "AdministratorRoute::topics()", "AdministratorRoute::templates()", "AdministratorRoute::contentLayouts()"):
+        if token not in section_navigation:
+            fail(f"0.6.1 section tabs are missing {token!r}")
+    for token in ("view=audience", "view=design", "view=tools"):
+        if token not in routes:
+            fail(f"0.6.1 grouped route service is missing {token!r}")
+
+    if "$stateValue = $state === '' ? 1" not in list_model:
+        fail("0.6.1 Newsletter list does not hide Archived records by default")
+    if '<option value="2">JARCHIVED</option>' not in filter_form:
+        fail("0.6.1 Newsletter filter does not expose Archived records")
+    for token in ("newsletters.archive", "newsletters.unarchive"):
+        if token not in list_view:
+            fail(f"0.6.1 Newsletter toolbar is missing {token!r}")
+    for token in ("function archive(): void", "function unarchive(): void"):
+        if token not in controller:
+            fail(f"0.6.1 Newsletter controller is missing {token!r}")
+    for token in ("public function archive(array $ids): void", "STATUS_SCHEDULED", "STATUS_QUEUED", "STATUS_SENDING", "$this->setState($ids, 2)"):
+        if token not in repository:
+            fail(f"0.6.1 Newsletter archive safety is missing {token!r}")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_SUBMENU_AUDIENCE", "COM_PUNGAMAIL_SUBMENU_DESIGN", "COM_PUNGAMAIL_SUBMENU_TOOLS",
+            "COM_PUNGAMAIL_ARCHIVE", "COM_PUNGAMAIL_UNARCHIVE", "COM_PUNGAMAIL_ERROR_ARCHIVE_ACTIVE_NEWSLETTER",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.6.1 is missing {locale} navigation/archive copy: {key}")
+
 
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
@@ -2255,6 +2326,7 @@ def main() -> int:
         check_release_fix_0501,
         check_release_fix_0502,
         check_release_ux_0600,
+        check_release_ux_0601,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

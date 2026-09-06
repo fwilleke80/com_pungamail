@@ -374,7 +374,7 @@ if ($item !== null && !empty($item->scheduled_at))
 					<div class="card-body">
 						<div class="mb-3">
 							<div class="small text-muted"><?php echo Text::_('JSTATUS'); ?></div>
-							<div class="fw-semibold"><?php echo Text::_($statusKey); ?></div>
+							<div class="fw-semibold"><?php echo Text::_($statusKey); ?><?php if ($item !== null && (int) $item->state === 2) : ?> <span class="badge bg-secondary ms-1"><?php echo Text::_('COM_PUNGAMAIL_ARCHIVED_NOTE'); ?></span><?php endif; ?></div>
 						</div>
 					</div>
 				</div>

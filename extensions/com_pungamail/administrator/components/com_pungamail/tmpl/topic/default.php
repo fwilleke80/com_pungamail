@@ -9,6 +9,7 @@ use Punga\Component\PungaMail\Administrator\Service\TopicRepository;
 $item = $this->item;
 $audienceMode = (string) ($item->audience_mode ?? TopicRepository::AUDIENCE_EVERYONE);
 ?>
+<?php echo \Joomla\CMS\Layout\LayoutHelper::render('pungamail.section_navigation', ['section' => 'audience', 'active' => 'topics'], JPATH_ADMINISTRATOR . '/components/com_pungamail/layouts'); ?>
 <form action="<?php echo Route::_(AdministratorRoute::topics()); ?>" method="post" name="adminForm" id="adminForm">
 	<div class="card"><div class="card-body">
 		<div class="mb-3"><label class="form-label" for="topic-title"><?php echo Text::_('JGLOBAL_TITLE'); ?></label><input class="form-control" required id="topic-title" name="title" value="<?php echo htmlspecialchars((string) ($item->title ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div>

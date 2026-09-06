@@ -22,6 +22,29 @@ use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 final class NewslettersController extends BaseController
 {
 	/** @return void */
+	public function archive(): void
+	{
+		$this->requirePermission('core.edit.state');
+		$this->requireToken();
+
+		try
+		{
+			ServiceFactory::newsletters()->archive($this->selectedIds());
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), Text::_('COM_PUNGAMAIL_NEWSLETTERS_ARCHIVED'));
+		}
+		catch (\Throwable $e)
+		{
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
+		}
+	}
+
+	/** @return void */
+	public function unarchive(): void
+	{
+		$this->setStateForSelection(1, 'core.edit.state', Text::_('COM_PUNGAMAIL_NEWSLETTERS_UNARCHIVED'), 'index.php?option=com_pungamail&view=newsletters&filter[state]=2');
+	}
+
+	/** @return void */
 	public function trash(): void
 	{
 		$this->setStateForSelection(-2, 'core.edit.state', Text::_('COM_PUNGAMAIL_NEWSLETTERS_TRASHED'));
@@ -90,7 +113,7 @@ final class NewslettersController extends BaseController
 	 *
 	 * @return void
 	 */
-	private function setStateForSelection(int $state, string $permission, string $message): void
+	private function setStateForSelection(int $state, string $permission, string $message, string $redirect = 'index.php?option=com_pungamail&view=newsletters'): void
 	{
 		$this->requirePermission($permission);
 		$this->requireToken();
@@ -98,11 +121,11 @@ final class NewslettersController extends BaseController
 		try
 		{
 			ServiceFactory::newsletters()->setState($this->selectedIds(), $state);
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), $message);
+			$this->setRedirect(Route::_($redirect, false), $message);
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
+			$this->setRedirect(Route::_($redirect, false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 

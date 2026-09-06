@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.3.6. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.1. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -79,13 +79,29 @@ After installing or updating Punga Mail:
 
 Create the digest, scheduled-send, and reminder tasks only if you use those features. The Dashboard warns when an enabled feature is missing its required task.
 
+## Administrator navigation
+
+Punga Mail keeps the primary Joomla sidebar compact by grouping related work:
+
+| Sidebar item | Contains |
+| --- | --- |
+| Dashboard | Overall status, upcoming mail, recent activity and quick actions. |
+| Newsletters | Ordinary drafts, scheduled/sent mail, archived newsletters and delivery history. |
+| Automatic Newsletters | Recurring newsletter rules and their run history. |
+| Audience | **Subscribers** and **Channels**, shown as tabs inside one section. |
+| Design | **Templates** and **Content layouts**, shown as tabs inside one section. |
+| Delivery | Queue inspection, bounce handling and delivery diagnostics. |
+| Tools | Subscriber **Import / Export** and future infrequent maintenance tools. |
+
+When you move between Subscribers and Channels, or between Templates and Content layouts, the parent sidebar entry remains selected. Existing old administrator bookmarks continue to work, but normal navigation uses these grouped sections.
+
 ## Dashboard
 
 Open **Components → Punga Mail** to reach the Dashboard. The 0.4 Dashboard is designed as a control centre rather than a database-status page.
 
 The top cards show active recipients and Channels, the last sent newsletter, the next enabled Automatic Newsletter, and recent delivery health. **Needs your attention** stays quiet when everything is healthy and surfaces only actionable problems such as a missing Scheduled Task, an incomplete database update, or failed deliveries.
 
-**Quick actions** provide direct paths to a new Newsletter, new Automatic Newsletter, recipient creation, and Channels. When pending mail exists or the normal queue task is unavailable, a manual **Process queue now** action remains available as a recovery/testing tool.
+**Quick actions** provide direct paths to a new Newsletter, new Automatic Newsletter, recipient creation, Channels, and Templates. When pending mail exists or the normal queue task is unavailable, a manual **Process queue now** action remains available as a recovery/testing tool.
 
 The lower panels summarize recent newsletter/automation activity, upcoming scheduled mail, the last 30 days of recipient processing, the most-used Channels, and enabled Automatic Newsletters. Scheduled-task and queue implementation details are deliberately not shown unless they require action.
 
@@ -356,7 +372,9 @@ The delivery statuses are:
 | Failed | Mailing setup or processing failed as a whole. |
 | Cancelled | The schedule or unsent remainder was cancelled. Messages already accepted by transport cannot be recalled. |
 
-Draft/sent lifecycle status is separate from Joomla's Active/Trashed record state. Trash hides a record through Joomla list management; it does not rewrite its historical delivery state.
+Draft/sent lifecycle status is separate from Joomla's Current/Archived/Trashed record state. **Archive** removes an old newsletter from the normal Current list without deleting it or changing its delivery status. Use the **Archived** filter to inspect archived newsletters and **Unarchive** to return them to the Current list. Archived newsletters retain their selected content, immutable sent snapshot, recipients, statistics and delivery history, and may still be duplicated as a new draft.
+
+A Scheduled, Queued or Sending newsletter cannot be archived because it is still operationally active. Cancel the schedule or remaining delivery first, or wait for sending to finish. **Trash** remains a separate action for records you intend to remove; it likewise does not rewrite the historical delivery status.
 
 ### Newsletter editor
 

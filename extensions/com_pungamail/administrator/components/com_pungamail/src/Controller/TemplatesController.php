@@ -18,14 +18,14 @@ final class TemplatesController extends BaseController
 	/** @return void */ public function delete(): void
 	{
 		$this->requirePermission('core.delete'); $this->requireToken();
-		try { $count = ServiceFactory::templates()->deleteTrashed($this->selectedIds()); $this->setRedirect(Route::_('index.php?option=com_pungamail&view=templates&filter[state]=-2', false), Text::plural('COM_PUNGAMAIL_TEMPLATES_DELETED', $count)); }
-		catch (\Throwable $e) { $this->setRedirect(Route::_('index.php?option=com_pungamail&view=templates&filter[state]=-2', false), ErrorMessage::sanitize($e), 'error'); }
+		try { $count = ServiceFactory::templates()->deleteTrashed($this->selectedIds()); $this->setRedirect(Route::_('index.php?option=com_pungamail&view=design&screen=templates&filter[state]=-2', false), Text::plural('COM_PUNGAMAIL_TEMPLATES_DELETED', $count)); }
+		catch (\Throwable $e) { $this->setRedirect(Route::_('index.php?option=com_pungamail&view=design&screen=templates&filter[state]=-2', false), ErrorMessage::sanitize($e), 'error'); }
 	}
 	/** @return void */ private function setState(int $state, string $message): void
 	{
 		$this->requirePermission('core.edit.state'); $this->requireToken();
-		try { ServiceFactory::templates()->setState($this->selectedIds(), $state); $this->setRedirect(Route::_('index.php?option=com_pungamail&view=templates', false), $message); }
-		catch (\Throwable $e) { $this->setRedirect(Route::_('index.php?option=com_pungamail&view=templates', false), ErrorMessage::sanitize($e), 'error'); }
+		try { ServiceFactory::templates()->setState($this->selectedIds(), $state); $this->setRedirect(Route::_('index.php?option=com_pungamail&view=design&screen=templates', false), $message); }
+		catch (\Throwable $e) { $this->setRedirect(Route::_('index.php?option=com_pungamail&view=design&screen=templates', false), ErrorMessage::sanitize($e), 'error'); }
 	}
 	/** @return array<int,int> */ private function selectedIds(): array
 	{

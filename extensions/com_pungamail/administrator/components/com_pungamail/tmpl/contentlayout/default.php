@@ -29,6 +29,7 @@ foreach ((array) $item->columns as $column)
 	}
 }
 ?>
+<?php echo \Joomla\CMS\Layout\LayoutHelper::render('pungamail.section_navigation', ['section' => 'design', 'active' => 'contentlayouts'], JPATH_ADMINISTRATOR . '/components/com_pungamail/layouts'); ?>
 <style>
 .pm-placeholder-table code { white-space: nowrap; }
 .pm-layout-sidebar { position: sticky; top: 1rem; }

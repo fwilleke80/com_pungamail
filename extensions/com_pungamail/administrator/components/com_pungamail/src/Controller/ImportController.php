@@ -143,7 +143,7 @@ final class ImportController extends BaseController
 	/** @return void */
 	private function redirectToImport(string $message, string $type = 'message'): void
 	{
-		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=import', false), $message, $type);
+		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=tools&screen=import', false), $message, $type);
 	}
 
 	/**

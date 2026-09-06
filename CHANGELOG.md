@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.6.1 — 2026-09-06
+
+### Administrator navigation
+
+- Reorganized the Punga Mail sidebar into **Dashboard**, **Newsletters**, **Automatic Newsletters**, **Audience**, **Design**, **Delivery**, and **Tools**.
+- Grouped **Subscribers** and **Channels** under Audience, and **Templates** and **Content layouts** under Design. Joomla-style tabs keep the child screens one click apart while the sidebar remains focused on the parent section.
+- Moved **Import / Export** under Tools instead of reserving a permanent top-level sidebar entry. Legacy flat administrator URLs remain routable for existing bookmarks.
+
+### Newsletter archive
+
+- Added **Archive** and **Unarchive** actions to the Newsletters list. Archived newsletters are hidden from the normal Current list and can be shown with the Archived filter without being trashed.
+- Archiving uses Joomla's existing archived record state and remains separate from Punga Mail's delivery lifecycle, so a sent newsletter remains Sent while archived.
+- Scheduled, queued, and currently sending newsletters cannot be archived until their active delivery state has been cancelled or completed.
+- Archived newsletters keep their snapshots, recipients, statistics, selected content, and history, and can still be duplicated as new drafts.
+
+### Database
+
+- Added a 0.6.1 schema marker. No table change is required because archiving uses the existing Newsletter record-state field.
+
 ## 0.6.0 — 2026-09-06
 
 ### Central content layouts

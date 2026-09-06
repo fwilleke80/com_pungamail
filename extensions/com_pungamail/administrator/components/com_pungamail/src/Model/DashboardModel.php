@@ -185,10 +185,10 @@ final class DashboardModel extends BaseDatabaseModel
 		$db = $this->getDatabase();
 		$query = $db->getQuery(true)
 			->select([
-				'SUM(CASE WHEN state <> -2 THEN 1 ELSE 0 END) AS active',
+				'SUM(CASE WHEN state = 1 THEN 1 ELSE 0 END) AS active',
 				'SUM(CASE WHEN state = -2 THEN 1 ELSE 0 END) AS trashed',
-				'SUM(CASE WHEN state <> -2 AND status = 0 THEN 1 ELSE 0 END) AS drafts',
-				'SUM(CASE WHEN state <> -2 AND status IN (3, 4) THEN 1 ELSE 0 END) AS sent',
+				'SUM(CASE WHEN state = 1 AND status = 0 THEN 1 ELSE 0 END) AS drafts',
+				'SUM(CASE WHEN state = 1 AND status IN (3, 4) THEN 1 ELSE 0 END) AS sent',
 			])
 			->from($db->quoteName('#__pungamail_newsletters'));
 		$row = $db->setQuery($query)->loadAssoc() ?: [];

@@ -7,6 +7,7 @@ It is designed for websites that want to manage newsletters directly inside Joom
 ## What Punga Mail can do
 
 - **Create and send newsletters** from the Joomla administrator.
+- Archive old newsletters without trashing them, while retaining delivery history and sent snapshots.
 - Write mail content in **Markdown** with a formatting toolbar, placeholders and preview.
 - Use reusable **Templates** for newsletter content and design.
 - Let subscribers choose **Channels** so they receive only the newsletters they are interested in.
@@ -20,6 +21,7 @@ It is designed for websites that want to manage newsletters directly inside Joom
 - Handle undeliverable mail and stop repeatedly sending to addresses that can no longer be reached.
 - Show delivery statistics, recent activity, upcoming mail and other useful status information on the Dashboard.
 - Import and export recipient data as CSV.
+- Use grouped administrator navigation for Audience, Design, and Tools workflows.
 - Generate browser-view and unsubscribe links for newsletters.
 - Use Joomla's language system; Punga Mail currently includes **English and German**.
 

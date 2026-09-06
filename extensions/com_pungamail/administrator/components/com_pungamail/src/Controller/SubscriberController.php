@@ -244,7 +244,7 @@ final class SubscriberController extends BaseController
 		$this->guard();
 		$id = Factory::getApplication()->getInput()->getInt('id');
 		ServiceFactory::subscribers()->unsubscribe($id, 'administrator');
-		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=subscribers', false), Text::_('COM_PUNGAMAIL_SUBSCRIBER_SUPPRESSED'));
+		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=audience&screen=subscribers', false), Text::_('COM_PUNGAMAIL_SUBSCRIBER_SUPPRESSED'));
 	}
 
 	/**
@@ -261,7 +261,7 @@ final class SubscriberController extends BaseController
 
 		if ($subscriber === null)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=subscribers', false), Text::_('COM_PUNGAMAIL_ERROR_SUBSCRIBER_NOT_FOUND'), 'error');
+			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=audience&screen=subscribers', false), Text::_('COM_PUNGAMAIL_ERROR_SUBSCRIBER_NOT_FOUND'), 'error');
 			return;
 		}
 
@@ -271,7 +271,7 @@ final class SubscriberController extends BaseController
 		$newId = $repo->storePendingExternal((string) $subscriber->email, $tokenData['hash'], $expires, (string) ($subscriber->language ?? 'en-GB'));
 		ServiceFactory::mail()->sendConfirmation((string) $subscriber->email, $tokenData['token']);
 		$repo->recordEvent($newId, 'confirmation_sent', null, null, ['source' => 'administrator']);
-		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=subscribers', false), Text::_('COM_PUNGAMAIL_CONFIRMATION_SENT'));
+		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=audience&screen=subscribers', false), Text::_('COM_PUNGAMAIL_CONFIRMATION_SENT'));
 	}
 
 	/** @return void */

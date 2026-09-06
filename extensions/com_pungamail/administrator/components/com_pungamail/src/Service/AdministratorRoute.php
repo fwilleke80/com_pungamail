@@ -46,21 +46,33 @@ final class AdministratorRoute
 	}
 
 	/** @return string */
+	public static function audience(): string
+	{
+		return 'index.php?option=com_pungamail&view=audience';
+	}
+
+	/** @return string */
 	public static function subscribers(): string
 	{
-		return 'index.php?option=com_pungamail&view=subscribers';
+		return self::audience() . '&screen=subscribers';
 	}
 
 	/** @return string */
 	public static function subscriber(int $id = 0): string
 	{
-		return self::subscribers() . '&screen=subscriber' . ($id > 0 ? '&id=' . $id : '');
+		return self::audience() . '&screen=subscriber' . ($id > 0 ? '&id=' . $id : '');
+	}
+
+	/** @return string */
+	public static function design(): string
+	{
+		return 'index.php?option=com_pungamail&view=design';
 	}
 
 	/** @return string */
 	public static function templates(): string
 	{
-		return 'index.php?option=com_pungamail&view=templates';
+		return self::design() . '&screen=templates';
 	}
 
 	/**
@@ -69,37 +81,37 @@ final class AdministratorRoute
 	 */
 	public static function template(int $id = 0): string
 	{
-		return self::templates() . '&screen=template' . ($id > 0 ? '&id=' . $id : '');
+		return self::design() . '&screen=template' . ($id > 0 ? '&id=' . $id : '');
 	}
 
 	/** @return string */
 	public static function templatePreview(int $id): string
 	{
-		return self::templates() . '&screen=templatepreview&id=' . $id;
+		return self::design() . '&screen=templatepreview&id=' . $id;
 	}
 
 	/** @return string */
 	public static function contentLayouts(): string
 	{
-		return 'index.php?option=com_pungamail&view=contentlayouts';
+		return self::design() . '&screen=contentlayouts';
 	}
 
 	/** @return string */
 	public static function contentLayout(string $sourceKey): string
 	{
-		return self::contentLayouts() . '&screen=contentlayout&source_key=' . rawurlencode($sourceKey);
+		return self::design() . '&screen=contentlayout&source_key=' . rawurlencode($sourceKey);
 	}
 
 	/** @return string */
 	public static function topics(): string
 	{
-		return 'index.php?option=com_pungamail&view=topics';
+		return self::audience() . '&screen=topics';
 	}
 
 	/** @return string */
 	public static function topic(int $id = 0): string
 	{
-		return self::topics() . '&screen=topic' . ($id > 0 ? '&id=' . $id : '');
+		return self::audience() . '&screen=topic' . ($id > 0 ? '&id=' . $id : '');
 	}
 
 	/** @return string */
@@ -113,4 +125,10 @@ final class AdministratorRoute
 	{
 		return self::digests() . '&screen=digest' . ($id > 0 ? '&id=' . $id : '');
 	}
+	/** @return string */
+	public static function tools(): string
+	{
+		return 'index.php?option=com_pungamail&view=tools&screen=import';
+	}
+
 }

@@ -9,6 +9,7 @@ use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 
 ?>
+<?php echo \Joomla\CMS\Layout\LayoutHelper::render('pungamail.section_navigation', ['section' => 'audience', 'active' => 'subscribers'], JPATH_ADMINISTRATOR . '/components/com_pungamail/layouts'); ?>
 <form action="<?php echo Route::_(AdministratorRoute::subscriber((int) ($this->item->id ?? 0))); ?>" method="post" name="adminForm" id="adminForm">
 	<p class="text-muted"><?php echo Text::_($this->item === null ? 'COM_PUNGAMAIL_ADD_SUBSCRIBER_HELP' : 'COM_PUNGAMAIL_EDIT_SUBSCRIBER_HELP'); ?></p>
 	<div class="row g-3">

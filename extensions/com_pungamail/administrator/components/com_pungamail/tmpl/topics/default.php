@@ -23,6 +23,7 @@ if ($saveOrder && $this->items !== [] && $canChange)
 	HTMLHelper::_('draggablelist.draggable');
 }
 ?>
+<?php echo \Joomla\CMS\Layout\LayoutHelper::render('pungamail.section_navigation', ['section' => 'audience', 'active' => 'topics'], JPATH_ADMINISTRATOR . '/components/com_pungamail/layouts'); ?>
 <form action="<?php echo Route::_(AdministratorRoute::topics()); ?>" method="post" name="adminForm" id="adminForm">
 	<?php echo LayoutHelper::render('joomla.searchtools.default', ['view' => $this]); ?>
 	<?php if ($this->items === []) : ?>

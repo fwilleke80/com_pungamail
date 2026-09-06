@@ -2,7 +2,7 @@
 <extension type="component" method="upgrade">
 	<name>COM_PUNGAMAIL</name>
 	<element>com_pungamail</element>
-	<version>0.6.0</version>
+	<version>0.6.1</version>
 	<creationDate>2026-09-06</creationDate>
 	<author>Punga</author>
 	<license>MIT License</license>
@@ -18,19 +18,18 @@
 		<submenu>
 			<menu view="dashboard">COM_PUNGAMAIL_SUBMENU_DASHBOARD</menu>
 			<menu view="newsletters">COM_PUNGAMAIL_SUBMENU_NEWSLETTERS</menu>
-			<menu view="templates">COM_PUNGAMAIL_SUBMENU_TEMPLATES</menu>
-			<menu view="contentlayouts">COM_PUNGAMAIL_SUBMENU_CONTENT_LAYOUTS</menu>
-			<menu view="topics">COM_PUNGAMAIL_SUBMENU_TOPICS</menu>
-			<menu view="subscribers">COM_PUNGAMAIL_SUBMENU_SUBSCRIBERS</menu>
 			<menu view="digests">COM_PUNGAMAIL_SUBMENU_DIGESTS</menu>
+			<menu view="audience">COM_PUNGAMAIL_SUBMENU_AUDIENCE</menu>
+			<menu view="design">COM_PUNGAMAIL_SUBMENU_DESIGN</menu>
 			<menu view="delivery">COM_PUNGAMAIL_SUBMENU_DELIVERY</menu>
-			<menu view="import">COM_PUNGAMAIL_SUBMENU_IMPORT_EXPORT</menu>
+			<menu view="tools">COM_PUNGAMAIL_SUBMENU_TOOLS</menu>
 		</submenu>
 		<files folder="administrator/components/com_pungamail">
 			<filename>access.xml</filename>
 			<filename>config.xml</filename>
 			<folder>forms</folder>
 			<folder>language</folder>
+			<folder>layouts</folder>
 			<folder>services</folder>
 			<folder>sql</folder>
 			<folder>src</folder>
