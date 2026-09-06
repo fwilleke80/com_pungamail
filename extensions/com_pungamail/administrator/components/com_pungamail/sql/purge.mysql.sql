@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS `#__pungamail_content_layouts`;
 DROP TABLE IF EXISTS `#__pungamail_events`;
 DROP TABLE IF EXISTS `#__pungamail_digest_runs`;
 DROP TABLE IF EXISTS `#__pungamail_digest_groups`;

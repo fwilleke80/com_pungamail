@@ -727,7 +727,6 @@ final class NewsletterRepository
 				'reply_to_mode' => (string) ($newsletter->reply_to_mode ?? 'inherit'),
 				'reply_to_email' => (string) ($newsletter->reply_to_email ?? ''),
 				'reply_to_name' => (string) ($newsletter->reply_to_name ?? ''),
-				'new_content_item_template' => (string) ($newsletter->new_content_item_template ?? ''),
 			]
 		);
 	}

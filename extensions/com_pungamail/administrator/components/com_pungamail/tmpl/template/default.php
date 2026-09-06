@@ -16,7 +16,6 @@ use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Helper\MarkdownEditorHelper;
 
 $item = $this->item;
-$newContentOverride = trim((string) ($item->new_content_item_template ?? ''));
 $style = $this->styleOverrides;
 $styleFields = [
 	'content_width' => 'COM_PUNGAMAIL_STYLE_CONTENT_WIDTH',
@@ -36,10 +35,6 @@ $styleFields = [
 ];
 ?>
 <style>
-.pm-new-content-override > summary { list-style: none; }
-.pm-new-content-override > summary::-webkit-details-marker { display: none; }
-.pm-new-content-override .pm-collapse-indicator { display: inline-block; transition: transform .15s ease; }
-.pm-new-content-override[open] .pm-collapse-indicator { transform: rotate(90deg); }
 </style>
 <div class="container-fluid">
 	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm" data-pm-unsaved-warning="1">
@@ -75,27 +70,6 @@ $styleFields = [
 					</div>
 				</div>
 			</div>
-
-			<details class="card mb-3 pm-new-content-override">
-				<summary class="card-header d-flex align-items-center gap-2" style="cursor:pointer">
-					<span class="pm-collapse-indicator" aria-hidden="true">▶</span>
-					<strong><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_LAYOUT'); ?></strong>
-					<?php if ($newContentOverride !== '') : ?>
-						<span class="badge bg-info text-dark"><?php echo Text::_('COM_PUNGAMAIL_CUSTOM_OVERRIDE_ACTIVE'); ?></span>
-					<?php endif; ?>
-				</summary>
-				<div class="card-body">
-					<label class="form-label" for="pt-new-content-template"><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE'); ?></label>
-					<?php echo MarkdownEditorHelper::render(
-						'new_content_item_template',
-						'pt-new-content-template',
-						$newContentOverride,
-						7,
-						['{title}', '{title_link}', '{publish_date}', '{excerpt}', '{read_more}', '{url}', '{content_type}'],
-						[Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_OVERRIDE_DESC'), Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP')]
-					); ?>
-				</div>
-			</details>
 
 		</div>
 		<?php echo HTMLHelper::_('uitab.endTab'); ?>

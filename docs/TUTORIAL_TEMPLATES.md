@@ -46,6 +46,12 @@ Use `{new_content}` where selected website items should appear. Without it, sele
 
 Use `{recipient}` only where personalization reads naturally. It becomes the Joomla display name when available and falls back to the email address.
 
+## Content item layouts are managed separately
+
+Templates control the reusable **message** (subject, body and design), but they no longer define how each `{new_content}` item is formatted. Use **Punga Mail → Content layouts** for that. There you can define one Default item layout and optional layouts for individual registered content types. Punga Mail shows the placeholders available for each type, including safe fields discovered directly from its registered database table.
+
+This separation means the same Article/Event/Web Link layout is used consistently by ordinary Newsletters and Automatic Newsletters without adding more controls to each Template.
+
 ## 3. Choose message behavior
 
 ### Mail body heading

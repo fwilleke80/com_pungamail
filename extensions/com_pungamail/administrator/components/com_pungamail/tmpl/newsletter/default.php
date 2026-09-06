@@ -12,7 +12,6 @@ use Punga\Component\PungaMail\Administrator\Service\NewsletterRenderer;
 use Punga\Component\PungaMail\Administrator\Service\NewsletterRepository;
 
 $item = $this->item;
-$newContentOverride = trim((string) ($item->new_content_item_template ?? ''));
 $isDraft = $item === null || in_array((int) $item->status, [NewsletterRepository::STATUS_DRAFT, NewsletterRepository::STATUS_SCHEDULED], true);
 $selectedByKey = [];
 foreach ($this->selectedItems as $selected)
@@ -59,10 +58,6 @@ if ($item !== null && !empty($item->scheduled_at))
 }
 ?>
 <style>
-.pm-new-content-override > summary { list-style: none; }
-.pm-new-content-override > summary::-webkit-details-marker { display: none; }
-.pm-new-content-override .pm-collapse-indicator { display: inline-block; transition: transform .15s ease; }
-.pm-new-content-override[open] .pm-collapse-indicator { transform: rotate(90deg); }
 .pm-content-row[draggable="true"] { cursor: grab; }
 .pm-content-row[draggable="true"]:active { cursor: grabbing; }
 .pm-content-drag { display: inline-flex; align-items: center; gap: .35rem; }
@@ -233,27 +228,6 @@ if ($item !== null && !empty($item->scheduled_at))
 					</div>
 				</div>
 			</div>
-
-			<details class="card mb-3 pm-new-content-override">
-				<summary class="card-header d-flex align-items-center gap-2" style="cursor:pointer">
-					<span class="pm-collapse-indicator" aria-hidden="true">▶</span>
-					<strong><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_LAYOUT'); ?></strong>
-					<?php if ($newContentOverride !== '') : ?>
-						<span class="badge bg-info text-dark"><?php echo Text::_('COM_PUNGAMAIL_CUSTOM_OVERRIDE_ACTIVE'); ?></span>
-					<?php endif; ?>
-				</summary>
-				<div class="card-body">
-					<label class="form-label" for="pm-new-content-template"><?php echo Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE'); ?></label>
-					<?php echo MarkdownEditorHelper::render(
-						'new_content_item_template',
-						'pm-new-content-template',
-						$newContentOverride,
-						7,
-						['{title}', '{title_link}', '{publish_date}', '{excerpt}', '{read_more}', '{url}', '{content_type}'],
-						[Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_OVERRIDE_DESC'), Text::_('COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP')]
-					); ?>
-				</div>
-			</details>
 		</div>
 		<?php echo HTMLHelper::_('uitab.endTab'); ?>
 

@@ -78,6 +78,7 @@ return new class () implements InstallerScriptInterface
 		$db = Factory::getContainer()->get(DatabaseInterface::class);
 		$tables = [
 			'#__pungamail_events',
+			'#__pungamail_content_layouts',
 			'#__pungamail_digest_runs',
 			'#__pungamail_digest_groups',
 			'#__pungamail_digest_topics',
@@ -225,7 +226,89 @@ return new class () implements InstallerScriptInterface
 			->where('(' . $db->quoteName('folder') . ' = ' . $db->quote('user') . ' OR ' . $db->quoteName('folder') . ' = ' . $db->quote('task') . ')');
 
 		$db->setQuery($query)->execute();
+		$this->migrateLegacyContentLayout();
 
 		return true;
+	}
+
+	/**
+	 * Moves the former component-wide selected-content layout into the central
+	 * content-layout table. Per-newsletter/template overrides remain stored in
+	 * their legacy columns because they cannot be mapped losslessly to one
+	 * per-content-type layout.
+	 *
+	 * @return void
+	 */
+	private function migrateLegacyContentLayout(): void
+	{
+		$db = Factory::getContainer()->get(DatabaseInterface::class);
+		$table = $db->replacePrefix('#__pungamail_content_layouts');
+
+		try
+		{
+			if ($db->getTableColumns($table, true) === [])
+			{
+				return;
+			}
+		}
+		catch (\Throwable)
+		{
+			return;
+		}
+
+		$sourceKey = '__default__';
+		$query = $db->getQuery(true)
+			->select('COUNT(*)')
+			->from($db->quoteName('#__pungamail_content_layouts'))
+			->where($db->quoteName('source_key') . ' = :sourceKey')
+			->bind(':sourceKey', $sourceKey);
+
+		if ((int) $db->setQuery($query)->loadResult() > 0)
+		{
+			return;
+		}
+
+		$type = 'component';
+		$element = 'com_pungamail';
+		$query = $db->getQuery(true)
+			->select($db->quoteName('params'))
+			->from($db->quoteName('#__extensions'))
+			->where($db->quoteName('type') . ' = :type')
+			->where($db->quoteName('element') . ' = :element')
+			->bind(':type', $type)
+			->bind(':element', $element);
+		$paramsJson = (string) $db->setQuery($query)->loadResult();
+		$params = json_decode($paramsJson, true);
+		$params = is_array($params) ? $params : [];
+		$layout = trim((string) ($params['new_content_item_template'] ?? ''));
+
+		if ($layout === '')
+		{
+			$layout = "### {title_link}\n\n{excerpt}\n\n{read_more}";
+		}
+
+		$now = Factory::getDate('now', 'UTC')->toSql();
+		$row = (object) [
+			'source_key' => $sourceKey,
+			'layout_markdown' => $layout,
+			'created' => $now,
+			'modified' => $now,
+		];
+		$db->insertObject('#__pungamail_content_layouts', $row);
+
+		if (array_key_exists('new_content_item_template', $params))
+		{
+			unset($params['new_content_item_template']);
+			$newParams = json_encode($params, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+			$query = $db->getQuery(true)
+				->update($db->quoteName('#__extensions'))
+				->set($db->quoteName('params') . ' = :params')
+				->where($db->quoteName('type') . ' = :type')
+				->where($db->quoteName('element') . ' = :element')
+				->bind(':params', $newParams)
+				->bind(':type', $type)
+				->bind(':element', $element);
+			$db->setQuery($query)->execute();
+		}
 	}
 };

@@ -333,7 +333,7 @@ Every global design property can be overridden: content width, backgrounds, text
 
 Template custom CSS is added after the global custom CSS. Newsletter custom CSS can add another layer.
 
-**Preview** renders the template. The editor follows Joomla's familiar main-content plus right-sidebar pattern: reusable subject/body and the selected-content layout live in **Mail content**, visual overrides live in **Design**, and template-level message behavior such as the mail heading, browser view and Reply-To lives in the right sidebar. Templates do not have an artificial Published/Unpublished state. **Save**, **Save & Close**, and **Cancel** behave like standard Joomla editor actions.
+**Preview** renders the template. The editor follows Joomla's familiar main-content plus right-sidebar pattern: reusable subject/body live in **Mail content**, visual overrides live in **Design**, and template-level message behavior such as the mail heading, browser view and Reply-To lives in the right sidebar. Templates do not have an artificial Published/Unpublished state. Selected-content item formatting is managed centrally under **Content layouts**, not inside individual Templates or Newsletters. **Save**, **Save & Close**, and **Cancel** behave like standard Joomla editor actions.
 
 Applying a template in a newsletter **copies** its values. Later template edits do not alter an existing draft and can never alter a sent snapshot.
 
@@ -400,23 +400,39 @@ Selecting content does nothing unless the body contains `{new_content}`. Punga M
 
 ### Layout of selected content
 
-Each selected item is rendered through a small Markdown template. Excerpts are generated as readable text without executing Joomla content plugins; unresolved plugin-command markers such as `{snippet alias="example"}` are removed before the excerpt is shortened. The global default lives in **Punga Mail Options → Design**; a reusable Template may override it, and an individual Newsletter may override the Template. Leave an override empty to inherit.
+Selected content is formatted centrally under **Punga Mail → Content layouts**. This keeps Newsletter, Template and Automatic Newsletter editors focused on message composition instead of repeating layout controls in several places.
 
-Available placeholders are `{title}`, `{title_link}`, `{publish_date}`, `{excerpt}`, `{read_more}`, `{url}`, and `{content_type}`. A compact example that includes the publication date is:
+The **Default content layout** is used for every registered content type unless that type has its own custom layout. The list also shows each usable Joomla registered content type, for example Articles or a calendar Event type.
+
+Every layout always has the normalized Punga Mail placeholders:
+
+- `{title}`
+- `{title_link}`
+- `{publish_date}`
+- `{excerpt}`
+- `{read_more}`
+- `{url}`
+- `{content_type}`
+
+For a specific registered content type, Punga Mail also inspects its registered backing database table and exposes safe table columns directly as placeholders. No Punga Mail plugin or cooperation from the originating extension is required. If an Event table contains fields such as `start_at`, `end_at` and `venue`, that Event layout can use:
 
 ```text
-{publish_date}
-
 ### {title_link}
+
+**{start_at|datetime}**
+
+{venue}
 
 {excerpt}
 
 {read_more}
 ```
 
-`{title_link}` becomes the title linked to the website item when a URL exists. `{read_more}` uses Punga Mail’s translated Read more label. `{publish_date}` is formatted for the Joomla/site locale rather than inserted as a database timestamp.
+The Content layout editor shows the placeholders available for the selected content type in a right-hand reference panel, including the database type. Date-like fields also offer `{field|date}`, `{field|time}`, and `{field|datetime}` formatting.
 
-If a selected website item is later removed, unavailable, or inaccessible to part of the resolved audience, Preflight reports it. Inaccessible selected content is a blocking error, preventing accidental disclosure.
+`{publish_date}` remains the date Punga Mail uses to describe when the item became new website content; it is deliberately separate from semantic fields such as an event start date. Generic Punga Mail placeholders take precedence over same-named database columns so Newsletter title/excerpt overrides continue to work. Obvious credential/secret fields are not exposed as layout placeholders.
+
+Excerpts are generated as readable text without executing Joomla content plugins; unresolved plugin-command markers such as `{snippet alias="example"}` are removed before the excerpt is shortened. If a selected website item is later removed, unavailable, or inaccessible to part of the resolved audience, Preflight reports it. Inaccessible selected content is a blocking error, preventing accidental disclosure.
 
 #### Message options and style
 

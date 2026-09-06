@@ -17,7 +17,6 @@
 	<fieldset name="design" label="COM_PUNGAMAIL_CONFIG_DESIGN">
 		<field name="mail_heading" type="text" default="{site_name}" label="COM_PUNGAMAIL_MAIL_BODY_HEADING" description="COM_PUNGAMAIL_MAIL_BODY_HEADING_GLOBAL_DESC" />
 		<field name="browser_view_enabled" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_BROWSER_VIEW_ENABLED" description="COM_PUNGAMAIL_BROWSER_VIEW_ENABLED_DESC"><option value="0">JNO</option><option value="1">JYES</option></field>
-		<field name="new_content_item_template" type="newcontenttemplate" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" filter="raw" rows="7" default="### {title_link}&#10;&#10;{excerpt}&#10;&#10;{read_more}" label="COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE" description="COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_GLOBAL_DESC" />
 		<field name="design_content_width" type="number" default="680" min="320" max="1200" label="COM_PUNGAMAIL_STYLE_CONTENT_WIDTH" />
 		<field name="design_outer_background" type="color" default="#f4f4f4" label="COM_PUNGAMAIL_STYLE_OUTER_BACKGROUND" />
 		<field name="design_content_background" type="color" default="#ffffff" label="COM_PUNGAMAIL_STYLE_CONTENT_BACKGROUND" />

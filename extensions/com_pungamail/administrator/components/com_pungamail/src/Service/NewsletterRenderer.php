@@ -28,7 +28,8 @@ final class NewsletterRenderer
 	 * @param ContentTypeService $contentTypes Registered content-type service.
 	 * @param MailStyleService   $styles       Mail-style resolver.
 	 * @param TemplateRepository $templates    Template repository.
-	 * @param MailTextService     $mailText     Frontend mail-language resolver.
+	 * @param MailTextService          $mailText       Frontend mail-language resolver.
+	 * @param ContentLayoutRepository $contentLayouts Central selected-content layouts.
 	 */
 	public function __construct(
 		private readonly MarkdownRenderer $markdown,
@@ -36,7 +37,8 @@ final class NewsletterRenderer
 		private readonly MailStyleService $styles,
 		private readonly TemplateRepository $templates,
 		private readonly MailTextService $mailText,
-		private readonly MailConfigurationService $mailConfiguration
+		private readonly MailConfigurationService $mailConfiguration,
+		private readonly ContentLayoutRepository $contentLayouts
 	)
 	{
 	}
@@ -65,7 +67,6 @@ final class NewsletterRenderer
 		$itemHtml = '';
 		$itemTextParts = [];
 		$snapshots = [];
-		$itemTemplate = $this->mailConfiguration->newContentItemTemplate($template, $newsletter);
 
 		foreach ($items as $selection)
 		{
@@ -99,15 +100,20 @@ final class NewsletterRenderer
 			$readMore = $url !== ''
 				? '[' . $this->escapeMarkdown($this->mailText->text('COM_PUNGAMAIL_MAIL_READ_MORE') . ' →') . '](' . $linkUrl . ')'
 				: '';
-			$itemMarkdown = strtr($itemTemplate, [
-				'{title}' => $titleMarkdown,
-				'{title_link}' => $titleLink,
-				'{publish_date}' => $this->escapeMarkdown($publishDate),
-				'{excerpt}' => $excerptMarkdown,
-				'{read_more}' => $readMore,
-				'{url}' => $url,
-				'{content_type}' => $contentTypeMarkdown,
-			]);
+			$itemTemplate = $this->contentLayouts->layoutFor((string) $selection->source_key);
+			$itemMarkdown = $this->renderContentItemTemplate(
+				$itemTemplate,
+				[
+					'title' => $titleMarkdown,
+					'title_link' => $titleLink,
+					'publish_date' => $this->escapeMarkdown($publishDate),
+					'excerpt' => $excerptMarkdown,
+					'read_more' => $readMore,
+					'url' => $url,
+					'content_type' => $contentTypeMarkdown,
+				],
+				is_array($current?->raw_fields ?? null) ? $current->raw_fields : []
+			);
 			$itemHtml .= $this->markdown->toHtml($itemMarkdown, Uri::root());
 			$itemTextParts[] = trim($this->markdown->toText($itemMarkdown, Uri::root()));
 			$snapshots[] = [
@@ -209,6 +215,84 @@ final class NewsletterRenderer
 		];
 
 		return $this->render($newsletter, []);
+	}
+
+	/**
+	 * Resolves generic and source-table placeholders in one selected-content layout.
+	 * Generic Punga Mail placeholders deliberately take precedence over database
+	 * columns with the same name so title/excerpt overrides continue to work.
+	 *
+	 * @param string                    $layout  Markdown layout.
+	 * @param array<string,string>      $generic Normalized Punga Mail values.
+	 * @param array<string,mixed>       $raw     Safe source-table values.
+	 *
+	 * @return string Rendered Markdown.
+	 */
+	private function renderContentItemTemplate(string $layout, array $generic, array $raw): string
+	{
+		return preg_replace_callback(
+			'/\{([A-Za-z0-9_]+)(?:\|(date|time|datetime))?\}/',
+			function (array $match) use ($generic, $raw): string
+			{
+				$name = (string) $match[1];
+				$format = (string) ($match[2] ?? '');
+
+				if (array_key_exists($name, $generic))
+				{
+					return $generic[$name];
+				}
+
+				if (!array_key_exists($name, $raw))
+				{
+					return $match[0];
+				}
+
+				$value = $raw[$name];
+
+				if ($value === null)
+				{
+					return '';
+				}
+
+				$text = is_scalar($value) ? (string) $value : json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+				$text = $text === false ? '' : $text;
+
+				if ($format !== '')
+				{
+					$text = $this->formatDatabaseDate($text, $format);
+				}
+
+				return $this->escapeMarkdown($text);
+			},
+			$layout
+		) ?? $layout;
+	}
+
+	/** @return string */
+	private function formatDatabaseDate(string $value, string $format): string
+	{
+		if (trim($value) === '')
+		{
+			return '';
+		}
+
+		try
+		{
+			$date = Factory::getDate($value, 'UTC');
+			$date->setTimezone(new \DateTimeZone((string) Factory::getApplication()->get('offset', 'UTC')));
+			$pattern = match ($format)
+			{
+				'date' => Text::_('DATE_FORMAT_LC3'),
+				'time' => 'H:i',
+				default => Text::_('DATE_FORMAT_LC5'),
+			};
+
+			return $date->format($pattern, true);
+		}
+		catch (\Throwable)
+		{
+			return $value;
+		}
 	}
 
 	/** @return string */

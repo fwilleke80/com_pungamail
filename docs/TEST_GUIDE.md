@@ -667,7 +667,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 **Steps:**
 
 1. Open **Templates → New** and verify the editor uses a main content area plus a Joomla-style right sidebar.
-2. Confirm title/subject/body/selected-content layout are in the main content area, visual overrides/custom CSS are under **Design**, and message options are in the right sidebar. Confirm there is no fake Published/Unpublished status.
+2. Confirm title/subject/body are in the main content area, visual overrides/custom CSS are under **Design**, and message options are in the right sidebar. Confirm there is no per-Template Selected Content Layout control and no fake Published/Unpublished status.
 3. Enter a title, default subject, and Markdown body containing headings, emphasis, a list, a link, an image, a pipe table, `{recipient}`, and `{new_content}`.
 4. Click Save, Preview, and Save & Close.
 
@@ -748,12 +748,14 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Expected:** The editor follows Joomla's main-content/sidebar pattern, all values save normally, toolbar actions remain available, and the Content selection list/search behavior still works.
 
-### PM-119b — `{new_content}` item-template editor presentation
+### PM-119b — Central Content layouts
 
-1. Open Component Options, a Template, and a draft Newsletter.
-2. Locate the `{new_content}` item-template editor in each location.
+1. Open **Punga Mail → Content layouts**.
+2. Confirm the list contains **Default content layout** plus each usable registered Joomla content type.
+3. Open the Default layout, then open at least one third-party content type.
+4. Confirm Newsletter, Template, and Component Options no longer expose separate Selected Content Layout editors.
 
-**Expected:** All three editors use monospaced text and visibly list the supported placeholders `{title}`, `{title_link}`, `{publish_date}`, `{excerpt}`, `{read_more}`, `{url}`, and `{content_type}` beneath the editor.
+**Expected:** The central editor uses the shared Markdown editor. The right-hand panel lists normalized Punga Mail placeholders and, for a specific content type, safe database fields discovered from that content type's registered source table.
 
 
 ### PM-120 — Create, save, and reopen a draft
@@ -809,17 +811,19 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Expected:** Selected content appears exactly at the placeholder and in selected order. Punga Mail does not add its own “new content” heading. Without the placeholder, content is not silently appended.
 
-### PM-124A — Selected-content item layout
+### PM-124A — Per-content-type selected-content layouts
 
 **Steps:**
 
-1. In Punga Mail Options, set the selected-content layout to a Markdown pattern containing `{publish_date}`, `{title_link}`, `{excerpt}`, and `{read_more}`.
-2. Preview a newsletter containing a selected website item and verify the date/title/excerpt/read-more output.
-3. Add a different layout to the reusable Template and verify it overrides the global value.
-4. Add another layout to the Newsletter and verify it overrides the Template; then clear it and verify inheritance returns.
-5. Also test `{title}`, `{url}`, and `{content_type}`.
+1. In **Content layouts**, set the Default layout to a Markdown pattern containing `{publish_date}`, `{title_link}`, `{excerpt}`, and `{read_more}`.
+2. Preview a Newsletter containing an Article and verify it uses the Default layout.
+3. Open a different registered content type (preferably an Event type) and enable a custom layout.
+4. Confirm the right-hand placeholder list includes columns that really exist in that type's registered source table. Use one of them in the layout, for example `{start_at}` or the actual equivalent on the test site.
+5. If the field is date-like, test `|date`, `|time`, and `|datetime`.
+6. Preview a Newsletter containing both an Article and that custom content type.
+7. Disable the custom layout and preview again.
 
-**Expected:** Each item follows the effective global → Template → Newsletter Markdown layout. Publication dates are human-readable, links remain valid, omitted/empty placeholders do not expose raw tokens, and HTML/plain-text output follow the same layout.
+**Expected:** Each selected item uses the layout for its own registered content type. Types without a custom layout use Default. Database-field placeholders resolve without any Punga Mail-specific integration in the originating extension, while normalized placeholders such as `{title}` and `{excerpt}` still honor Newsletter overrides. Date/time filters use the Joomla/site timezone and locale.
 
 ### PM-125 — `{recipient}` personalization and fallback
 
@@ -1832,3 +1836,16 @@ After approval, restore production-safe batch/rate/retry values, remove or unpub
 6. Use a Markdown toolbar action (for example **Bold** or **Table**) and verify that **Cancel** warns if the content changed.
 
 **Expected:** Joomla/editor initialization alone never marks a form dirty; genuine authoring changes remain protected.
+
+
+### 0.6.0 focused acceptance — central content-type layouts
+
+1. Upgrade from 0.5.2 with a non-default Component Options Selected Content Layout and confirm it becomes the **Default content layout**.
+2. Verify the old Selected Content Layout controls are absent from Component Options, Newsletter editors, and Template editors.
+3. Open **Content layouts** and verify all currently usable registered content types appear.
+4. Open a third-party type and compare the shown database placeholders with its real backing table. Confirm obvious secret/token/password fields are not exposed.
+5. Create a custom layout using at least one source-table field and send/preview a mixed-content Newsletter.
+6. Reset that content type to Default and verify subsequent rendering uses Default again.
+7. If old per-Newsletter/per-Template overrides existed before upgrade, confirm the Content layouts overview warns that those values remain preserved as legacy data.
+
+**Expected:** Punga Mail can lay out third-party registered content types without requiring any plugin, callback, provider, or placeholder declaration from the originating extension. The administrator can see exactly which placeholders are available for the content type being edited.

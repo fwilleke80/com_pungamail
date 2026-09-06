@@ -47,6 +47,7 @@ final class DisplayController extends BaseController
 		$screenViews = [
 			'newsletters' => ['newsletter', 'preview', 'preflight'],
 			'templates' => ['template', 'templatepreview'],
+			'contentlayouts' => ['contentlayout'],
 			'subscribers' => ['subscriber'],
 			'topics' => ['topic'],
 			'digests' => ['digest'],

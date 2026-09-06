@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.0 — 2026-09-06
+
+### Central content layouts
+
+- Replaced per-Newsletter and per-Template **Selected Content Layout** overrides with a central **Content layouts** manager. One Default layout applies to all selected content unless a registered Joomla content type has its own optional override.
+- Added a dedicated editor for every usable registered content type. The editor shows Punga Mail's normalized placeholders and the safe database fields discovered directly from that content type's registered backing table, so administrators can see exactly what data is available without requiring cooperation from the originating extension.
+- Added direct database-field placeholders such as `{start_at}`, `{end_at}`, or `{venue}` and lightweight `{field|date}`, `{field|time}`, and `{field|datetime}` formatting for date/time values.
+- Content-type layouts are resolved per selected item, so a single `{new_content}` block can render Articles, Events, Web Links, and other registered content types with different layouts.
+- Kept generic Punga Mail placeholders such as `{title}`, `{title_link}`, `{publish_date}`, `{excerpt}`, `{read_more}`, `{url}`, and `{content_type}`. Generic values take precedence over raw columns with the same name so Newsletter title/excerpt overrides remain predictable.
+- Filtered obviously sensitive database columns from the placeholder catalogue and renderer.
+- Migrated the former component-wide Selected Content Layout into the new central Default layout during upgrade. Existing per-Newsletter/per-Template override data is preserved as legacy data when it cannot be mapped losslessly, with an administrator warning rather than silent deletion.
+
+### Database
+
+- Added `#__pungamail_content_layouts` for the Default and per-content-type Markdown layouts.
+
 ## 0.5.2 — 2026-09-05
 
 ### Authoring safety fix

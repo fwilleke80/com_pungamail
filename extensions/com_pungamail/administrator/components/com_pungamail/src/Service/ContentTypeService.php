@@ -30,6 +30,9 @@ final class ContentTypeService
 	/** @var array<string,int|null> */
 	private array $categoryAccess = [];
 
+	/** @var array<string,array<int,array{name:string,type:string,date_like:bool}>> */
+	private array $tableColumns = [];
+
 	/**
 	 * @param DatabaseInterface $db Database connection.
 	 */
@@ -78,6 +81,24 @@ final class ContentTypeService
 		$this->types = $result;
 
 		return $result;
+	}
+
+
+	/**
+	 * Returns safe database columns that can be used as layout placeholders.
+	 *
+	 * Punga Mail discovers these from the registered content type's backing
+	 * table; the originating extension does not need Punga Mail integration.
+	 *
+	 * @param string $sourceKey Registered content type alias.
+	 *
+	 * @return array<int,array{name:string,type:string,date_like:bool}>
+	 */
+	public function getPlaceholderColumns(string $sourceKey): array
+	{
+		$type = $this->getTypes()[$sourceKey] ?? null;
+
+		return $type !== null ? $this->columnsForType($type) : [];
 	}
 
 	/**
@@ -389,6 +410,14 @@ final class ContentTypeService
 				: 'NULL AS ' . $this->db->quoteName($optional);
 		}
 
+		$rawAliases = [];
+		foreach ($this->columnsForType($type) as $index => $columnInfo)
+		{
+			$alias = 'pm_raw_' . $index;
+			$rawAliases[$alias] = $columnInfo['name'];
+			$select[] = $this->db->quoteName($columnInfo['name']) . ' AS ' . $this->db->quoteName($alias);
+		}
+
 		$query = $this->db->getQuery(true)
 			->select($select)
 			->from($this->db->quoteName((string) $type->table))
@@ -427,6 +456,14 @@ final class ContentTypeService
 
 		foreach ($rows as $row)
 		{
+			$row->raw_fields = [];
+
+			foreach ($rawAliases as $alias => $columnName)
+			{
+				$row->raw_fields[$columnName] = $row->{$alias} ?? null;
+				unset($row->{$alias});
+			}
+
 			$row->source_key = (string) $type->key;
 			$row->source_label = (string) $type->label;
 			$row->id = (string) $row->id;
@@ -473,6 +510,67 @@ final class ContentTypeService
 		$this->categoryAccess[$cacheKey] = $row === null || (int) $row->published !== 1 ? -1 : (int) $row->access;
 
 		return $this->categoryAccess[$cacheKey];
+	}
+
+	/**
+	 * Introspects one registered source table and returns safe placeholder fields.
+	 *
+	 * @param object $type Normalized content type.
+	 *
+	 * @return array<int,array{name:string,type:string,date_like:bool}>
+	 */
+	private function columnsForType(object $type): array
+	{
+		$key = (string) $type->key;
+
+		if (isset($this->tableColumns[$key]))
+		{
+			return $this->tableColumns[$key];
+		}
+
+		$table = $this->db->replacePrefix((string) $type->table);
+		$columns = $this->db->getTableColumns($table, false);
+		$result = [];
+
+		foreach ($columns as $columnName => $metadata)
+		{
+			$name = is_string($columnName) ? $columnName : (string) ($metadata->Field ?? $metadata->field ?? '');
+
+			if ($this->column($name) === null || $this->sensitiveColumn($name))
+			{
+				continue;
+			}
+
+			$typeName = '';
+
+			if (is_string($metadata))
+			{
+				$typeName = $metadata;
+			}
+			elseif (is_object($metadata))
+			{
+				$typeName = (string) ($metadata->Type ?? $metadata->type ?? '');
+			}
+			elseif (is_array($metadata))
+			{
+				$typeName = (string) ($metadata['Type'] ?? $metadata['type'] ?? '');
+			}
+
+			$dateLike = preg_match('/(?:date|time|year)/i', $typeName) === 1
+				|| preg_match('/(?:date|time|created|modified|publish|start|end|begin|finish|from|until|at)$/i', $name) === 1;
+			$result[] = ['name' => $name, 'type' => $typeName, 'date_like' => $dateLike];
+		}
+
+		usort($result, static fn (array $a, array $b): int => strcasecmp($a['name'], $b['name']));
+		$this->tableColumns[$key] = $result;
+
+		return $result;
+	}
+
+	/** @return bool */
+	private function sensitiveColumn(string $name): bool
+	{
+		return preg_match('/(?:password|passwd|secret|token|api[_-]?key|private[_-]?key|otp|totp|credential)/i', $name) === 1;
 	}
 
 	/** @return bool */

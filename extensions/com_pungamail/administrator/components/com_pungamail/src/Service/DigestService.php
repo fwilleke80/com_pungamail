@@ -197,8 +197,6 @@ final class DigestService
 				'reply_to_mode' => (string) ($template->reply_to_mode ?? 'inherit'),
 				'reply_to_email' => (string) ($template->reply_to_email ?? ''),
 				'reply_to_name' => (string) ($template->reply_to_name ?? ''),
-				// Generated newsletters inherit this from their Template unless explicitly overridden later.
-				'new_content_item_template' => '',
 			]
 		);
 

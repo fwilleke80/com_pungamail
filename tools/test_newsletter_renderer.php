@@ -97,6 +97,7 @@ namespace Punga\Component\PungaMail\Administrator\Service
 
 namespace
 {
+	use Punga\Component\PungaMail\Administrator\Service\ContentLayoutRepository;
 	use Punga\Component\PungaMail\Administrator\Service\ContentTypeService;
 	use Punga\Component\PungaMail\Administrator\Service\MailConfigurationService;
 	use Punga\Component\PungaMail\Administrator\Service\MailStyleService;
@@ -108,6 +109,7 @@ namespace
 	$serviceRoot = dirname(__DIR__) . '/extensions/com_pungamail/administrator/components/com_pungamail/src/Service/';
 	require_once $serviceRoot . 'MarkdownRenderer.php';
 	require_once $serviceRoot . 'ContentTypeService.php';
+	require_once $serviceRoot . 'ContentLayoutRepository.php';
 	require_once $serviceRoot . 'MailStyleService.php';
 	require_once $serviceRoot . 'MailConfigurationService.php';
 	require_once $serviceRoot . 'MailTextService.php';
@@ -139,6 +141,14 @@ namespace
 	$mailConfigurationReflection = new \ReflectionClass(MailConfigurationService::class);
 	/** @var MailConfigurationService $mailConfiguration */
 	$mailConfiguration = $mailConfigurationReflection->newInstanceWithoutConstructor();
+	$contentLayoutsReflection = new \ReflectionClass(ContentLayoutRepository::class);
+	/** @var ContentLayoutRepository $contentLayouts */
+	$contentLayouts = $contentLayoutsReflection->newInstanceWithoutConstructor();
+	$layoutCache = $contentLayoutsReflection->getProperty('cache');
+	$layoutCache->setValue($contentLayouts, [
+		ContentLayoutRepository::DEFAULT_KEY => (object) ['layout_markdown' => ContentLayoutRepository::DEFAULT_LAYOUT],
+		'com_example.item' => null,
+	]);
 
 	$renderer = new NewsletterRenderer(
 		new MarkdownRenderer(),
@@ -146,7 +156,8 @@ namespace
 		new MailStyleService(),
 		$templates,
 		new MailTextService(),
-		$mailConfiguration
+		$mailConfiguration,
+		$contentLayouts
 	);
 	$newsletter = (object) [
 		'subject' => 'Renderer test for {recipient}',
@@ -198,18 +209,33 @@ namespace
 		failNewsletterRendererTest('Recipient placeholder was resolved before recipient-specific delivery.');
 	}
 
-	$customNewsletter = clone $newsletter;
-	$customNewsletter->new_content_item_template = "## {title_link}\n\nSource: {content_type}\n\n{excerpt}\n\n{read_more}";
-	$customResult = $renderer->render($customNewsletter, $items);
+	$layoutCache->setValue($contentLayouts, [
+		ContentLayoutRepository::DEFAULT_KEY => (object) ['layout_markdown' => ContentLayoutRepository::DEFAULT_LAYOUT],
+		'com_example.item' => (object) ['layout_markdown' => "## {title_link}\n\nSource: {content_type}\n\n{excerpt}\n\n{read_more}"],
+	]);
+	$customResult = $renderer->render($newsletter, $items);
 
 	if (!str_contains($customResult['html'], '<h2') || !str_contains($customResult['html'], 'com_example.item'))
 	{
-		failNewsletterRendererTest('Custom selected-content Markdown layout was not applied.');
+		failNewsletterRendererTest('Central content-type Markdown layout was not applied.');
 	}
 
 	if (!str_contains($customResult['html'], 'Read more') || !str_contains($customResult['html'], 'https://site.example/item/42'))
 	{
 		failNewsletterRendererTest('Selected-content link placeholders were not rendered.');
+	}
+
+	$renderItem = (new \ReflectionClass(NewsletterRenderer::class))->getMethod('renderContentItemTemplate');
+	$databasePlaceholder = $renderItem->invoke(
+		$renderer,
+		"{title} — {venue} — {missing}",
+		['title' => 'Overridden title'],
+		['title' => 'Raw title', 'venue' => 'Main Hall']
+	);
+
+	if ($databasePlaceholder !== 'Overridden title — Main Hall — {missing}')
+	{
+		failNewsletterRendererTest('Database placeholders or generic-placeholder precedence are incorrect.');
 	}
 
 	$personalized = $renderer->personalize(

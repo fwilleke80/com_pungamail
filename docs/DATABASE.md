@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.4.3 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.6.0 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -13,6 +13,10 @@ Status values are `0` pending, `1` subscribed and `2` unsubscribed.
 ## `#__pungamail_suppressions`
 
 Persistent do-not-send barrier keyed by normalized email. Recipient resolution checks suppression independently of subscription source, so discovering an address through a Joomla user group cannot silently undo an opt-out.
+
+## `#__pungamail_content_layouts`
+
+Central Markdown layouts for items inserted at `{new_content}`. `source_key = __default__` stores the fallback layout; a row keyed by a Joomla registered content-type alias stores an optional custom layout for that type. The originating extension is not required to implement a Punga Mail integration. At render time Punga Mail reads the registered source table and exposes safe columns as placeholders.
 
 ## `#__pungamail_templates`
 
@@ -109,3 +113,4 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 - `0.5.0.sql` — adds Automatic Newsletter content-selection controls: `content_order`, `max_items`, and `minimum_items`.
 - `0.5.1.sql` — authoring/UX maintenance marker; no schema changes.
 - `0.5.2.sql` — unsaved-change tracking correction marker; no schema changes.
+- `0.6.0.sql` — creates `#__pungamail_content_layouts` for the central default/per-content-type selected-content layout system. The package installer migrates the former component-wide layout into the central Default layout; legacy per-Newsletter/per-Template overrides remain stored because they cannot always be mapped losslessly.

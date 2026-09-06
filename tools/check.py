@@ -56,6 +56,14 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/components/com_pungamail/tmpl/subscription/default.xml",
     "extensions/com_pungamail/components/com_pungamail/src/Service/Router.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/ContentTypeService.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/ContentLayoutRepository.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/ContentlayoutController.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Model/ContentlayoutsModel.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Model/ContentlayoutModel.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/View/Contentlayouts/HtmlView.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/View/Contentlayout/HtmlView.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/tmpl/contentlayouts/default.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/tmpl/contentlayout/default.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/AdministratorRoute.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/RecipientName.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/ErrorMessage.php",
@@ -98,6 +106,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.5.0.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.5.1.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.5.2.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.0.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/MarkdownEditorHelper.php",
@@ -1257,8 +1266,7 @@ def check_automatic_newsletter_ux_039() -> None:
     digest_layout = (admin_root / "tmpl/digest/default.php").read_text(encoding="utf-8")
     digest_controller = (admin_root / "src/Controller/DigestController.php").read_text(encoding="utf-8")
     renderer = (admin_root / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
-    mail_config = (admin_root / "src/Service/MailConfigurationService.php").read_text(encoding="utf-8")
-    config = (admin_root / "config.xml").read_text(encoding="utf-8")
+    content_layouts = (admin_root / "src/Service/ContentLayoutRepository.php").read_text(encoding="utf-8")
     migration = (admin_root / "sql/updates/mysql/0.3.9.sql").read_text(encoding="utf-8")
     task_en = (ROOT / "extensions/plg_task_pungamail/language/en-GB/plg_task_pungamail.ini").read_text(encoding="utf-8")
     task_de = (ROOT / "extensions/plg_task_pungamail/language/de-DE/plg_task_pungamail.ini").read_text(encoding="utf-8")
@@ -1270,11 +1278,10 @@ def check_automatic_newsletter_ux_039() -> None:
         (digest_layout, "autoConfirm.hidden", "conditional unattended-send confirmation"),
         (digest_controller, "DigestSchedule::legacyMinutes", "human-readable recurrence persistence conversion"),
         (digest_controller, "getInt('rolling_days', 7)) * 24", "day-to-hour persistence conversion"),
-        (renderer, "{publish_date}", "publish-date selected-content placeholder"),
-        (renderer, "{title_link}", "linked-title selected-content placeholder"),
-        (renderer, "newContentItemTemplate", "selected-content template resolution"),
-        (mail_config, "DEFAULT_NEW_CONTENT_ITEM_TEMPLATE", "safe selected-content default"),
-        (config, 'name="new_content_item_template"', "global selected-content layout setting"),
+        (renderer, "'publish_date'", "publish-date selected-content placeholder"),
+        (renderer, "'title_link'", "linked-title selected-content placeholder"),
+        (content_layouts, "DEFAULT_LAYOUT", "safe selected-content default"),
+        (content_layouts, "layoutFor", "central selected-content layout resolution"),
         (migration, "new_content_item_template", "selected-content layout schema update"),
         (task_en, "For ordinary newsletters that you created manually", "clear English scheduled-send task description"),
         (task_en, "For recurring Automatic Newsletters", "clear English automatic-newsletter task description"),
@@ -1342,20 +1349,17 @@ def check_newsletter_editor_ux_0310() -> None:
     if "pm-content-list" not in newsletter and "pm-available-content-list" not in newsletter:
         fail("0.3.10 tab refactor dropped the Newsletter content candidate list")
 
-    if 'type="newcontenttemplate"' not in config or "NewcontenttemplateField" not in field:
-        fail("0.3.10 Component Options does not use the dedicated new-content Markdown editor field")
-
     markdown_helper = (admin_root / "src/Helper/MarkdownEditorHelper.php").read_text(encoding="utf-8")
-    if "MarkdownField" not in field or "COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP" not in field:
-        fail("0.3.10 Component Options new-content editor lost its dedicated Markdown field or placeholder help")
+    content_layout = (admin_root / "tmpl/contentlayout/default.php").read_text(encoding="utf-8")
     if "font-monospace" not in markdown_helper and "font-family:var(--font-monospace" not in markdown_helper:
         fail("Shared Markdown editor does not preserve monospaced source editing")
 
     for contents, label in ((newsletter, "Newsletter"), (template, "Template")):
         if "MarkdownEditorHelper::render" not in contents:
-            fail(f"0.4.0 {label} new-content editor is not using the shared Markdown editor")
-        if "COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP" not in contents:
-            fail(f"0.3.10 {label} new-content editor is missing placeholder help")
+            fail(f"0.4.0 {label} body editor is not using the shared Markdown editor")
+
+    if "MarkdownEditorHelper::render" not in content_layout or "COM_PUNGAMAIL_AVAILABLE_PLACEHOLDERS" not in content_layout:
+        fail("Central Content layout editor is not using the shared Markdown editor with placeholder guidance")
 
     for locale in ("en-GB", "de-DE"):
         values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
@@ -1383,18 +1387,9 @@ def check_markdown_and_override_ux_0311() -> None:
         if token not in renderer:
             fail(f"0.3.11 Markdown renderer is missing regression fix: {token}")
 
-    for contents, label in ((newsletter, "Newsletter"), (template, "Template")):
-        if '<details class="card mb-3 pm-new-content-override">' not in contents:
-            fail(f"0.3.11 {label} new-content override is not a native collapsed details panel")
-        if '<details class="card mb-3 pm-new-content-override" open' in contents:
-            fail(f"0.3.11 {label} new-content override must be collapsed by default")
-        if "COM_PUNGAMAIL_CUSTOM_OVERRIDE_ACTIVE" not in contents:
-            fail(f"0.3.11 {label} new-content override does not indicate an active custom override")
-
-    for locale in ("en-GB", "de-DE"):
-        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
-        if values.get("COM_PUNGAMAIL_CUSTOM_OVERRIDE_ACTIVE", "").strip() == "":
-            fail(f"0.3.11 is missing {locale} custom-override badge copy")
+    content_layout = (admin_root / "tmpl/contentlayout/default.php").read_text(encoding="utf-8")
+    if "COM_PUNGAMAIL_CONTENT_LAYOUT_USE_CUSTOM" not in content_layout:
+        fail("Selected-content custom layout control was not preserved in the central Content layout editor")
 
 
 def check_release_ux_0312() -> None:
@@ -1414,11 +1409,6 @@ def check_release_ux_0312() -> None:
     template_pos = newsletter.find('id="pm-template"')
     if not (settings_pos >= 0 and mail_pos > settings_pos and template_pos > mail_pos):
         fail("0.3.12 Template selector is not located in the Newsletter Mail content tab")
-
-    for contents, label in ((newsletter, "Newsletter"), (template, "Template")):
-        for token in ('pm-collapse-indicator', '▶', '[open] .pm-collapse-indicator'):
-            if token not in contents:
-                fail(f"0.3.12 {label} selected-content override is missing disclosure-state indicator: {token}")
 
     for token, label in (
         ('name="design_heading_background"', "global heading-background option"),
@@ -2061,6 +2051,70 @@ def check_release_fix_0502() -> None:
     if "0.5.2 focused acceptance — pristine editor dirty-state" not in test_guide:
         fail("0.5.2 test guide is missing pristine-editor dirty-state acceptance coverage")
 
+
+def check_release_ux_0600() -> None:
+    """Protect the 0.6.0 central content-layout architecture."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    renderer = (admin_root / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    content_types = (admin_root / "src/Service/ContentTypeService.php").read_text(encoding="utf-8")
+    content_layouts = (admin_root / "src/Service/ContentLayoutRepository.php").read_text(encoding="utf-8")
+    list_layout = (admin_root / "tmpl/contentlayouts/default.php").read_text(encoding="utf-8")
+    edit_layout = (admin_root / "tmpl/contentlayout/default.php").read_text(encoding="utf-8")
+    newsletter_layout = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    template_layout = (admin_root / "tmpl/template/default.php").read_text(encoding="utf-8")
+    config = (admin_root / "config.xml").read_text(encoding="utf-8")
+    migration = (admin_root / "sql/updates/mysql/0.6.0.sql").read_text(encoding="utf-8")
+    package_script = (ROOT / "package/script.php").read_text(encoding="utf-8")
+
+    required = (
+        (content_layouts, "#__pungamail_content_layouts", "central content-layout repository"),
+        (content_layouts, "DEFAULT_KEY", "central default layout"),
+        (content_types, "getTableColumns", "registered source-table introspection"),
+        (content_types, "getPlaceholderColumns", "administrator placeholder discovery"),
+        (content_types, "raw_fields", "runtime source-table values"),
+        (content_types, "sensitiveColumn", "sensitive field filtering"),
+        (renderer, "layoutFor((string) $selection->source_key)", "per-content-type layout resolution"),
+        (renderer, "renderContentItemTemplate", "dynamic database placeholder rendering"),
+        (renderer, "(?:\\|(date|time|datetime))?", "date/time placeholder formatting"),
+        (list_layout, "COM_PUNGAMAIL_CONTENT_LAYOUTS_TABLE_PLACEHOLDERS_DESC", "content-layout overview explanation"),
+        (edit_layout, "COM_PUNGAMAIL_AVAILABLE_PLACEHOLDERS", "visible placeholder reference"),
+        (edit_layout, "COM_PUNGAMAIL_DATABASE_PLACEHOLDERS", "database placeholder reference"),
+        (edit_layout, "|datetime", "date/time examples"),
+        (migration, "CREATE TABLE IF NOT EXISTS `#__pungamail_content_layouts`", "content-layout schema"),
+        (package_script, "migrateLegacyContentLayout", "legacy global-layout migration"),
+    )
+
+    for contents, token, label in required:
+        if token not in contents:
+            fail(f"0.6.0 is missing {label}: {token!r}")
+
+    if "new_content_item_template" in newsletter_layout or "new_content_item_template" in template_layout:
+        fail("0.6.0 still exposes per-newsletter/per-template Selected Content Layout overrides")
+
+    if 'name="new_content_item_template"' in config:
+        fail("0.6.0 still exposes the old component-level Selected Content Layout setting")
+
+    manifest = (ROOT / "extensions/com_pungamail/pungamail.xml").read_text(encoding="utf-8")
+    if 'view="contentlayouts"' not in manifest:
+        fail("0.6.0 does not expose Content layouts in the administrator submenu")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_CONTENT_LAYOUTS",
+            "COM_PUNGAMAIL_AVAILABLE_PLACEHOLDERS",
+            "COM_PUNGAMAIL_DATABASE_PLACEHOLDERS",
+            "COM_PUNGAMAIL_CONTENT_LAYOUT_USE_CUSTOM",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.6.0 is missing {locale} content-layout copy: {key}")
+
+
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    if "0.6.0 focused acceptance — central content-type layouts" not in test_guide:
+        fail("0.6.0 focused Content layouts acceptance guide missing")
+
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
 
@@ -2200,6 +2254,7 @@ def main() -> int:
         check_release_ux_0500,
         check_release_fix_0501,
         check_release_fix_0502,
+        check_release_ux_0600,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

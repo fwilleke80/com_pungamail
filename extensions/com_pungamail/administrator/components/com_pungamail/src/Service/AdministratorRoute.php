@@ -79,6 +79,18 @@ final class AdministratorRoute
 	}
 
 	/** @return string */
+	public static function contentLayouts(): string
+	{
+		return 'index.php?option=com_pungamail&view=contentlayouts';
+	}
+
+	/** @return string */
+	public static function contentLayout(string $sourceKey): string
+	{
+		return self::contentLayouts() . '&screen=contentlayout&source_key=' . rawurlencode($sourceKey);
+	}
+
+	/** @return string */
 	public static function topics(): string
 	{
 		return 'index.php?option=com_pungamail&view=topics';
