@@ -34,7 +34,7 @@ final class DeliveryModel extends BaseDatabaseModel
 	{
 		$db = $this->getDatabase();
 		$query = $db->getQuery(true)
-			->select(['b.*', 's.id AS current_subscriber_id', 'x.reason AS suppression_reason'])
+			->select(['b.*', 's.id AS current_subscriber_id', 's.soft_bounce_count AS current_soft_bounce_count', 'x.reason AS suppression_reason'])
 			->from($db->quoteName('#__pungamail_bounces', 'b'))
 			->leftJoin($db->quoteName('#__pungamail_subscribers', 's') . ' ON s.id = b.subscriber_id')
 			->leftJoin($db->quoteName('#__pungamail_suppressions', 'x') . ' ON x.email_normalized = b.email_normalized')
@@ -119,9 +119,13 @@ final class DeliveryModel extends BaseDatabaseModel
 		$config = Factory::getConfig();
 		$params = ComponentHelper::getParams('com_pungamail');
 		$sender = ServiceFactory::mailConfiguration()->sender();
+		$outgoing = ServiceFactory::mailSettings()->getOutgoingPublic();
+		$customSmtp = (string) $outgoing->smtp_mode === 'custom';
 
 		return [
-			'mailer' => (string) $config->get('mailer', ''),
+			'mailer' => $customSmtp ? 'smtp' : (string) $config->get('mailer', ''),
+			'transport_source' => $customSmtp ? 'custom' : 'joomla',
+			'smtp_host' => $customSmtp ? (string) $outgoing->smtp_host : (string) $config->get('smtphost', ''),
 			'sender_email' => $sender['email'],
 			'sender_valid' => filter_var($sender['email'], FILTER_VALIDATE_EMAIL) !== false,
 			'queue_paused' => (int) $params->get('queue_paused', 0) === 1,

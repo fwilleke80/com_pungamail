@@ -4,6 +4,7 @@
 	<fieldset name="mail" label="COM_PUNGAMAIL_CONFIG_MAIL">
 		<field name="from_name" type="text" label="COM_PUNGAMAIL_CONFIG_FROM_NAME" description="COM_PUNGAMAIL_CONFIG_FROM_NAME_DESC" />
 		<field name="from_email" type="email" label="COM_PUNGAMAIL_CONFIG_FROM_EMAIL" description="COM_PUNGAMAIL_CONFIG_FROM_EMAIL_DESC" />
+		<field name="outgoing_mail_configuration" type="outgoingmail" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" hiddenLabel="true" />
 		<field name="reply_to_mode" type="list" default="none" label="COM_PUNGAMAIL_REPLY_TO_MODE" description="COM_PUNGAMAIL_REPLY_TO_MODE_DESC">
 			<option value="none">COM_PUNGAMAIL_REPLY_TO_NONE</option>
 			<option value="custom">COM_PUNGAMAIL_REPLY_TO_CUSTOM</option>

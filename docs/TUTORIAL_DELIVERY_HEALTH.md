@@ -1,34 +1,39 @@
 # Tutorial: Set Up Delivery Health and Bounce Handling
 
-This tutorial verifies Joomla mail, enables unattended queue processing, configures returned-mail processing, and explains the controls used when delivery must be paused or stopped.
+This tutorial configures and verifies Punga Mail outgoing delivery, enables unattended queue processing, configures returned-mail processing, and explains the controls used when delivery must be paused or stopped.
 
 ## What the two mail directions do
 
-Punga Mail uses two separate systems:
+Punga Mail uses two separate directions:
 
-- **Outgoing mail** goes through Joomla's configured mail transport.
+- **Outgoing mail** uses either Joomla's global mail settings or an optional Punga Mail-specific Custom SMTP account.
 - **Returned mail** is read from a dedicated IMAP mailbox when bounce processing is enabled.
 
-The return mailbox does not replace Joomla SMTP, and Joomla SMTP credentials do not automatically configure the return mailbox.
+The return mailbox is independent of the outgoing transport. SMTP credentials do not configure IMAP automatically, even when both use the same mailbox address.
 
-## 1. Verify Joomla outgoing mail
+## 1. Configure and verify outgoing mail
 
-Configure Joomla's mail settings under its global server configuration. Depending on the site, this may be SMTP, sendmail, or another Joomla-supported transport.
+Open **Components → Punga Mail → Options → Mail**.
 
-Then open **Components → Punga Mail → Options → Mail**.
+Set the Punga Mail **From name** and **From email** if they should differ from Joomla's global sender. Configure Reply-To separately if reader replies should go to another address.
 
-Set a Punga Mail From name/address only if it should differ from Joomla's global sender. Configure Reply-To if reader replies should go to another valid address.
+Choose the outgoing transport:
 
-Open **Punga Mail → Delivery / Bounces** and inspect Diagnostics:
+- **Use Joomla settings** — backward-compatible default. Punga Mail uses Joomla's globally configured SMTP/sendmail transport.
+- **Custom SMTP** — Punga Mail uses its own SMTP host, port, security, authentication, username and encrypted password. Joomla system messages keep using Joomla's global mail configuration.
 
-- Joomla mailer;
+For Custom SMTP, use the exact submission settings supplied by the provider. Common combinations are port 587 with STARTTLS or port 465 with SSL/TLS, but the provider's documentation is authoritative. Use **Save outgoing mail settings** in this section to store the SMTP connection and encrypted password. The normal Joomla Options **Save** button stores ordinary Punga Mail fields such as From name/address and Reply-To.
+
+Use the outgoing section's **Send test mail** to test the currently entered connection values. Leaving Password blank reuses the already stored password. Then open **Punga Mail → Delivery / Bounces** and inspect Diagnostics:
+
+- outgoing transport source (Joomla settings or Custom SMTP);
+- active mailer and Custom SMTP host where applicable;
 - sender and validity indicator;
-- batch size;
-- retry settings.
+- batch size and retry settings.
 
-Enter your address under **Mail test** and select **Send test mail**. A success means Joomla's transport accepted the test. Confirm actual arrival separately.
+The Delivery-page **Mail test** tests the currently saved active transport. A success means the mail transport accepted the test; confirm actual arrival separately.
 
-If it fails, correct Joomla/Punga Mail sender configuration first. Punga Mail does not have a second SMTP stack to repair independently.
+If it fails, correct the active outgoing transport and sender configuration. Punga Mail intentionally uses Joomla's mailer API for both modes; Custom SMTP is an isolated configuration, not a second unrelated mail library.
 
 ## 2. Create the queue task
 
@@ -75,7 +80,7 @@ Go to **Options → Bounce / return mailbox** and enter the values.
 
 Keep **Validate certificate** enabled unless you are diagnosing a controlled internal server with a known certificate issue. Disabling verification reduces connection security.
 
-Enter the **Bounce address** if Joomla's active mail transport/provider supports setting the SMTP envelope sender. This is the address returned delivery reports should reach. An ordinary visible message header alone cannot force upstream return routing, so verify the behavior with your provider.
+Enter the **Bounce address** if the active outgoing mail transport/provider supports setting the SMTP envelope sender. This is the address returned delivery reports should reach. An ordinary visible message header alone cannot force upstream return routing, so verify the behavior with your provider.
 
 Select **Save mailbox settings** inside the bounce section. The normal Joomla Options Save action deliberately does not store this password.
 
@@ -87,16 +92,16 @@ When editing later:
 - leave Password blank to retain it;
 - enter a new value only to replace it.
 
-## 6. Choose the soft-bounce threshold
+## 6. Choose the temporary-failure threshold
 
-The default threshold is 3.
+**Temporary failures before blocking address** defaults to 3. The distinction is important:
 
-- One hard bounce suppresses the address immediately.
-- Each soft bounce increases its counters.
-- Reaching the threshold suppresses the address.
-- Unknown/unclassified reports remain in history but are not treated as a hard failure without evidence.
+- One **permanent/hard bounce** suppresses delivery immediately. The temporary threshold does not apply.
+- Each **temporary/soft bounce** increases the active temporary-failure counter.
+- Reaching the configured threshold suppresses delivery. Until then, the subscriber remains deliverable and the UI shows progress such as **Temporary failure — 1 of 3 before delivery is stopped**.
+- Unknown/unclassified reports remain in history but are not treated as a permanent failure without evidence.
 
-The threshold protects list quality without permanently blocking an address after one temporary problem. Lower it only if your delivery policy requires more aggressive suppression.
+For example, an SMTP/DSN error such as an unknown mailbox or unresolvable recipient domain is normally permanent and is blocked after one confirmed hard bounce. A temporary mailbox-full or transient-server condition follows the threshold. The threshold protects list quality without blocking an address after one temporary problem.
 
 ## 7. Create the bounce task
 
@@ -117,12 +122,12 @@ The recent-bounces table shows:
 
 - date/time reported;
 - affected address;
-- hard, soft, or unknown classification;
+- permanent, temporary, or unknown classification;
 - SMTP/status code when present;
 - diagnostic reason;
-- suppression indicator.
+- whether delivery is blocked, including immediate permanent-failure wording or temporary-failure threshold progress.
 
-Open **Subscribers** to see accumulated bounce count, latest classification/reason, and effective status.
+Open **Audience → Subscribers** to see **Subscription** and **Delivery** separately. A subscriber can remain **Subscribed** while **Delivery blocked — permanent failure**; Punga Mail preserves the subscriber record and only suppresses sending.
 
 Historical newsletter statistics may show a message as accepted by transport and later bounced. This is expected: initial acceptance is not proof of final delivery.
 

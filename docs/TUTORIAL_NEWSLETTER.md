@@ -182,7 +182,7 @@ Pay particular attention to:
 
 - **Not in selected topic**: expected when topic targeting is in use;
 - **Unsubscribed/not subscribed**: global preference excludes the address;
-- **Suppressed/hard bounced/soft-bounce threshold**: delivery protection excludes it;
+- **Suppressed/permanent failure/temporary-failure threshold**: delivery protection excludes it;
 - **Duplicate eliminated**: the same address came from more than one source but will receive only one copy;
 - **Content access**: a selected item cannot be viewed on the site by every recipient. This blocks sending to prevent disclosure.
 

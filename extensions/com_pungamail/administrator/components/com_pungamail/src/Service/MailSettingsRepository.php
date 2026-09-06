@@ -9,10 +9,11 @@
 namespace Punga\Component\PungaMail\Administrator\Service;
 
 use Joomla\CMS\Date\Date;
+use Joomla\CMS\Language\Text;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Database\ParameterType;
 
-/** Stores bounce-mailbox settings without returning the stored password to UI code. */
+/** Stores encrypted outgoing-mail and returned-mail account settings. */
 final class MailSettingsRepository
 {
 	/**
@@ -45,10 +46,46 @@ final class MailSettingsRepository
 			];
 		}
 
-		unset($row->bounce_password_cipher, $row->bounce_last_check_result, $row->bounce_last_check_error);
-		$row->password_configured = $this->hasPassword();
+		unset(
+			$row->bounce_password_cipher,
+			$row->smtp_password_cipher,
+			$row->bounce_last_check_result,
+			$row->bounce_last_check_error
+		);
+		$row->password_configured = $this->hasBouncePassword();
 
 		return $row;
+	}
+
+	/** @return object */
+	public function getOutgoingPublic(): object
+	{
+		$row = $this->load();
+
+		if ($row === null)
+		{
+			return (object) [
+				'smtp_mode' => 'joomla',
+				'smtp_host' => '',
+				'smtp_port' => 587,
+				'smtp_security' => 'tls',
+				'smtp_auth' => 1,
+				'smtp_username' => '',
+				'password_configured' => false,
+			];
+		}
+
+		return (object) [
+			'smtp_mode' => in_array((string) ($row->smtp_mode ?? ''), ['joomla', 'custom'], true)
+				? (string) $row->smtp_mode
+				: 'joomla',
+			'smtp_host' => (string) ($row->smtp_host ?? ''),
+			'smtp_port' => (int) ($row->smtp_port ?? 587),
+			'smtp_security' => (string) ($row->smtp_security ?? 'tls'),
+			'smtp_auth' => (int) ($row->smtp_auth ?? 1),
+			'smtp_username' => (string) ($row->smtp_username ?? ''),
+			'password_configured' => $this->hasOutgoingPassword(),
+		];
 	}
 
 	/**
@@ -112,23 +149,11 @@ final class MailSettingsRepository
 
 		if ($existing === null)
 		{
-			$row = (object) [
-				'id' => 1,
-				'bounce_host' => '',
-				'bounce_port' => 993,
-				'bounce_security' => 'ssl',
-				'validate_cert' => 1,
-				'bounce_username' => '',
-				'bounce_password_cipher' => null,
-				'bounce_mailbox' => 'INBOX',
-				'bounce_address' => '',
-				'bounce_last_check_at' => $now,
-				'bounce_last_check_status' => $status,
-				'bounce_last_check_result' => $payloadValue,
-				'bounce_last_check_error' => $error !== null && $error !== '' ? $error : null,
-				'created' => $now,
-				'modified' => $now,
-			];
+			$row = $this->defaultRow($now);
+			$row->bounce_last_check_at = $now;
+			$row->bounce_last_check_status = $status;
+			$row->bounce_last_check_result = $payloadValue;
+			$row->bounce_last_check_error = $error !== null && $error !== '' ? $error : null;
 			$this->db->insertObject('#__pungamail_mail_settings', $row);
 			return;
 		}
@@ -160,11 +185,43 @@ final class MailSettingsRepository
 	/** @return object */
 	public function getConnection(): object
 	{
-		$row = $this->load() ?? $this->getPublic();
+		$row = $this->load() ?? $this->defaultRow((new Date('now', 'UTC'))->toSql());
 		$row->bounce_password = $this->secrets->decrypt((string) ($row->bounce_password_cipher ?? ''));
-		unset($row->bounce_password_cipher);
+		unset($row->bounce_password_cipher, $row->smtp_password_cipher);
 
 		return $row;
+	}
+
+	/** @return object */
+	public function getOutgoingConnection(): object
+	{
+		$row = $this->load();
+		$public = $this->getOutgoingPublic();
+		$public->smtp_password = $row === null
+			? ''
+			: $this->secrets->decrypt((string) ($row->smtp_password_cipher ?? ''));
+
+		return $public;
+	}
+
+	/**
+	 * Resolves posted outgoing settings for a connection test without saving them.
+	 * A blank posted password keeps using the encrypted saved password.
+	 *
+	 * @param array<string,mixed> $data        Posted SMTP fields.
+	 * @param string              $newPassword Newly entered password.
+	 * @return object Validated transport settings.
+	 */
+	public function outgoingFromInput(array $data, string $newPassword): object
+	{
+		$settings = $this->normalizeOutgoing($data);
+		$existing = $this->load();
+		$settings->smtp_password = $newPassword !== ''
+			? $newPassword
+			: $this->secrets->decrypt((string) ($existing->smtp_password_cipher ?? ''));
+		$this->validateOutgoingReady($settings);
+
+		return $settings;
 	}
 
 	/** @return void */
@@ -182,22 +239,22 @@ final class MailSettingsRepository
 
 		if ($host !== '' && !$this->isValidHost($host))
 		{
-			throw new \InvalidArgumentException(\Joomla\CMS\Language\Text::_('COM_PUNGAMAIL_BOUNCE_HOST_INVALID'));
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_BOUNCE_HOST_INVALID'));
 		}
 
 		if (preg_match('/[\x00-\x1F\x7F{}]/', $mailbox) === 1 || mb_strlen($mailbox, 'UTF-8') > 191)
 		{
-			throw new \InvalidArgumentException(\Joomla\CMS\Language\Text::_('COM_PUNGAMAIL_BOUNCE_MAILBOX_INVALID'));
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_BOUNCE_MAILBOX_INVALID'));
 		}
 
-		if (preg_match('/[\r\n\x00]/', $username) === 1 || mb_strlen($username, 'UTF-8') > 320)
+		if (!$this->isValidUsername($username))
 		{
-			throw new \InvalidArgumentException(\Joomla\CMS\Language\Text::_('COM_PUNGAMAIL_BOUNCE_USERNAME_INVALID'));
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_BOUNCE_USERNAME_INVALID'));
 		}
 
 		if ($address !== '' && !filter_var($address, FILTER_VALIDATE_EMAIL))
 		{
-			throw new \InvalidArgumentException(\Joomla\CMS\Language\Text::_('COM_PUNGAMAIL_BOUNCE_ADDRESS_INVALID'));
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_BOUNCE_ADDRESS_INVALID'));
 		}
 
 		$existing = $this->load();
@@ -208,19 +265,15 @@ final class MailSettingsRepository
 
 		if ($existing === null)
 		{
-			$row = (object) [
-				'id' => 1,
-				'bounce_host' => $host,
-				'bounce_port' => $port,
-				'bounce_security' => $security,
-				'validate_cert' => $validate,
-				'bounce_username' => $username,
-				'bounce_password_cipher' => $cipher !== '' ? $cipher : null,
-				'bounce_mailbox' => $mailbox,
-				'bounce_address' => $address,
-				'created' => $now,
-				'modified' => $now,
-			];
+			$row = $this->defaultRow($now);
+			$row->bounce_host = $host;
+			$row->bounce_port = $port;
+			$row->bounce_security = $security;
+			$row->validate_cert = $validate;
+			$row->bounce_username = $username;
+			$row->bounce_password_cipher = $cipher !== '' ? $cipher : null;
+			$row->bounce_mailbox = $mailbox;
+			$row->bounce_address = $address;
 			$this->db->insertObject('#__pungamail_mail_settings', $row);
 			return;
 		}
@@ -256,12 +309,89 @@ final class MailSettingsRepository
 		$this->db->setQuery($query)->execute();
 	}
 
+	/**
+	 * Stores the Punga Mail outgoing transport independently from Joomla's global mail settings.
+	 *
+	 * @param array<string,mixed> $data        Posted SMTP fields.
+	 * @param string              $newPassword Newly entered password, or blank to keep the saved secret.
+	 * @return void
+	 */
+	public function saveOutgoing(array $data, string $newPassword): void
+	{
+		$settings = $this->normalizeOutgoing($data);
+		$existing = $this->load();
+		$cipher = $newPassword !== ''
+			? $this->secrets->encrypt($newPassword)
+			: (string) ($existing->smtp_password_cipher ?? '');
+		$settings->smtp_password = $newPassword !== ''
+			? $newPassword
+			: $this->secrets->decrypt($cipher);
+		$this->validateOutgoingReady($settings);
+		$now = (new Date('now', 'UTC'))->toSql();
+
+		if ($existing === null)
+		{
+			$row = $this->defaultRow($now);
+			$row->smtp_mode = $settings->smtp_mode;
+			$row->smtp_host = $settings->smtp_host;
+			$row->smtp_port = $settings->smtp_port;
+			$row->smtp_security = $settings->smtp_security;
+			$row->smtp_auth = $settings->smtp_auth;
+			$row->smtp_username = $settings->smtp_username;
+			$row->smtp_password_cipher = $cipher !== '' ? $cipher : null;
+			$this->db->insertObject('#__pungamail_mail_settings', $row);
+			return;
+		}
+
+		$id = 1;
+		$mode = (string) $settings->smtp_mode;
+		$host = (string) $settings->smtp_host;
+		$port = (int) $settings->smtp_port;
+		$security = (string) $settings->smtp_security;
+		$auth = (int) $settings->smtp_auth;
+		$username = (string) $settings->smtp_username;
+		$query = $this->db->getQuery(true)
+			->update($this->db->quoteName('#__pungamail_mail_settings'))
+			->set($this->db->quoteName('smtp_mode') . ' = :mode')
+			->set($this->db->quoteName('smtp_host') . ' = :host')
+			->set($this->db->quoteName('smtp_port') . ' = :port')
+			->set($this->db->quoteName('smtp_security') . ' = :security')
+			->set($this->db->quoteName('smtp_auth') . ' = :auth')
+			->set($this->db->quoteName('smtp_username') . ' = :username')
+			->set($this->db->quoteName('smtp_password_cipher') . ($cipher === '' ? ' = NULL' : ' = :cipher'))
+			->set($this->db->quoteName('modified') . ' = :modified')
+			->where($this->db->quoteName('id') . ' = :id')
+			->bind(':mode', $mode)
+			->bind(':host', $host)
+			->bind(':port', $port, ParameterType::INTEGER)
+			->bind(':security', $security)
+			->bind(':auth', $auth, ParameterType::INTEGER)
+			->bind(':username', $username)
+			->bind(':modified', $now)
+			->bind(':id', $id, ParameterType::INTEGER);
+
+		if ($cipher !== '')
+		{
+			$query->bind(':cipher', $cipher);
+		}
+
+		$this->db->setQuery($query)->execute();
+	}
+
 	/** @return bool */
-	private function hasPassword(): bool
+	private function hasBouncePassword(): bool
 	{
 		$row = $this->load();
 
 		return $row !== null && trim((string) ($row->bounce_password_cipher ?? '')) !== '';
+	}
+
+	/** @return bool */
+	private function hasOutgoingPassword(): bool
+	{
+		$row = $this->load();
+
+		return $row !== null && trim((string) ($row->smtp_password_cipher ?? '')) !== '';
 	}
 
 	/** @return object|null */
@@ -277,6 +407,96 @@ final class MailSettingsRepository
 		return $this->db->setQuery($query)->loadObject() ?: null;
 	}
 
+	/**
+	 * @param array<string,mixed> $data Posted SMTP data.
+	 * @return object Normalized settings.
+	 */
+	private function normalizeOutgoing(array $data): object
+	{
+		$mode = in_array((string) ($data['smtp_mode'] ?? ''), ['joomla', 'custom'], true)
+			? (string) $data['smtp_mode']
+			: 'joomla';
+		$host = trim((string) ($data['smtp_host'] ?? ''));
+		$port = max(1, min(65535, (int) ($data['smtp_port'] ?? 587)));
+		$security = in_array((string) ($data['smtp_security'] ?? ''), ['ssl', 'tls', 'none'], true)
+			? (string) $data['smtp_security']
+			: 'tls';
+		$auth = (int) ($data['smtp_auth'] ?? 0) === 1 ? 1 : 0;
+		$username = trim((string) ($data['smtp_username'] ?? ''));
+
+		if ($host !== '' && !$this->isValidHost($host))
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_SMTP_HOST_INVALID'));
+		}
+
+		if (!$this->isValidUsername($username))
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_SMTP_USERNAME_INVALID'));
+		}
+
+		return (object) [
+			'smtp_mode' => $mode,
+			'smtp_host' => $host,
+			'smtp_port' => $port,
+			'smtp_security' => $security,
+			'smtp_auth' => $auth,
+			'smtp_username' => $username,
+		];
+	}
+
+	/** @param object $settings Normalized outgoing settings. @return void */
+	private function validateOutgoingReady(object $settings): void
+	{
+		if ((string) $settings->smtp_mode !== 'custom')
+		{
+			return;
+		}
+
+		if (trim((string) $settings->smtp_host) === '')
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_SMTP_HOST_REQUIRED'));
+		}
+
+		if ((int) $settings->smtp_auth === 1 && trim((string) $settings->smtp_username) === '')
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_SMTP_USERNAME_REQUIRED'));
+		}
+
+		if ((int) $settings->smtp_auth === 1 && (string) ($settings->smtp_password ?? '') === '')
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_SMTP_PASSWORD_REQUIRED'));
+		}
+	}
+
+	/** @param string $now UTC SQL timestamp. @return object */
+	private function defaultRow(string $now): object
+	{
+		return (object) [
+			'id' => 1,
+			'smtp_mode' => 'joomla',
+			'smtp_host' => '',
+			'smtp_port' => 587,
+			'smtp_security' => 'tls',
+			'smtp_auth' => 1,
+			'smtp_username' => '',
+			'smtp_password_cipher' => null,
+			'bounce_host' => '',
+			'bounce_port' => 993,
+			'bounce_security' => 'ssl',
+			'validate_cert' => 1,
+			'bounce_username' => '',
+			'bounce_password_cipher' => null,
+			'bounce_mailbox' => 'INBOX',
+			'bounce_address' => '',
+			'bounce_last_check_at' => null,
+			'bounce_last_check_status' => '',
+			'bounce_last_check_result' => null,
+			'bounce_last_check_error' => null,
+			'created' => $now,
+			'modified' => $now,
+		];
+	}
+
 	/** @return bool */
 	private function isValidHost(string $host): bool
 	{
@@ -289,5 +509,11 @@ final class MailSettingsRepository
 
 		return filter_var($ipHost, FILTER_VALIDATE_IP) !== false
 			|| filter_var($host, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) !== false;
+	}
+
+	/** @return bool */
+	private function isValidUsername(string $username): bool
+	{
+		return preg_match('/[\r\n\x00]/', $username) !== 1 && mb_strlen($username, 'UTF-8') <= 320;
 	}
 }

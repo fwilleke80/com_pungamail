@@ -253,7 +253,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 **Steps:**
 
 1. Open **Options → Bounce / return mailbox**.
-2. Enter server, port, security/protocol choice, folder, username, password, bounce address, certificate-validation choice, and soft-bounce threshold.
+2. Enter server, port, security/protocol choice, folder, username, password, bounce address, certificate-validation choice, and temporary-failure threshold.
 3. Save and reopen Options.
 4. Inspect the page source and browser password-manager-visible value.
 5. Save another unrelated option while leaving the password blank.
@@ -286,10 +286,25 @@ Keep the global queue paused except where a test explicitly says to resume it.
 **Steps:**
 
 1. Open **Delivery / Bounces** and review diagnostics.
-2. Compare Joomla mailer/sender values and Punga Mail batch/retry values with Global Configuration and Component Options.
+2. Compare the outgoing transport source/mailer/sender values and Punga Mail batch/retry values with Global Configuration and Component Options. When Custom SMTP is selected, verify the custom host is shown without exposing credentials.
 3. Check IMAP availability and queue state.
 
 **Expected:** Locally knowable values are accurate. Missing IMAP is clearly reported. SPF, DKIM, and DMARC appear only as guidance unless genuinely checked; the page does not claim to configure DNS.
+
+### PM-022 — Punga Mail Custom SMTP
+
+**Steps:**
+
+1. Confirm an upgraded site initially shows **Use Joomla settings** and sends through the same Joomla transport as before the update.
+2. Under **Options → Mail**, configure a controlled Custom SMTP account with host, port, security, authentication, username, password, From name/address, and a controlled test recipient.
+3. Use **Save outgoing mail settings**, reopen Options, and verify the password is not displayed or present in page source.
+4. Use the section's **Send test mail**, first with valid values and then with a controlled invalid host or credential.
+5. Leave Password blank, change another SMTP value, save/test again, and verify the previously stored password is retained.
+6. Save the Punga Mail From name/address using Joomla's normal Options **Save** action and send a Delivery-page test.
+7. Send a controlled Newsletter and a confirmation/reminder/Automatic Newsletter notification where practical.
+8. Switch back to **Use Joomla settings** and verify Joomla's global mail transport is used again without deleting the stored Custom SMTP secret.
+
+**Expected:** Custom SMTP affects Punga Mail only; Joomla system mail is unchanged. All Punga Mail mail paths use the selected transport. The SMTP password is stored encrypted and never returned to the browser. Invalid connection data produces a sanitized Joomla administrator error. From/Reply-To behavior remains separate from SMTP authentication. Users without `core.admin` cannot save or test stored SMTP/IMAP account credentials by calling the controller directly.
 
 ---
 
@@ -385,7 +400,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 3. Compare a normal active row with a globally subscribed but bounced row and a globally unsubscribed row.
 4. Select each email address to open its editor.
 
-**Expected:** The list has one Newsletter permission column rather than redundant Subscription/Suppressed yes-no columns. Its main badge shows the master permission state. A subscribed-but-bounced/suppressed row additionally shows the delivery block and reason in the same cell. Search, filters, links, and details are correct without exposing security tokens.
+**Expected:** The list has separate **Subscription** and **Delivery** columns. Subscription shows Subscribed/Pending/Unsubscribed independently from deliverability. A subscribed hard-bounced row remains **Subscribed** but shows **Delivery blocked — permanent failure**; a soft-bounce address below threshold remains deliverable and shows progress such as **Temporary failure — 1 of 3 before delivery is stopped**. Search, filters, links, and details are correct without exposing security tokens.
 
 ### PM-051 — Add an external subscriber in administration
 
@@ -939,7 +954,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Expected:** Preview uses the current administrator identity, renders both personal actions as non-navigable, creates no queue rows, and changes no subscriber/newsletter state.
 
-### PM-151 — Test mail through Joomla transport
+### PM-151 — Newsletter test mail through active outgoing transport
 
 **Steps:**
 
@@ -947,7 +962,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 2. Inspect HTML, plain text, From, Reply-To, subject, links, and rendering.
 3. Temporarily enter an unreachable/invalid transport on staging and repeat.
 
-**Expected:** Test mail uses Joomla's configured mailer, not a parallel SMTP setup. Success/failure appears in the Joomla UI with a useful sanitized message. Failure does not produce an unstyled 500 page or queue a campaign.
+**Expected:** Test mail uses Punga Mail's currently active outgoing transport. With **Use Joomla settings**, it follows Joomla's global mailer. With **Custom SMTP**, it uses the Punga Mail-specific SMTP connection through Joomla's mailer factory. Success/failure appears in the Joomla UI with a useful sanitized message. Failure does not produce an unstyled 500 page or queue a campaign.
 
 ### PM-152 — Preflight complete summary
 
@@ -982,7 +997,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Steps:**
 
-1. Prepare addresses excluded for invalid email, pending/unsubscribed, suppression, hard bounce, soft-bounce threshold, not-in-topic, and duplicate identity.
+1. Prepare addresses excluded for invalid email, pending/unsubscribed, suppression, permanent failure, temporary-failure threshold, not-in-topic, and duplicate identity.
 2. Include one valid address through multiple audience sources.
 3. Open recipient inspection and search/view the underlying rows.
 
@@ -1321,7 +1336,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 2. Inspect the received message.
 3. On staging, cause a configured transport failure and repeat.
 
-**Expected:** Valid mail succeeds through Joomla's transport. Failure is shown in the normal administrator template with a sanitized useful message—not an unstyled 500 page. No newsletter/queue/subscription record is created.
+**Expected:** Valid mail succeeds through the currently saved active outgoing transport (Joomla settings or Custom SMTP). Failure is shown in the normal administrator template with a sanitized useful message—not an unstyled 500 page. No newsletter/queue/subscription record is created.
 
 ### PM-231 — Return/envelope behaviour inspection
 
@@ -1354,7 +1369,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 2. Deliver the hard-bounce DSN to the configured mailbox and process it.
 3. Inspect subscriber detail, bounce history, mailing statistics, and future preflight.
 
-**Expected:** The event is Hard, with timestamp, address, subscriber, mailing if identifiable, status/SMTP code, and diagnostic. That email is immediately suppressed and excluded from future queues. Historical mailing hard-bounce count updates.
+**Expected:** The event is classified as a permanent/hard failure, with timestamp, address, subscriber, mailing if identifiable, status/SMTP code, and diagnostic. The address is immediately suppressed after this first permanent failure, regardless of the temporary-failure threshold, and excluded from future queues. Historical mailing hard-bounce count updates. Audience → Subscribers shows the subscriber permission separately from the blocked delivery state.
 
 ### PM-234 — Soft bounce threshold
 
@@ -1366,7 +1381,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 2. Process distinct subsequent soft DSNs until the threshold is reached.
 3. Resolve a future newsletter before and after the threshold.
 
-**Expected:** Each genuine event increments the soft count and records details. Before threshold, policy behaves as documented; at threshold, that address becomes suppressed and is excluded. A duplicate mailbox message does not increment twice.
+**Expected:** Each genuine event increments the temporary/soft count and records details. Before threshold, the address remains deliverable and shows `X of Y` progress; at threshold, it becomes suppressed and is excluded. The threshold does not affect permanent/hard failures. A duplicate mailbox message does not increment twice.
 
 ### PM-235 — Unknown bounce
 
@@ -1418,6 +1433,19 @@ Keep the global queue paused except where a test explicitly says to resume it.
 7. Run another successful check with no new suppression. Verify the latest-check summary updates and the previous “newly excluded” Dashboard notice disappears.
 8. Cause a controlled mailbox connection failure. Verify Delivery records the failed latest check with a sanitized error and Dashboard surfaces the failed check under **Needs attention**.
 9. Run Joomla Scheduled Task **Punga Mail — Check returned mail** with a controlled DSN and verify it updates the same Delivery summary as the manual button.
+
+### 0.6.3 focused acceptance — outgoing mail, bounce clarity, and toolbar consistency
+
+1. Open **Automatic Newsletters**, **Design → Templates**, **Design → Content layouts**, **Delivery**, and **Tools**. Verify the main section toolbar provides Joomla's **Options** action wherever the current user has component-options permission.
+2. Upgrade an existing 0.6.2 installation and verify outgoing transport defaults to **Use Joomla settings**; send a controlled test and confirm behavior is unchanged.
+3. Configure **Custom SMTP** with a separate controlled newsletter account, save it with the section button, reopen Options, and confirm the password is not rendered. Send a successful test, then a controlled failing test and verify the failure is sanitized.
+4. Send a Newsletter through Custom SMTP and verify the configured Punga Mail From name/address and Reply-To are applied while Joomla system mail still uses Joomla's global mail configuration.
+5. Open Delivery diagnostics and verify it identifies **Custom SMTP**, its host, the resolved sender, and no password/credential secret. Switch back to Joomla settings and verify diagnostics update accordingly.
+6. Prepare one subscribed/deliverable address, one subscribed address with a permanent/hard bounce, and one subscribed address with a temporary/soft bounce below a threshold of 3. Verify Audience → Subscribers separately shows **Subscription** and **Delivery**: the hard-bounced address remains Subscribed but is **Delivery blocked — permanent failure**; the soft-bounced address remains Deliverable and shows **1 of 3** progress.
+7. Process enough distinct temporary bounces to reach the threshold and verify delivery becomes blocked only at the threshold. Process one permanent hard bounce on another address and verify delivery is blocked immediately, independent of the threshold.
+8. Open the Subscriber editor and Delivery returned-mail table for these addresses and verify the wording uses permanent/temporary language and explains immediate blocking versus threshold progress without relying only on `hard`/`soft` jargon.
+9. With a user who has `core.manage` but not `core.admin`, attempt direct POSTs to the SMTP/IMAP settings save/test controller tasks and verify they are rejected.
+10. Review `docs/USER_GUIDE.md` and this guide for the new transport choice, secure SMTP password behavior, separate Subscription/Delivery states, and permanent-vs-temporary bounce semantics.
 
 
 ## L. Subscriber CSV import and export

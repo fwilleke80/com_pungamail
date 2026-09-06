@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.6.3 — 2026-09-06
+
+### Independent outgoing mail
+
+- Added **Use Joomla settings** / **Custom SMTP** outgoing transport selection under Component Options → Mail. Existing installations continue to use Joomla's global mail transport until Custom SMTP is explicitly enabled.
+- Custom SMTP supports host, port, STARTTLS/SSL-TLS/none, authentication, username and password while continuing to use Joomla's mailer factory rather than introducing a parallel mail library.
+- The Custom SMTP password is stored encrypted in Punga Mail's secure mail-settings table, is never returned to the browser, and can be retained by leaving the password field blank.
+- Added a Custom SMTP connection test that can use the currently entered connection values before they are saved. Delivery's existing mail test now uses whichever outgoing transport is currently active.
+- Sender name/address and Reply-To remain separate message settings and apply consistently to either outgoing transport. Joomla system mail is unaffected by Punga Mail Custom SMTP.
+- Tightened stored mail-account administration so SMTP/IMAP account save/test actions require Joomla component-options (`core.admin`) permission.
+
+### Delivery and subscriber clarity
+
+- Split **Audience → Subscribers** into separate **Subscription** and **Delivery** status columns. A subscriber can remain Subscribed while delivery is blocked for that address.
+- Reworded bounce states around user-facing consequences: permanent failures stop delivery immediately; temporary failures display progress toward the configured threshold and stop delivery only when that threshold is reached.
+- Clarified the **Temporary failures before blocking address** option so it cannot be mistaken for a hard-bounce threshold.
+- Updated Delivery returned-mail rows and Subscriber details to use the same permanent/temporary failure language.
+
+### Administrator consistency
+
+- Added Joomla's **Options** toolbar action to Automatic Newsletters, Design, Delivery and Tools section screens, including both Design tabs.
+- Delivery diagnostics now identify whether outgoing mail uses Joomla settings or Custom SMTP and show the Custom SMTP host without exposing credentials.
+
+### Documentation and database
+
+- Updated README, concept/database notes, delivery tutorial, test guide, and especially `docs/USER_GUIDE.md` for the outgoing transport choices and clearer subscription/delivery semantics.
+- Added encrypted Custom SMTP settings to `#__pungamail_mail_settings`; the migration defaults to Joomla transport for backward compatibility.
+
 ## 0.6.2 — 2026-09-06
 
 ### Returned-mail visibility and fixes

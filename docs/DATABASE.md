@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.6.2 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.6.3 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -58,7 +58,7 @@ SMTP handoff and DB update cannot be one distributed transaction. A crash after 
 
 ## `#__pungamail_mail_settings`
 
-Singleton storage for the returned-mail mailbox configuration. The password remains encrypted. 0.6.2 also stores only the **latest** returned-mail check timestamp/status, a compact JSON counter summary, and a sanitized failure message. Joomla Scheduled Tasks remains the authoritative task-execution history; Punga Mail does not create an unbounded duplicate run-history table merely to render the Delivery/Dashboard status.
+Singleton storage for Punga Mail-specific mail-account secrets and returned-mail status. The returned-mail IMAP password and optional Custom SMTP password are encrypted. 0.6.2 stores only the **latest** returned-mail check timestamp/status, a compact JSON counter summary, and a sanitized failure message. Joomla Scheduled Tasks remains the authoritative task-execution history; Punga Mail does not create an unbounded duplicate run-history table merely to render the Delivery/Dashboard status.
 
 ## `#__pungamail_events`
 
@@ -122,3 +122,4 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 - `0.6.1.sql` — schema-version marker only. Newsletter archiving uses the existing `state` column with Joomla state `2` and therefore requires no table alteration.
 
 - `0.6.2.sql` — adds latest returned-mail check timestamp/status/result fields to `#__pungamail_mail_settings` for Delivery and Dashboard visibility.
+- `0.6.3.sql` — adds Punga Mail-specific outgoing SMTP mode/host/port/security/auth/username fields and an encrypted SMTP-password column. Existing installations default to `smtp_mode = joomla`, preserving Joomla's global transport until Custom SMTP is explicitly selected.

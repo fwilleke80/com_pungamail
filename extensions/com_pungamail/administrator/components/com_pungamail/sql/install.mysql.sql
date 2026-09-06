@@ -262,6 +262,13 @@ CREATE TABLE IF NOT EXISTS `#__pungamail_bounces` (
 
 CREATE TABLE IF NOT EXISTS `#__pungamail_mail_settings` (
   `id` TINYINT UNSIGNED NOT NULL,
+  `smtp_mode` VARCHAR(12) NOT NULL DEFAULT 'joomla',
+  `smtp_host` VARCHAR(255) NOT NULL DEFAULT '',
+  `smtp_port` SMALLINT UNSIGNED NOT NULL DEFAULT 587,
+  `smtp_security` VARCHAR(12) NOT NULL DEFAULT 'tls',
+  `smtp_auth` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  `smtp_username` VARCHAR(320) NOT NULL DEFAULT '',
+  `smtp_password_cipher` TEXT NULL,
   `bounce_host` VARCHAR(255) NOT NULL DEFAULT '',
   `bounce_port` SMALLINT UNSIGNED NOT NULL DEFAULT 993,
   `bounce_security` VARCHAR(12) NOT NULL DEFAULT 'ssl',

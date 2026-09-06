@@ -31,6 +31,7 @@ final class HtmlView extends BaseHtmlView
 		$this->preview = $model->getPreview();
 		$this->topics = $model->getTopics();
 		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_IMPORT_EXPORT'), 'upload');
+		ToolbarHelper::preferences('com_pungamail');
 		parent::display($tpl);
 	}
 }

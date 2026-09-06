@@ -8,7 +8,7 @@ Punga Mail is a focused, self-hosted Joomla! 6 newsletter extension. Its primary
 
 It is not intended to become a behavioural marketing/analytics platform.
 
-## Implemented through 0.3.6
+## Implemented through 0.6.3
 
 ### Lists, automation and access safety
 
@@ -21,7 +21,8 @@ It is not intended to become a behavioural marketing/analytics platform.
 ### Delivery health
 
 - Scheduled sending, queue pause/resume and unsent-remainder cancellation build on the existing task and retry infrastructure.
-- Delivery-status notifications are processed from a dedicated mailbox using PHP IMAP. Hard bounces suppress immediately; soft bounces suppress at the configured threshold; history is retained.
+- Outgoing mail can use Joomla's global mail configuration or a Punga Mail-specific SMTP account created through Joomla's mailer factory. Existing installations default to Joomla transport; custom SMTP credentials are stored encrypted.
+- Delivery-status notifications are processed from a dedicated mailbox using PHP IMAP. Permanent/hard bounces suppress immediately; temporary/soft bounces suppress only at the configured threshold; history is retained.
 - Preflight distinguishes blocking errors and warnings and explains included/excluded recipients without mutating subscriber state.
 - Sent browser views and statistics read immutable mailing snapshots.
 - CSV import never silently reactivates globally unsubscribed, suppressed or hard-bounced addresses.
@@ -91,7 +92,7 @@ Blank override values inherit. The base renderer uses conservative inline styles
 
 ### Sending
 
-- Joomla `MailerFactoryInterface`; the transport is whatever Joomla is configured to use (SMTP, etc.).
+- Joomla `MailerFactoryInterface`; Punga Mail either uses Joomla's global mailer settings or supplies an isolated Custom SMTP `Registry` to Joomla's mailer factory. Punga Mail does not maintain a parallel PHPMailer stack.
 - Persistent send queue, database recipient uniqueness, atomic claims, retry/terminal-failure handling and stale-worker recovery.
 - Joomla Scheduled Task **Punga Mail — Process send queue** for normal unattended delivery.
 - Separate Joomla task types queue due scheduled newsletters, generate due automatic digests, and process the configured bounce mailbox. Automatic-send digests still pass through the normal send queue.

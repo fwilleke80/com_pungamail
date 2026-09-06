@@ -25,6 +25,7 @@ final class HtmlView extends BaseHtmlView
 		$this->items = $model->getItems();
 		$this->legacyOverrides = $model->getLegacyOverrideCounts();
 		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_CONTENT_LAYOUTS'), 'palette');
+		ToolbarHelper::preferences('com_pungamail');
 		parent::display($tpl);
 	}
 }

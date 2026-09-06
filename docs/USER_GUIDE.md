@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.2. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.3. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -20,7 +20,7 @@ Punga Mail is a self-hosted newsletter extension for Joomla. It lets you:
 - process returned mail and suppress addresses that repeatedly fail;
 - import and export subscribers as CSV files.
 
-Punga Mail sends through Joomla's configured mail system. Configure the actual mail transport under Joomla's global server settings; Punga Mail does not have a separate SMTP system.
+Punga Mail can either use Joomla's globally configured mail transport or use its own Custom SMTP account. Existing installations continue to use Joomla's mail settings unless Custom SMTP is explicitly selected under Punga Mail Component Options.
 
 ## The main concepts
 
@@ -56,7 +56,7 @@ Every source is still subject to address validity, global opt-out, and suppressi
 | Term | Meaning |
 | --- | --- |
 | Queued | The immutable mailing and recipient rows have been created and await processing. |
-| Transport accepted | Joomla's configured mail transport accepted the message for onward delivery. It does not prove that a human received or read it. |
+| Transport accepted | The active outgoing mail transport accepted the message for onward delivery. It does not prove that a human received or read it. |
 | Temporary failure | An attempt failed but may be retried according to the queue settings. |
 | Permanent failure | The queue exhausted its retries or encountered a non-recoverable send failure. |
 | Hard bounce | A later delivery report indicates a permanent address failure, such as an unknown mailbox. |
@@ -69,12 +69,12 @@ After installing or updating Punga Mail:
 
 1. Open **Components → Punga Mail → Dashboard** and confirm the installed version.
 2. Open **Options** and review the sender, design, subscription, queue, and bounce settings.
-3. Confirm that Joomla itself can send mail.
+3. Under **Options → Mail**, choose **Use Joomla settings** or configure **Custom SMTP**, then send a controlled test message.
 4. Create and enable **Punga Mail — Send pending newsletters** in Joomla Scheduled Tasks.
 5. Create a published **Punga Mail → Newsletter subscription** menu item. It may be hidden from the visible menu.
 6. Publish the **Punga Mail Signup** site module where visitors can find it.
 7. Create any Channels you want visitors to choose.
-8. Send a mail test from **Delivery / Bounces**.
+8. Send a second mail test from **Delivery / Bounces** to verify the saved active transport.
 9. If bounce processing is required, configure and test the return mailbox, then create its Scheduled Task.
 
 Create the digest, scheduled-send, and reminder tasks only if you use those features. The Dashboard warns when an enabled feature is missing its required task.
@@ -107,20 +107,28 @@ The lower panels summarize recent newsletter/automation activity, upcoming sched
 
 ## Component Options
 
-Open **Options** from the Dashboard or Subscribers toolbar. Joomla's **Toggle Inline Help** button displays the descriptions beside the fields.
+Open **Options** from the toolbar on Punga Mail's main backend sections. Joomla's **Toggle Inline Help** button displays the descriptions beside the fields.
 
 ### Mail
 
 | Setting | What it controls |
 | --- | --- |
-| From name | The sender name displayed by mail clients. Leave blank to use Joomla's global sender name. |
-| From email | The sender email address. Leave blank to use Joomla's global sender address. The address must be valid. |
+| From name | The sender name displayed by mail clients. Leave blank to use Joomla's global sender name. The resolved sender is used with either outgoing transport mode. |
+| From email | The sender email address. Leave blank to use Joomla's global sender address. The address must be valid and should be permitted by the SMTP account/provider you use. |
+| Outgoing transport | **Use Joomla settings** keeps the existing behavior and uses Joomla's globally configured mailer. **Custom SMTP** lets Punga Mail authenticate with a separate SMTP account without changing Joomla system mail. |
+| SMTP server / port | Host name and TCP port supplied by the newsletter SMTP provider. Common submission ports are 587 with STARTTLS or 465 with SSL/TLS; always use the provider's actual values. |
+| SMTP security | STARTTLS, SSL/TLS, or none. Match the provider configuration. |
+| SMTP authentication | Enable when the server requires a username/password. |
+| SMTP username | Login name for the Custom SMTP account, commonly the full mailbox address. |
+| SMTP password | Stored encrypted by Punga Mail and never displayed again. Leave blank later to keep the saved password. |
 | Reply-To mode | **None** omits a Reply-To address. **Custom** uses the Reply-To fields below. Templates and newsletters may inherit, replace, or disable this choice. |
 | Reply-To email | The address that receives ordinary reader replies when custom Reply-To is enabled. It is validated before sending. |
 | Reply-To name | The optional display name for the Reply-To address. |
 | New Joomla users subscribed by default | Controls Joomla users who have no explicit Punga Mail preference. **No** is the consent-safe default. When **Yes**, eligible users selected through Joomla groups may receive mail unless they have opted out or the address is suppressed. |
 
-Punga Mail always uses Joomla's configured transport. Change SMTP, sendmail, or other transport details in Joomla's global server configuration.
+**Use Joomla settings** is the backward-compatible default. Select **Custom SMTP** only when Punga Mail should use a separate outgoing account, for example `newsletter@example.com`, while Joomla system messages continue through another account. Punga Mail still creates the mailer through Joomla's mail API; the custom mode supplies a Punga Mail-specific SMTP configuration to that mailer.
+
+The SMTP password is intentionally not stored in Joomla's ordinary component-parameter JSON. Use **Save outgoing mail settings** inside the outgoing-mail section after entering or changing the Custom SMTP connection. The normal Joomla Options **Save** button stores ordinary component fields such as From name, From email, and Reply-To. **Send test mail** in the outgoing-mail section tests the values currently shown there; a blank password reuses the saved encrypted password.
 
 ### Mail design
 
@@ -178,7 +186,7 @@ Do not increase the batch size without considering your mail provider's limits a
 
 ### Bounce / return mailbox
 
-Punga Mail uses PHP IMAP to read unseen delivery-status notifications from a dedicated mailbox. This is independent of Joomla's outgoing SMTP configuration.
+Punga Mail uses PHP IMAP to read unseen delivery-status notifications from a dedicated mailbox. The returned-mail mailbox is independent of the outgoing transport: it can be used whether Punga Mail sends through Joomla settings or Custom SMTP.
 
 | Setting | What it controls |
 | --- | --- |
@@ -190,7 +198,7 @@ Punga Mail uses PHP IMAP to read unseen delivery-status notifications from a ded
 | Password | Mailbox password. An existing password is never shown. Leave the field blank to keep the stored password. |
 | Bounce address | Return/envelope address Punga Mail asks Joomla's mail layer to use where the active transport supports it. Supplying a value does not guarantee that every transport or upstream provider permits envelope-sender changes. |
 | Validate certificate | Verifies the mail server's TLS certificate. Keep enabled for normal secure use. |
-| Soft-bounce threshold | Number of recorded soft bounces after which an address is suppressed. Default: 3; allowed range: 1–20. Hard bounces suppress immediately. |
+| Temporary failures before blocking address | Number of temporary/soft delivery failures after which an address is suppressed. Default: 3; allowed range: 1–20. This threshold applies **only** to temporary failures. A permanent/hard failure blocks delivery immediately after the first confirmed hard bounce. |
 
 Use **Save mailbox settings** inside this section. The ordinary Joomla Options save button does not store the password field. **Test connection** tries a read-only connection and reports the result. Testing and processing require the PHP IMAP extension.
 
@@ -273,15 +281,17 @@ Search by email or subscriber information and filter by subscription status or s
 - bounce count, last classification, date, and reason;
 - creation date and ID.
 
-The main badge is the subscriber's raw global state. A subscribed address with a separate suppression, such as a hard bounce, shows a second red badge and its reason in the same cell. This avoids presenting global consent and delivery protection as two interchangeable yes/no columns. The editor separates identity and newsletter permission, Channels, and delivery health into distinct sections.
+The list deliberately separates **Subscription** from **Delivery** because they answer different questions. Subscription is the person's newsletter permission; Delivery is whether Punga Mail can currently send to the address. A subscriber may therefore be **Subscribed** while **Delivery blocked** because of a permanent bounce. The subscriber record remains present and subscribed; only sending is suppressed.
 
-| Badge | Meaning |
+| Column/state | Meaning |
 | --- | --- |
-| Active | Globally subscribed and not suppressed. |
-| Pending | Waiting for confirmation. |
-| Unsubscribed | Globally opted out. |
-| Suppressed | Blocked at the email-address level for a non-bounce reason. |
-| Bounced | Suppressed because of a hard bounce or the soft-bounce threshold. |
+| Subscription: Subscribed | The person has newsletter permission enabled. |
+| Subscription: Pending | Waiting for confirmation. |
+| Subscription: Unsubscribed | The person has globally opted out. |
+| Delivery: Deliverable | No current suppression prevents Punga Mail from sending. |
+| Delivery: Delivery blocked — permanent failure | A hard bounce indicates a permanent address/domain failure, so delivery was stopped immediately. |
+| Delivery: Delivery blocked — temporary-failure threshold reached | Repeated soft bounces reached the configured threshold. |
+| Delivery: Temporary failure — X of Y | Delivery is still allowed, but soft failures are accumulating toward the configured threshold. |
 
 ### Toolbar actions
 
@@ -298,7 +308,7 @@ The creation form also accepts an optional external recipient name and published
 
 **Send confirmation selected** sends or resends confirmation for the selected records, subject to the configured validity and resend rules.
 
-For a record suppressed by a hard bounce or soft-bounce threshold, **Clear bounce suppression** appears in the Bounce column. Use it only after the address has been corrected or you have good reason to believe it can receive mail again. Bounce history is retained; the suppression block and active soft-bounce count are cleared.
+For a record suppressed by a permanent delivery failure or temporary-failure threshold, **Clear bounce suppression** appears in the Bounce column. Use it only after the address has been corrected or you have good reason to believe it can receive mail again. Bounce history is retained; the suppression block and active temporary-failure count are cleared.
 
 ### Subscriber editor and Channel choices
 
@@ -478,13 +488,13 @@ A new Newsletter starts with **no audience selected**. Choose at least one effec
 | Save & Close | Saves, checks in the record, and returns to the list. |
 | Cancel | Leaves without saving the current changes and checks in the record. |
 | Preview | Saves and displays rendered HTML and plain text without sending. |
-| Send test mail | Saves and sends a synchronous test through Joomla's configured mailer. It does not create the real audience queue. |
+| Send test mail | Saves and sends a synchronous test through the active Punga Mail outgoing transport (Joomla settings or Custom SMTP). It does not create the real audience queue. |
 | Check recipients & send | Saves and opens the non-mutating Preflight screen. No messages are sent until you confirm queueing. |
 | Duplicate as new draft | Creates an independent editable Draft from any saved Newsletter, including a Draft, Scheduled, or already-sent Newsletter. |
 
 ### Preview and test mail
 
-Preview uses the current administrator for `{recipient}` and disables both personal actions: Unsubscribe and View in browser. Neither preview link can navigate. A test message exercises Joomla's real transport and uses the same rendering hierarchy, but it is not a substitute for Preflight because it does not resolve the real audience.
+Preview uses the current administrator for `{recipient}` and disables both personal actions: Unsubscribe and View in browser. Neither preview link can navigate. A test message exercises Punga Mail's active outgoing transport and uses the same rendering hierarchy, but it is not a substitute for Preflight because it does not resolve the real audience.
 
 ### Check before sending: final validation
 
@@ -504,7 +514,7 @@ Blocking errors prevent queueing. The checks include:
 
 Warnings do not block sending. They include malformed or suspicious links, images without an `alt` attribute, message size over 500 KiB, and a paused queue.
 
-The recipient panels explain final inclusion and exclusion. Typical exclusion reasons are invalid address, globally unsubscribed/not subscribed, suppressed, hard bounced, soft-bounce threshold, not in a selected topic, and duplicate eliminated.
+The recipient panels explain final inclusion and exclusion. Typical exclusion reasons are invalid address, globally unsubscribed/not subscribed, suppressed, permanent delivery failure, temporary-failure threshold, not in a selected topic, and duplicate eliminated.
 
 If the result is correct, choose **Queue emails** for immediate queueing. The confirmation dialog states the number of unique recipients about to be queued. Scheduling does not require navigating to Preflight first; use the Schedule controls in the Newsletter editor sidebar instead.
 
@@ -630,8 +640,9 @@ The recent-bounces table shows timestamp, address, classification, SMTP/status c
 
 Punga Mail processes standard delivery-status notifications where possible:
 
-- hard failures suppress immediately;
-- soft failures increase the subscriber's counts and suppress at the configured threshold;
+- **permanent/hard failures** suppress immediately after the first confirmed hard bounce;
+- **temporary/soft failures** increase the subscriber's count and suppress only when **Temporary failures before blocking address** reaches the configured threshold;
+- while a soft-bounce address is still below the threshold, the UI shows its progress, for example **Temporary failure — 1 of 3 before delivery is stopped**;
 - unknown failures are retained for inspection but do not automatically pretend to be permanent failures;
 - duplicate delivery reports are ignored;
 - bounce history is retained after suppression is cleared.
@@ -644,7 +655,7 @@ This differs from opening one Queued/Sending newsletter and pausing only that ma
 
 ### Mail test
 
-Enter a recipient address and select **Send test mail**. Punga Mail sends a small diagnostic message using Joomla's configured transport and displays the real success or failure result.
+Enter a recipient address and select **Send test mail**. Punga Mail sends a small diagnostic message using the currently active outgoing transport—either Joomla settings or Custom SMTP—and displays the real success or failure result.
 
 This tests local configuration and transport acceptance only. It does not prove inbox placement, DNS authentication, or human delivery.
 
@@ -652,7 +663,7 @@ This tests local configuration and transport acceptance only. It does not prove 
 
 The page reports information that can be determined locally:
 
-- Joomla mailer type;
+- outgoing transport source (Joomla settings or Custom SMTP), active mailer type, and Custom SMTP host where applicable;
 - resolved sender address and basic validity;
 - PHP IMAP availability;
 - queue batch size;
@@ -805,7 +816,7 @@ Confirm that **Punga Mail — Prepare scheduled newsletters** exists, is enabled
 
 ### A newsletter remains Queued
 
-Check the Dashboard task card, global queue pause, per-mailing pause, task execution history, batch size, retry status, and Joomla mail configuration.
+Check the Dashboard task card, global queue pause, per-mailing pause, task execution history, batch size, retry status, and the active outgoing-mail configuration under Punga Mail Options/Delivery diagnostics.
 
 ### An Automatic Newsletter does not run
 

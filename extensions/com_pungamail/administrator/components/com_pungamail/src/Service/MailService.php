@@ -17,6 +17,7 @@ use Joomla\CMS\Router\Route;
 use Joomla\CMS\Uri\Uri;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Database\ParameterType;
+use Joomla\Registry\Registry;
 
 /**
  * Creates all outgoing Punga Mail messages through Joomla's configured mailer.
@@ -35,7 +36,8 @@ final class MailService
 		private readonly MarkdownRenderer $markdown,
 		private readonly NewsletterRenderer $renderer,
 		private readonly DatabaseInterface $db,
-		private readonly MailConfigurationService $mailConfiguration
+		private readonly MailConfigurationService $mailConfiguration,
+		private readonly MailSettingsRepository $mailSettings
 	)
 	{
 	}
@@ -122,8 +124,28 @@ final class MailService
 		$this->sendMultipart($email, '[TEST] ' . $subject, $html, $text, [], $replyToEmail, $replyToName);
 	}
 
-	/** Sends a small diagnostic through Joomla's configured transport. */
+	/** Sends a small diagnostic through the currently active Punga Mail transport. */
 	public function sendConfigurationTest(string $email): void
+	{
+		$this->sendConfigurationTestWithOutgoing($email, null);
+	}
+
+	/**
+	 * Tests posted outgoing settings before they are saved.
+	 *
+	 * @param string              $email       Test recipient.
+	 * @param array<string,mixed> $settings    Posted outgoing settings.
+	 * @param string              $newPassword Newly entered SMTP password.
+	 * @return void
+	 */
+	public function sendConfigurationTestUsingSettings(string $email, array $settings, string $newPassword): void
+	{
+		$outgoing = $this->mailSettings->outgoingFromInput($settings, $newPassword);
+		$this->sendConfigurationTestWithOutgoing($email, $outgoing);
+	}
+
+	/** @param object|null $outgoing Optional outgoing settings override. @return void */
+	private function sendConfigurationTestWithOutgoing(string $email, ?object $outgoing): void
 	{
 		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
 		{
@@ -134,7 +156,7 @@ final class MailService
 		$subject = Text::sprintf('COM_PUNGAMAIL_MAIL_TEST_SUBJECT', $siteName);
 		$text = Text::sprintf('COM_PUNGAMAIL_MAIL_TEST_BODY', $siteName);
 		$html = '<!doctype html><html><body><p>' . htmlspecialchars($text, ENT_QUOTES, 'UTF-8') . '</p></body></html>';
-		$this->sendMultipart($email, $subject, $html, $text);
+		$this->sendMultipart($email, $subject, $html, $text, [], '', '', '', $outgoing);
 	}
 
 	/**
@@ -361,11 +383,12 @@ final class MailService
 		array $headers = [],
 		string $replyToEmail = '',
 		string $replyToName = '',
-		string $envelopeSender = ''
+		string $envelopeSender = '',
+		?object $outgoing = null
 	): void
 	{
 		$params = ComponentHelper::getParams('com_pungamail');
-		$mailer = $this->mailerFactory->createMailer();
+		$mailer = $this->createMailer($outgoing);
 		$fromEmail = trim((string) $params->get('from_email'));
 		$fromName = trim((string) $params->get('from_name'));
 
@@ -386,8 +409,8 @@ final class MailService
 				throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_FROM_INVALID'));
 			}
 
-			// Joomla's Mail API accepts a [mail, name] sender tuple. This retains
-			// Joomla's configured transport rather than constructing another stack.
+			// Joomla's Mail API accepts a [mail, name] sender tuple. Apply the
+			// Punga Mail sender consistently to either supported transport mode.
 			$mailer->setSender([$fromEmail, $this->headerValue($fromName)]);
 		}
 
@@ -429,6 +452,45 @@ final class MailService
 		{
 			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_MAIL_SEND_FAILED'));
 		}
+	}
+
+	/**
+	 * Creates the active Joomla or Punga Mail-specific mailer.
+	 *
+	 * @param object|null $override Optional validated outgoing settings for a test message.
+	 * @return Mail Configured Joomla mail object.
+	 */
+	private function createMailer(?object $override = null): Mail
+	{
+		$outgoing = $override ?? $this->mailSettings->getOutgoingConnection();
+
+		if ((string) ($outgoing->smtp_mode ?? 'joomla') !== 'custom')
+		{
+			$mailer = $this->mailerFactory->createMailer();
+		}
+		else
+		{
+			$sender = $this->mailConfiguration->sender();
+			$settings = new Registry([
+				'mailer' => 'smtp',
+				'smtpauth' => (int) ($outgoing->smtp_auth ?? 0),
+				'smtpuser' => (string) ($outgoing->smtp_username ?? ''),
+				'smtppass' => (string) ($outgoing->smtp_password ?? ''),
+				'smtphost' => (string) ($outgoing->smtp_host ?? ''),
+				'smtpsecure' => (string) ($outgoing->smtp_security ?? 'tls'),
+				'smtpport' => (int) ($outgoing->smtp_port ?? 587),
+				'mailfrom' => (string) $sender['email'],
+				'fromname' => (string) $sender['name'],
+			]);
+			$mailer = $this->mailerFactory->createMailer($settings);
+		}
+
+		if (!$mailer instanceof Mail)
+		{
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_MAILER_TYPE'));
+		}
+
+		return $mailer;
 	}
 
 	/**

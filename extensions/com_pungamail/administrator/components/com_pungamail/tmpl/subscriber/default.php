@@ -3,11 +3,13 @@
 
 defined('_JEXEC') or die;
 
+use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 
+$softBounceThreshold = max(1, (int) ComponentHelper::getParams('com_pungamail')->get('soft_bounce_threshold', 3));
 ?>
 <?php echo \Joomla\CMS\Layout\LayoutHelper::render('pungamail.section_navigation', ['section' => 'audience', 'active' => 'subscribers'], JPATH_ADMINISTRATOR . '/components/com_pungamail/layouts'); ?>
 <form action="<?php echo Route::_(AdministratorRoute::subscriber((int) ($this->item->id ?? 0))); ?>" method="post" name="adminForm" id="adminForm">
@@ -106,7 +108,12 @@ use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 							<?php if (!empty($this->item->last_bounce_at)) : ?>
 								<?php $bounceClassKey = (string) ($this->item->last_bounce_class ?? '') === 'hard' ? 'COM_PUNGAMAIL_BOUNCE_CLASS_PERMANENT' : 'COM_PUNGAMAIL_BOUNCE_CLASS_TEMPORARY'; ?>
 								<dt class="col-sm-3"><?php echo Text::_('COM_PUNGAMAIL_LAST_BOUNCE'); ?></dt>
-								<dd class="col-sm-9"><?php echo HTMLHelper::_('date', $this->item->last_bounce_at, Text::_('DATE_FORMAT_LC5'), 'UTC'); ?> · <?php echo Text::_($bounceClassKey); ?></dd>
+								<dd class="col-sm-9">
+									<?php echo HTMLHelper::_('date', $this->item->last_bounce_at, Text::_('DATE_FORMAT_LC5'), 'UTC'); ?> · <?php echo Text::_($bounceClassKey); ?>
+									<?php if ((string) ($this->item->last_bounce_class ?? '') === 'soft' && $this->suppressionReason === null) : ?>
+										<div class="text-muted"><?php echo Text::sprintf('COM_PUNGAMAIL_TEMPORARY_FAILURE_PROGRESS', (int) ($this->item->soft_bounce_count ?? 0), $softBounceThreshold); ?></div>
+									<?php endif; ?>
+								</dd>
 							<?php endif; ?>
 						</dl>
 					<?php endif; ?>

@@ -31,6 +31,7 @@ final class HtmlView extends BaseHtmlView
 			if ($user->authorise('core.delete', 'com_pungamail')) { ToolbarHelper::deleteList(Text::_('COM_PUNGAMAIL_CONFIRM_DELETE_TEMPLATES'), 'templates.delete'); }
 		}
 		elseif ($user->authorise('core.edit.state', 'com_pungamail')) { ToolbarHelper::trash('templates.trash'); }
+		if ($user->authorise('core.admin', 'com_pungamail')) { ToolbarHelper::preferences('com_pungamail'); }
 		parent::display($tpl);
 	}
 }

@@ -71,6 +71,9 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/MailTextService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MailfooterField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/BouncemailboxField.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/OutgoingmailField.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/MailSettingsRepository.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/MailService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/ReminderService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/TemplateRepository.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/install.mysql.sql",
@@ -109,6 +112,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.0.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.1.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.2.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.3.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/MarkdownEditorHelper.php",
@@ -2253,6 +2257,156 @@ def check_release_fix_0602() -> None:
         fail("0.6.2 focused returned-mail acceptance guide missing")
 
 
+
+def check_release_ux_0603() -> None:
+    """Protect 0.6.3 outgoing-mail, delivery-state, and toolbar contracts."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    config = (admin_root / "config.xml").read_text(encoding="utf-8")
+    outgoing_field = (admin_root / "src/Field/OutgoingmailField.php").read_text(encoding="utf-8")
+    mail_settings = (admin_root / "src/Service/MailSettingsRepository.php").read_text(encoding="utf-8")
+    mail_service = (admin_root / "src/Service/MailService.php").read_text(encoding="utf-8")
+    controller = (admin_root / "src/Controller/DeliveryController.php").read_text(encoding="utf-8")
+    delivery_model = (admin_root / "src/Model/DeliveryModel.php").read_text(encoding="utf-8")
+    delivery_layout = (admin_root / "tmpl/delivery/default.php").read_text(encoding="utf-8")
+    subscribers_layout = (admin_root / "tmpl/subscribers/default.php").read_text(encoding="utf-8")
+    subscriber_layout = (admin_root / "tmpl/subscriber/default.php").read_text(encoding="utf-8")
+    install = (admin_root / "sql/install.mysql.sql").read_text(encoding="utf-8")
+    migration = (admin_root / "sql/updates/mysql/0.6.3.sql").read_text(encoding="utf-8")
+
+    if 'name="outgoing_mail_configuration"' not in config or 'type="outgoingmail"' not in config:
+        fail("0.6.3 Component Options are missing the outgoing-mail configuration field")
+    if "smtp_password" in config.lower() or "smtppass" in config.lower():
+        fail("0.6.3 SMTP password must not be stored in Joomla component params")
+
+    for token in (
+        "COM_PUNGAMAIL_USE_JOOMLA_MAIL_SETTINGS",
+        "COM_PUNGAMAIL_CUSTOM_SMTP",
+        "smtp[smtp_host]",
+        "smtp[smtp_port]",
+        "smtp[smtp_security]",
+        "smtp[smtp_auth]",
+        "smtp[smtp_username]",
+        "smtp[password]",
+        "delivery.saveOutgoingSettings",
+        "delivery.testOutgoing",
+    ):
+        if token not in outgoing_field:
+            fail(f"0.6.3 outgoing-mail field is missing {token!r}")
+
+    for token in (
+        "smtp_mode",
+        "smtp_host",
+        "smtp_port",
+        "smtp_security",
+        "smtp_auth",
+        "smtp_username",
+        "smtp_password_cipher",
+    ):
+        if token not in install or token not in migration:
+            fail(f"0.6.3 SMTP schema is missing {token!r}")
+
+    for token in (
+        "getOutgoingPublic",
+        "getOutgoingConnection",
+        "outgoingFromInput",
+        "saveOutgoing",
+        "smtp_password_cipher",
+        "'smtp_mode' => 'joomla'",
+        "secrets->encrypt",
+        "secrets->decrypt",
+    ):
+        if token not in mail_settings:
+            fail(f"0.6.3 secure outgoing settings are missing {token!r}")
+
+    for token in (
+        "new Registry([",
+        "'mailer' => 'smtp'",
+        "'smtpauth'",
+        "'smtpuser'",
+        "'smtppass'",
+        "'smtphost'",
+        "'smtpsecure'",
+        "'smtpport'",
+        "createMailer($settings)",
+        "getOutgoingConnection()",
+    ):
+        if token not in mail_service:
+            fail(f"0.6.3 custom SMTP mailer path is missing {token!r}")
+
+    for token in (
+        "function saveOutgoingSettings(): void",
+        "function testOutgoing(): void",
+        "function guardOptions(): void",
+        "authorise('core.admin', 'com_pungamail')",
+    ):
+        if token not in controller:
+            fail(f"0.6.3 protected mail-settings controller is missing {token!r}")
+
+    toolbar_views = (
+        "src/View/Digests/HtmlView.php",
+        "src/View/Templates/HtmlView.php",
+        "src/View/Contentlayouts/HtmlView.php",
+        "src/View/Delivery/HtmlView.php",
+        "src/View/Import/HtmlView.php",
+    )
+    for relative in toolbar_views:
+        contents = (admin_root / relative).read_text(encoding="utf-8")
+        if "ToolbarHelper::preferences('com_pungamail')" not in contents:
+            fail(f"0.6.3 Options toolbar action missing from {relative}")
+
+    for token in (
+        "COM_PUNGAMAIL_SUBSCRIPTION",
+        "COM_PUNGAMAIL_DELIVERY_STATUS",
+        "COM_PUNGAMAIL_DELIVERABLE",
+        "COM_PUNGAMAIL_DELIVERY_BLOCKED",
+        "COM_PUNGAMAIL_PERMANENT_FAILURE_IMMEDIATE",
+        "COM_PUNGAMAIL_TEMPORARY_FAILURE_PROGRESS",
+    ):
+        if token not in subscribers_layout:
+            fail(f"0.6.3 Subscribers subscription/delivery split is missing {token!r}")
+
+    for token in ("COM_PUNGAMAIL_PERMANENT_FAILURE_IMMEDIATE", "COM_PUNGAMAIL_TEMPORARY_FAILURE_PROGRESS"):
+        if token not in delivery_layout and token not in subscriber_layout:
+            fail(f"0.6.3 bounce clarity UI is missing {token!r}")
+
+    for token in ("transport_source", "smtp_host"):
+        if token not in delivery_model:
+            fail(f"0.6.3 Delivery diagnostics are missing {token!r}")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_OUTGOING_MAIL_HELP",
+            "COM_PUNGAMAIL_OUTGOING_TRANSPORT",
+            "COM_PUNGAMAIL_USE_JOOMLA_MAIL_SETTINGS",
+            "COM_PUNGAMAIL_CUSTOM_SMTP",
+            "COM_PUNGAMAIL_SMTP_SETTINGS_SAVED",
+            "COM_PUNGAMAIL_DELIVERABLE",
+            "COM_PUNGAMAIL_DELIVERY_BLOCKED",
+            "COM_PUNGAMAIL_PERMANENT_FAILURE_IMMEDIATE",
+            "COM_PUNGAMAIL_TEMPORARY_FAILURE_PROGRESS",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.6.3 is missing {locale} outgoing/delivery copy: {key}")
+
+    user_guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "Punga Mail 0.6.3",
+        "Custom SMTP",
+        "Use Joomla settings",
+        "Subscription",
+        "Delivery blocked — permanent failure",
+        "Temporary failure — 1 of 3 before delivery is stopped",
+    ):
+        if token not in user_guide:
+            fail(f"0.6.3 USER_GUIDE is missing {token!r}")
+
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    if "0.6.3 focused acceptance — outgoing mail, bounce clarity, and toolbar consistency" not in test_guide:
+        fail("0.6.3 focused acceptance guide missing")
+
+
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
 
@@ -2395,6 +2549,7 @@ def main() -> int:
         check_release_ux_0600,
         check_release_ux_0601,
         check_release_fix_0602,
+        check_release_ux_0603,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

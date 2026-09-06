@@ -2,7 +2,7 @@
 
 Punga Mail is a self-hosted newsletter extension for **Joomla 6**.
 
-It is designed for websites that want to manage newsletters directly inside Joomla, using the site's existing users, content, permissions and mail configuration instead of relying on an external newsletter service.
+It is designed for websites that want to manage newsletters directly inside Joomla, using the site's existing users, content and permissions, with either Joomla's mail configuration or a Punga Mail-specific SMTP account instead of relying on an external newsletter service.
 
 ## What Punga Mail can do
 
@@ -18,6 +18,7 @@ It is designed for websites that want to manage newsletters directly inside Joom
 - Manage Joomla users and external email subscribers from one recipient list.
 - Provide public subscribe, unsubscribe and preference-management pages.
 - Use email confirmation for new external subscriptions.
+- Use Joomla's outgoing mail settings or a separate Punga Mail-specific SMTP account.
 - Handle undeliverable mail, show the latest returned-mail check on Delivery/Dashboard, and stop repeatedly sending to addresses that can no longer be reached.
 - Show delivery statistics, recent activity, upcoming mail and other useful status information on the Dashboard.
 - Import and export recipient data as CSV.
@@ -25,7 +26,7 @@ It is designed for websites that want to manage newsletters directly inside Joom
 - Generate browser-view and unsubscribe links for newsletters.
 - Use Joomla's language system; Punga Mail currently includes **English and German**.
 
-Punga Mail uses Joomla's configured mail transport, so SMTP and other mail settings remain in Joomla rather than being duplicated inside the extension.
+By default, Punga Mail uses Joomla's configured mail transport. Administrators can instead select **Custom SMTP** in Punga Mail Options when newsletters should use a separate outgoing account; Joomla system mail remains unchanged.
 
 ## Installation
 

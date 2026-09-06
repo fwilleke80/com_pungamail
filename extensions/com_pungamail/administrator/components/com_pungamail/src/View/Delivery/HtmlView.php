@@ -41,6 +41,7 @@ final class HtmlView extends BaseHtmlView
 		$this->queueNewsletters = $model->getQueueNewsletters();
 		$this->queueFilters = $model->getQueueFilters();
 		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_DELIVERY_HEALTH'), 'heart');
+		ToolbarHelper::preferences('com_pungamail');
 		parent::display($tpl);
 	}
 }

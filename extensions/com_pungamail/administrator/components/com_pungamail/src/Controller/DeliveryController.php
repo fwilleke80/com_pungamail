@@ -24,7 +24,7 @@ final class DeliveryController extends BaseController
 	/** @return void */
 	public function saveSettings(): void
 	{
-		$this->guard();
+		$this->guardOptions();
 		$input = Factory::getApplication()->getInput();
 		$data = (array) $input->post->get('bounce', [], 'array');
 
@@ -39,10 +39,51 @@ final class DeliveryController extends BaseController
 		}
 	}
 
+
+	/** @return void */
+	public function saveOutgoingSettings(): void
+	{
+		$this->guardOptions();
+		$data = (array) Factory::getApplication()->getInput()->post->get('smtp', [], 'array');
+
+		try
+		{
+			ServiceFactory::mailSettings()->saveOutgoing($data, (string) ($data['password'] ?? ''));
+			$this->redirectToDelivery(Text::_('COM_PUNGAMAIL_SMTP_SETTINGS_SAVED'));
+		}
+		catch (\Throwable $e)
+		{
+			$this->redirectToDelivery(ErrorMessage::sanitize($e), 'error');
+		}
+	}
+
+	/** @return void */
+	public function testOutgoing(): void
+	{
+		$this->guardOptions();
+		$data = (array) Factory::getApplication()->getInput()->post->get('smtp', [], 'array');
+		$email = trim((string) ($data['test_email'] ?? ''));
+
+		try
+		{
+			ServiceFactory::mail()->sendConfigurationTestUsingSettings($email, $data, (string) ($data['password'] ?? ''));
+			$this->redirectToDelivery(Text::sprintf('COM_PUNGAMAIL_MAIL_TEST_SENT', $email));
+		}
+		catch (\Throwable $e)
+		{
+			Log::add(
+				'Punga Mail outgoing transport test failed: ' . get_class($e) . ': ' . ErrorMessage::sanitize($e),
+				Log::ERROR,
+				'com_pungamail'
+			);
+			$this->redirectToDelivery(Text::sprintf('COM_PUNGAMAIL_MAIL_TEST_FAILED', ErrorMessage::sanitize($e)), 'error');
+		}
+	}
+
 	/** @return void */
 	public function testBounce(): void
 	{
-		$this->guard();
+		$this->guardOptions();
 		$data = (array) Factory::getApplication()->getInput()->post->get('bounce', [], 'array');
 
 		try
@@ -176,6 +217,20 @@ final class DeliveryController extends BaseController
 		}
 
 		return $ids;
+	}
+
+	/** @return void */
+	private function guardOptions(): void
+	{
+		if (!Factory::getApplication()->getIdentity()->authorise('core.admin', 'com_pungamail'))
+		{
+			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+		}
+
+		if (!Session::checkToken())
+		{
+			throw new \RuntimeException(Text::_('JINVALID_TOKEN'), 403);
+		}
 	}
 
 	/** @return void */
