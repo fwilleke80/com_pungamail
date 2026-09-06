@@ -23,6 +23,12 @@ final class DeliveryModel extends BaseDatabaseModel
 		return ServiceFactory::mailSettings()->getPublic();
 	}
 
+	/** @return object|null */
+	public function getBounceCheck(): ?object
+	{
+		return ServiceFactory::mailSettings()->getBounceCheck();
+	}
+
 	/** @return array<int,object> */
 	public function getBounces(): array
 	{

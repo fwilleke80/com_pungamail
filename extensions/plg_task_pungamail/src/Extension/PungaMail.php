@@ -179,7 +179,7 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 		{
 			$this->getApplication()->bootComponent('com_pungamail');
 			$result = ServiceFactory::bounces()->process();
-			Log::add(sprintf('Punga Mail bounces: %d processed (%d hard, %d soft).', (int) $result['processed'], (int) $result['hard'], (int) $result['soft']), Log::INFO, 'plg_task_pungamail');
+			Log::add(sprintf('Punga Mail bounces: %d processed (%d hard, %d soft), %d addresses newly suppressed.', (int) $result['processed'], (int) $result['hard'], (int) $result['soft'], (int) $result['suppressed']), Log::INFO, 'plg_task_pungamail');
 
 			return Status::OK;
 		}

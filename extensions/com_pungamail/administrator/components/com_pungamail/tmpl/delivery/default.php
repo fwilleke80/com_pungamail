@@ -10,6 +10,7 @@ use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 
 $settings = $this->settings;
+$bounceCheck = $this->bounceCheck;
 $diagnostics = $this->diagnostics;
 $identity = Factory::getApplication()->getIdentity();
 $siteTimezone = (string) Factory::getApplication()->get('offset', 'UTC');
@@ -143,10 +144,32 @@ document.addEventListener('DOMContentLoaded', function ()
 						<?php echo HTMLHelper::_('form.token'); ?>
 					</form>
 				</div>
+
+				<div class="border rounded p-3 mt-3">
+					<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+						<strong><?php echo Text::_('COM_PUNGAMAIL_RETURNED_MAIL_LAST_CHECK'); ?></strong>
+						<?php if ($bounceCheck !== null) : ?>
+							<span class="badge <?php echo $bounceCheck->ok ? 'bg-success' : 'bg-danger'; ?>"><?php echo Text::_($bounceCheck->ok ? 'COM_PUNGAMAIL_CHECK_SUCCEEDED' : 'COM_PUNGAMAIL_CHECK_FAILED'); ?></span>
+						<?php endif; ?>
+					</div>
+					<?php if ($bounceCheck === null) : ?>
+						<div class="text-muted"><?php echo Text::_('COM_PUNGAMAIL_RETURNED_MAIL_NOT_CHECKED'); ?></div>
+					<?php else : ?>
+						<div class="small text-muted mb-2"><?php echo Text::_('COM_PUNGAMAIL_LAST_CHECK'); ?>: <?php echo HTMLHelper::_('date', $bounceCheck->checked_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?></div>
+						<?php if ($bounceCheck->ok) : ?>
+							<div><?php echo Text::sprintf('COM_PUNGAMAIL_RETURNED_MAIL_LAST_RESULT', (int) $bounceCheck->processed, (int) $bounceCheck->hard, (int) $bounceCheck->soft); ?></div>
+							<?php if ((int) $bounceCheck->suppressed > 0) : ?>
+								<div class="alert alert-warning py-2 px-3 mt-2 mb-0"><?php echo Text::plural('COM_PUNGAMAIL_RETURNED_MAIL_NEW_SUPPRESSIONS', (int) $bounceCheck->suppressed); ?></div>
+							<?php endif; ?>
+						<?php else : ?>
+							<div class="text-danger"><?php echo Text::_('COM_PUNGAMAIL_RETURNED_MAIL_CHECK_FAILED'); ?><?php if ($bounceCheck->error !== '') : ?>: <?php echo htmlspecialchars((string) $bounceCheck->error, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></div>
+						<?php endif; ?>
+					<?php endif; ?>
+				</div>
 			</div>
 		</div>
 
-		<div class="card">
+		<div class="card" id="returned-mail">
 			<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_RECENT_BOUNCES'); ?></strong></div>
 			<div class="table-responsive"><table class="table mb-0"><thead><tr><th><?php echo Text::_('JDATE'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_EMAIL'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_CLASSIFICATION'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_SMTP_STATUS'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_DETAILS'); ?></th></tr></thead><tbody>
 			<?php foreach ($this->bounces as $bounce) : ?>

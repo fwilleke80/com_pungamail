@@ -18,7 +18,7 @@ It is designed for websites that want to manage newsletters directly inside Joom
 - Manage Joomla users and external email subscribers from one recipient list.
 - Provide public subscribe, unsubscribe and preference-management pages.
 - Use email confirmation for new external subscriptions.
-- Handle undeliverable mail and stop repeatedly sending to addresses that can no longer be reached.
+- Handle undeliverable mail, show the latest returned-mail check on Delivery/Dashboard, and stop repeatedly sending to addresses that can no longer be reached.
 - Show delivery statistics, recent activity, upcoming mail and other useful status information on the Dashboard.
 - Import and export recipient data as CSV.
 - Use grouped administrator navigation for Audience, Design, and Tools workflows.

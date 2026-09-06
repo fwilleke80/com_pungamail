@@ -52,6 +52,11 @@ $statusKey = match ((int) ($item->status ?? NewsletterRepository::STATUS_DRAFT))
 };
 $scheduledInputValue = '';
 
+$requestedTab = Factory::getApplication()->getInput()->getCmd('tab', '');
+$allowedTabs = ['pm-settings', 'pm-mail-content', 'pm-content-selection', 'pm-design'];
+$activeTab = in_array($requestedTab, $allowedTabs, true) ? $requestedTab : 'pm-settings';
+$recallTabs = $requestedTab === '';
+
 if ($item !== null && !empty($item->scheduled_at))
 {
 	$scheduledInputValue = HTMLHelper::_('date', (string) $item->scheduled_at, 'Y-m-d\TH:i', $siteTimezone);
@@ -95,7 +100,7 @@ if ($item !== null && !empty($item->scheduled_at))
 		<?php if ($item !== null && (int) $item->status === NewsletterRepository::STATUS_SCHEDULED) : ?><div class="alert alert-info"><?php echo Text::sprintf('COM_PUNGAMAIL_EDITING_SCHEDULED', HTMLHelper::_('date', $item->scheduled_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone)); ?></div><?php endif; ?>
 		<div class="row g-4 align-items-start">
 			<div class="col-12 col-xl-9">
-		<?php echo HTMLHelper::_('uitab.startTabSet', 'pm-newsletter-tabs', ['active' => 'pm-settings', 'recall' => true, 'breakpoint' => 768]); ?>
+		<?php echo HTMLHelper::_('uitab.startTabSet', 'pm-newsletter-tabs', ['active' => $activeTab, 'recall' => $recallTabs, 'breakpoint' => 768]); ?>
 
 		<?php echo HTMLHelper::_('uitab.addTab', 'pm-newsletter-tabs', 'pm-settings', Text::_('COM_PUNGAMAIL_TAB_SETTINGS')); ?>
 		<div class="row g-3 pt-3">

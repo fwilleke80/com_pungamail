@@ -64,7 +64,7 @@ final class DeliveryController extends BaseController
 		try
 		{
 			$result = ServiceFactory::bounces()->process();
-			$this->redirectToDelivery(Text::sprintf('COM_PUNGAMAIL_BOUNCE_RESULT', $result['processed'], $result['hard'], $result['soft'], $result['unknown']));
+			$this->redirectToDelivery(Text::sprintf('COM_PUNGAMAIL_BOUNCE_RESULT', $result['processed'], $result['hard'], $result['soft'], $result['unknown'], $result['suppressed']));
 		}
 		catch (\Throwable $e)
 		{

@@ -59,11 +59,23 @@ final class BounceService
 		return ['ok' => true, 'message' => Text::sprintf('COM_PUNGAMAIL_BOUNCE_CONNECTION_OK', $count)];
 	}
 
-	/** @return array{processed:int,hard:int,soft:int,unknown:int,duplicates:int} */
+	/**
+	 * Checks the configured returned-mail mailbox and records recognized bounces.
+	 *
+	 * @return array{checked:int,processed:int,hard:int,soft:int,unknown:int,duplicates:int,suppressed:int}
+	 */
 	public function process(int $limit = 100): array
 	{
 		$this->requireImap();
-		$result = ['processed' => 0, 'hard' => 0, 'soft' => 0, 'unknown' => 0, 'duplicates' => 0];
+		$result = [
+			'checked' => 0,
+			'processed' => 0,
+			'hard' => 0,
+			'soft' => 0,
+			'unknown' => 0,
+			'duplicates' => 0,
+			'suppressed' => 0,
+		];
 
 		if (!$this->acquireProcessLock())
 		{
@@ -72,48 +84,66 @@ final class BounceService
 
 		try
 		{
-			$config = $this->settings->getConnection();
-			$mailbox = $this->mailboxString($config);
-			$connection = @imap_open($mailbox, (string) $config->bounce_username, (string) $config->bounce_password, 0, 1);
-
-			if ($connection === false)
-			{
-				throw new \RuntimeException(imap_last_error() ?: Text::_('COM_PUNGAMAIL_BOUNCE_CONNECTION_FAILED'));
-			}
-
-			$messages = imap_search($connection, 'UNSEEN') ?: [];
-			$messages = array_slice($messages, 0, max(1, min(500, $limit)));
-
 			try
 			{
-				foreach ($messages as $messageNumber)
+				$config = $this->settings->getConnection();
+				$mailbox = $this->mailboxString($config);
+				$connection = @imap_open($mailbox, (string) $config->bounce_username, (string) $config->bounce_password, 0, 1);
+
+				if ($connection === false)
 				{
-					$header = (string) imap_fetchheader($connection, $messageNumber, FT_PEEK);
-					$body = (string) imap_body($connection, $messageNumber, FT_PEEK);
-					$parsed = $this->parse($header, $body, (int) $messageNumber);
-
-					if ($parsed === null)
-					{
-						imap_setflag_full($connection, (string) $messageNumber, '\\Seen');
-						continue;
-					}
-
-					if ($this->record($parsed))
-					{
-						$result['processed']++;
-						$result[$parsed['classification']]++;
-					}
-					else
-					{
-						$result['duplicates']++;
-					}
-
-					imap_setflag_full($connection, (string) $messageNumber, '\\Seen');
+					throw new \RuntimeException(imap_last_error() ?: Text::_('COM_PUNGAMAIL_BOUNCE_CONNECTION_FAILED'));
 				}
+
+				$messages = imap_search($connection, 'UNSEEN') ?: [];
+				$messages = array_slice($messages, 0, max(1, min(500, $limit)));
+
+				try
+				{
+					foreach ($messages as $messageNumber)
+					{
+						$result['checked']++;
+						$header = (string) imap_fetchheader($connection, $messageNumber);
+						$body = (string) imap_body($connection, $messageNumber, FT_PEEK);
+						$parsed = $this->parse($header, $body, (int) $messageNumber);
+
+						if ($parsed === null)
+						{
+							imap_setflag_full($connection, (string) $messageNumber, '\\Seen');
+							continue;
+						}
+
+						$recorded = $this->record($parsed);
+
+						if ($recorded['recorded'])
+						{
+							$result['processed']++;
+							$result[$parsed['classification']]++;
+
+							if ($recorded['suppressed'])
+							{
+								$result['suppressed']++;
+							}
+						}
+						else
+						{
+							$result['duplicates']++;
+						}
+
+						imap_setflag_full($connection, (string) $messageNumber, '\\Seen');
+					}
+				}
+				finally
+				{
+					imap_close($connection);
+				}
+
+				$this->rememberCheck($result, null);
 			}
-			finally
+			catch (\Throwable $e)
 			{
-				imap_close($connection);
+				$this->rememberCheck($result, ErrorMessage::sanitize($e));
+				throw $e;
 			}
 		}
 		finally
@@ -122,6 +152,27 @@ final class BounceService
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Persists the latest returned-mail check without making status reporting
+	 * capable of breaking the actual bounce processor after a partial update.
+	 *
+	 * @param array<string,int> $result Check counters.
+	 * @param string|null       $error  Sanitized failure message.
+	 *
+	 * @return void
+	 */
+	private function rememberCheck(array $result, ?string $error): void
+	{
+		try
+		{
+			$this->settings->recordBounceCheck($result, $error);
+		}
+		catch (\Throwable)
+		{
+			// Returned-mail processing remains primary if status persistence fails.
+		}
 	}
 
 	/** @return bool */
@@ -262,8 +313,14 @@ final class BounceService
 		return 'unknown';
 	}
 
-	/** @param array<string,mixed> $bounce @return bool */
-	private function record(array $bounce): bool
+	/**
+	 * Records one recognized bounce.
+	 *
+	 * @param array<string,mixed> $bounce Parsed bounce data.
+	 *
+	 * @return array{recorded:bool,suppressed:bool} Recording and suppression result.
+	 */
+	private function record(array $bounce): array
 	{
 		$messageKey = (string) $bounce['message_key'];
 		$query = $this->db->getQuery(true)
@@ -274,7 +331,7 @@ final class BounceService
 
 		if ((int) $this->db->setQuery($query)->loadResult() > 0)
 		{
-			return false;
+			return ['recorded' => false, 'suppressed' => false];
 		}
 
 		$subscriber = $this->subscribers->findByEmail((string) $bounce['email']);
@@ -302,6 +359,7 @@ final class BounceService
 			'occurred_at' => (string) $bounce['occurred_at'],
 			'processed_at' => $now,
 		];
+		$newlySuppressed = false;
 		$this->db->transactionStart();
 
 		try
@@ -310,7 +368,7 @@ final class BounceService
 
 			if ($subscriberId !== null)
 			{
-				$this->updateSubscriberBounce($subscriberId, $bounce, $now);
+				$newlySuppressed = $this->updateSubscriberBounce($subscriberId, $bounce, $now);
 			}
 
 			if ($queueId !== null)
@@ -343,11 +401,19 @@ final class BounceService
 			$this->newsletters->refreshQueueCounters($newsletterId);
 		}
 
-		return true;
+		return ['recorded' => true, 'suppressed' => $newlySuppressed];
 	}
 
-	/** @param array<string,mixed> $bounce @return void */
-	private function updateSubscriberBounce(int $subscriberId, array $bounce, string $now): void
+	/**
+	 * Updates subscriber bounce counters and applies bounce suppression when due.
+	 *
+	 * @param int                 $subscriberId Subscriber ID.
+	 * @param array<string,mixed> $bounce       Parsed bounce data.
+	 * @param string              $now          Current UTC SQL timestamp.
+	 *
+	 * @return bool True when this bounce newly excluded the address from delivery.
+	 */
+	private function updateSubscriberBounce(int $subscriberId, array $bounce, string $now): bool
 	{
 		$classification = (string) $bounce['classification'];
 		$reason = trim((string) ($bounce['diagnostic'] ?? ''));
@@ -370,22 +436,38 @@ final class BounceService
 
 		if ($subscriber === null)
 		{
-			return;
+			return false;
 		}
+
+		$normalized = (string) $subscriber->email_normalized;
+		$existingSuppression = $this->subscribers->getSuppressionReason($normalized);
 
 		if ($classification === 'hard')
 		{
-			$this->subscribers->suppress($subscriberId, (string) $subscriber->email_normalized, 'hard-bounce');
+			if ($existingSuppression === null || in_array($existingSuppression, ['hard-bounce', 'soft-bounce-threshold'], true))
+			{
+				$this->subscribers->suppress($subscriberId, $normalized, 'hard-bounce');
+			}
+
+			return $existingSuppression === null;
 		}
-		elseif ($classification === 'soft')
+
+		if ($classification === 'soft')
 		{
 			$threshold = max(1, (int) ComponentHelper::getParams('com_pungamail')->get('soft_bounce_threshold', 3));
 
 			if ((int) $subscriber->soft_bounce_count >= $threshold)
 			{
-				$this->subscribers->suppress($subscriberId, (string) $subscriber->email_normalized, 'soft-bounce-threshold');
+				if ($existingSuppression === null || in_array($existingSuppression, ['hard-bounce', 'soft-bounce-threshold'], true))
+				{
+					$this->subscribers->suppress($subscriberId, $normalized, 'soft-bounce-threshold');
+				}
+
+				return $existingSuppression === null;
 			}
 		}
+
+		return false;
 	}
 
 	/** @return object|null */

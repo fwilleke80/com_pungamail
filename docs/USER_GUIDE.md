@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.1. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.2. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -620,7 +620,11 @@ The queue table shows the real per-recipient send rows, including Newsletter, re
 
 ### Bounce mailbox card
 
-The card shows whether the mailbox is configured and the current server without revealing its password. **Open Component Options** goes to the settings. **Process bounces now** performs one mailbox run immediately.
+The card shows whether the mailbox is configured and the current server without revealing its password. **Open Component Options** goes to the settings. **Check returned mail now** performs one mailbox run immediately.
+
+The same card also shows the **last returned-mail check**. Manual checks and **Punga Mail — Check returned mail** Scheduled Task runs update the same summary: check time, number of returned messages processed, permanent failures, temporary failures, and addresses newly excluded from future delivery. A failed mailbox check is shown with its sanitized error instead of silently disappearing into the scheduler log.
+
+If the most recent successful check newly excluded one or more addresses, the Dashboard also surfaces this under **Needs attention** with a link back to Delivery. Punga Mail suppresses delivery to those addresses; it does **not** delete subscriber records, Channel memberships, or bounce history.
 
 The recent-bounces table shows timestamp, address, classification, SMTP/status code, diagnostic message, and whether the address is now suppressed.
 

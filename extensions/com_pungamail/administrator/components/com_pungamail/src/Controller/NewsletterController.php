@@ -111,7 +111,7 @@ final class NewsletterController extends BaseController
 			}
 
 			$id = $this->saveData($data, false);
-			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), Text::_('COM_PUNGAMAIL_TEMPLATE_APPLIED'));
+			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id) . '&tab=pm-mail-content', false), Text::_('COM_PUNGAMAIL_TEMPLATE_APPLIED'));
 		}
 		catch (\Throwable $e)
 		{

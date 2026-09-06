@@ -25,6 +25,7 @@ $nextScheduled = $upcoming[0] ?? null;
 $automatic = (array) ($overview['automatic'] ?? []);
 $channelStats = (array) ($overview['channel_stats'] ?? []);
 $activity = (array) ($overview['activity'] ?? []);
+$bounceCheck = $data['bounce_check'] ?? null;
 $taskReady = static fn (?object $task): bool => $task !== null && (int) $task->state === 1;
 $issues = [];
 
@@ -56,6 +57,15 @@ if (($automationNeeds['bounce_configured'] ?? false) && !$taskReady($tasks['boun
 if ((int) ($queue['failed'] ?? 0) > 0)
 {
 	$issues[] = ['class' => 'warning', 'text' => Text::sprintf('COM_PUNGAMAIL_DASHBOARD_FAILED_DELIVERIES', (int) $queue['failed']), 'url' => 'index.php?option=com_pungamail&view=delivery'];
+}
+
+if ($bounceCheck !== null && !$bounceCheck->ok)
+{
+	$issues[] = ['class' => 'warning', 'text' => Text::_('COM_PUNGAMAIL_DASHBOARD_RETURNED_MAIL_FAILED'), 'url' => 'index.php?option=com_pungamail&view=delivery#returned-mail'];
+}
+elseif ($bounceCheck !== null && (int) $bounceCheck->suppressed > 0)
+{
+	$issues[] = ['class' => 'warning', 'text' => Text::plural('COM_PUNGAMAIL_DASHBOARD_BOUNCE_SUPPRESSIONS', (int) $bounceCheck->suppressed), 'url' => 'index.php?option=com_pungamail&view=delivery#returned-mail'];
 }
 
 $chartMax = 1;

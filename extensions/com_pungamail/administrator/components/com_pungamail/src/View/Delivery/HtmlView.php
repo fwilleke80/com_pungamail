@@ -17,6 +17,7 @@ use Joomla\CMS\Toolbar\ToolbarHelper;
 final class HtmlView extends BaseHtmlView
 {
 	public object $settings;
+	public ?object $bounceCheck = null;
 	public array $bounces = [];
 	public array $diagnostics = [];
 	public array $queue = [];
@@ -33,6 +34,7 @@ final class HtmlView extends BaseHtmlView
 
 		$model = $this->getModel();
 		$this->settings = $model->getSettings();
+		$this->bounceCheck = $model->getBounceCheck();
 		$this->bounces = $model->getBounces();
 		$this->diagnostics = $model->getDiagnostics();
 		$this->queue = $model->getQueue();

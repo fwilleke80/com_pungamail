@@ -1342,7 +1342,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 2. Click **Process bounces now**.
 3. Put another DSN in the mailbox and run **Punga Mail — Check returned mail**.
 
-**Expected:** Both paths use the same rules, report useful counts, and process each message at most once. Mailbox errors are sanitized. The recent-bounces list updates.
+**Expected:** Both paths use the same rules, report useful counts, and process each message at most once. Mailbox errors are sanitized. The recent-bounces list updates. Delivery shows the latest check time/result for both manual and Scheduled Task runs. If a run newly suppresses an address, the latest-check summary reports it and Dashboard → Needs attention links back to returned-mail details. Subscriber records are retained.
 
 ### PM-233 — Hard bounce classification and suppression
 
@@ -1406,6 +1406,19 @@ Keep the global queue paused except where a test explicitly says to resume it.
 **Expected:** The event is counted once. Necessary diagnostic text is administrator-only and sanitized; mailbox credentials, full raw private message, and subscriber tokens are not exposed publicly or in ordinary logs.
 
 ---
+
+### 0.6.2 focused acceptance — returned-mail status and editor context
+
+1. Open **Audience → Subscribers** and verify the former long delivery-block explanatory paragraph is no longer shown above the list.
+2. Open a Newsletter, switch to **Mail content**, select a Template, and choose **Apply template**. Verify the Newsletter reloads on **Mail content** with the Template values applied.
+3. Configure a controlled return mailbox and click **Check returned mail now**. Verify no `imap_fetchheader()` flag TypeError occurs.
+4. With no returned messages, verify Delivery still records a successful **Last returned-mail check** timestamp with zero counts.
+5. Process one controlled hard-bounce DSN for an otherwise deliverable subscriber. Verify Delivery reports one permanent failure and one newly excluded address, Recent returned mail contains the DSN, and the subscriber still exists with delivery suppressed.
+6. Open Dashboard and verify **Needs attention** reports the newly excluded recipient and links to Delivery's returned-mail area.
+7. Run another successful check with no new suppression. Verify the latest-check summary updates and the previous “newly excluded” Dashboard notice disappears.
+8. Cause a controlled mailbox connection failure. Verify Delivery records the failed latest check with a sanitized error and Dashboard surfaces the failed check under **Needs attention**.
+9. Run Joomla Scheduled Task **Punga Mail — Check returned mail** with a controlled DSN and verify it updates the same Delivery summary as the manual button.
+
 
 ## L. Subscriber CSV import and export
 

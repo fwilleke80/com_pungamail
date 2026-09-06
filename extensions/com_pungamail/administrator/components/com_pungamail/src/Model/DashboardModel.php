@@ -11,6 +11,7 @@ namespace Punga\Component\PungaMail\Administrator\Model;
 use Joomla\CMS\Date\Date;
 use Joomla\CMS\MVC\Model\BaseDatabaseModel;
 use Joomla\Database\ParameterType;
+use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 /**
  * Dashboard aggregate model.
@@ -51,6 +52,16 @@ final class DashboardModel extends BaseDatabaseModel
 		$schemaIncomplete = $schemaIncomplete || (bool) ($automation['schema_incomplete'] ?? false);
 
 		$overview = $this->safeData(fn (): array => $this->getOverviewData(), [], $schemaIncomplete);
+		$bounceCheck = null;
+
+		try
+		{
+			$bounceCheck = ServiceFactory::mailSettings()->getBounceCheck();
+		}
+		catch (\Throwable)
+		{
+			$schemaIncomplete = true;
+		}
 
 		return [
 			'version' => $this->getVersion(),
@@ -61,6 +72,7 @@ final class DashboardModel extends BaseDatabaseModel
 			'tasks' => $tasks,
 			'automation' => $automation,
 			'overview' => $overview,
+			'bounce_check' => $bounceCheck,
 			'schema_incomplete' => $schemaIncomplete,
 		];
 	}

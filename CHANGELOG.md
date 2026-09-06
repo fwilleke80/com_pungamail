@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.2 — 2026-09-06
+
+### Returned-mail visibility and fixes
+
+- Fixed **Check returned mail now** on current PHP IMAP versions by removing the invalid `FT_PEEK` flag from `imap_fetchheader()` while retaining non-destructive body fetching.
+- Delivery now stores and shows the result of the most recent returned-mail check, including check time, processed messages, permanent/temporary failures, failure details, and how many addresses were newly excluded from future delivery.
+- The Dashboard **Needs attention** panel now surfaces a failed returned-mail check or recipients newly excluded by the latest successful check, with a direct link to returned-mail details.
+- Bounce-triggered suppression remains an address-level delivery protection; subscriber records and bounce history are never deleted.
+
+### Administrator UX
+
+- Removed the long delivery-block explanation from **Audience → Subscribers**.
+- Applying a Template from a Newsletter's **Mail content** tab now returns to the same tab instead of switching to Settings.
+
+### Database
+
+- Added latest returned-mail check status/result fields to `#__pungamail_mail_settings` so manual and Scheduled Task runs share one visible administrator status summary.
+
 ## 0.6.1 — 2026-09-06
 
 ### Administrator navigation

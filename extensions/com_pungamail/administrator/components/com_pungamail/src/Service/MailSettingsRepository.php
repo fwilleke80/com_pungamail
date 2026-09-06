@@ -45,10 +45,116 @@ final class MailSettingsRepository
 			];
 		}
 
-		unset($row->bounce_password_cipher);
+		unset($row->bounce_password_cipher, $row->bounce_last_check_result, $row->bounce_last_check_error);
 		$row->password_configured = $this->hasPassword();
 
 		return $row;
+	}
+
+	/**
+	 * Returns the most recent returned-mail check summary.
+	 *
+	 * @return object|null Last check summary, or null before the first check.
+	 */
+	public function getBounceCheck(): ?object
+	{
+		$row = $this->load();
+
+		if ($row === null || empty($row->bounce_last_check_at))
+		{
+			return null;
+		}
+
+		$result = json_decode((string) ($row->bounce_last_check_result ?? ''), true);
+
+		if (!is_array($result))
+		{
+			$result = [];
+		}
+
+		return (object) [
+			'checked_at' => (string) $row->bounce_last_check_at,
+			'ok' => (string) ($row->bounce_last_check_status ?? '') === 'ok',
+			'checked' => (int) ($result['checked'] ?? 0),
+			'processed' => (int) ($result['processed'] ?? 0),
+			'hard' => (int) ($result['hard'] ?? 0),
+			'soft' => (int) ($result['soft'] ?? 0),
+			'unknown' => (int) ($result['unknown'] ?? 0),
+			'duplicates' => (int) ($result['duplicates'] ?? 0),
+			'suppressed' => (int) ($result['suppressed'] ?? 0),
+			'error' => trim((string) ($row->bounce_last_check_error ?? '')),
+		];
+	}
+
+	/**
+	 * Stores the most recent returned-mail check summary for administrator UI.
+	 *
+	 * @param array<string,int> $result Check counters.
+	 * @param string|null       $error  Sanitized failure message, or null on success.
+	 *
+	 * @return void
+	 */
+	public function recordBounceCheck(array $result, ?string $error = null): void
+	{
+		$now = (new Date('now', 'UTC'))->toSql();
+		$status = $error === null ? 'ok' : 'failed';
+		$payload = json_encode([
+			'checked' => (int) ($result['checked'] ?? 0),
+			'processed' => (int) ($result['processed'] ?? 0),
+			'hard' => (int) ($result['hard'] ?? 0),
+			'soft' => (int) ($result['soft'] ?? 0),
+			'unknown' => (int) ($result['unknown'] ?? 0),
+			'duplicates' => (int) ($result['duplicates'] ?? 0),
+			'suppressed' => (int) ($result['suppressed'] ?? 0),
+		], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		$payloadValue = $payload !== false ? $payload : '{}';
+		$existing = $this->load();
+
+		if ($existing === null)
+		{
+			$row = (object) [
+				'id' => 1,
+				'bounce_host' => '',
+				'bounce_port' => 993,
+				'bounce_security' => 'ssl',
+				'validate_cert' => 1,
+				'bounce_username' => '',
+				'bounce_password_cipher' => null,
+				'bounce_mailbox' => 'INBOX',
+				'bounce_address' => '',
+				'bounce_last_check_at' => $now,
+				'bounce_last_check_status' => $status,
+				'bounce_last_check_result' => $payloadValue,
+				'bounce_last_check_error' => $error !== null && $error !== '' ? $error : null,
+				'created' => $now,
+				'modified' => $now,
+			];
+			$this->db->insertObject('#__pungamail_mail_settings', $row);
+			return;
+		}
+
+		$id = 1;
+		$errorValue = $error !== null && $error !== '' ? $error : null;
+		$query = $this->db->getQuery(true)
+			->update($this->db->quoteName('#__pungamail_mail_settings'))
+			->set($this->db->quoteName('bounce_last_check_at') . ' = :checkedAt')
+			->set($this->db->quoteName('bounce_last_check_status') . ' = :status')
+			->set($this->db->quoteName('bounce_last_check_result') . ' = :result')
+			->set($this->db->quoteName('bounce_last_check_error') . ($errorValue === null ? ' = NULL' : ' = :error'))
+			->set($this->db->quoteName('modified') . ' = :modified')
+			->where($this->db->quoteName('id') . ' = :id')
+			->bind(':checkedAt', $now)
+			->bind(':status', $status)
+			->bind(':result', $payloadValue)
+			->bind(':modified', $now)
+			->bind(':id', $id, ParameterType::INTEGER);
+
+		if ($errorValue !== null)
+		{
+			$query->bind(':error', $errorValue);
+		}
+
+		$this->db->setQuery($query)->execute();
 	}
 
 	/** @return object */

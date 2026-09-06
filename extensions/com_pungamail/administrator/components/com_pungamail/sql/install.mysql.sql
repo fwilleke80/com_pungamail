@@ -270,6 +270,10 @@ CREATE TABLE IF NOT EXISTS `#__pungamail_mail_settings` (
   `bounce_password_cipher` TEXT NULL,
   `bounce_mailbox` VARCHAR(191) NOT NULL DEFAULT 'INBOX',
   `bounce_address` VARCHAR(320) NOT NULL DEFAULT '',
+  `bounce_last_check_at` DATETIME NULL,
+  `bounce_last_check_status` VARCHAR(16) NOT NULL DEFAULT '',
+  `bounce_last_check_result` TEXT NULL,
+  `bounce_last_check_error` TEXT NULL,
   `created` DATETIME NOT NULL,
   `modified` DATETIME NOT NULL,
   PRIMARY KEY (`id`)

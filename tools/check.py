@@ -108,6 +108,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.5.2.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.0.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.1.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.2.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/MarkdownEditorHelper.php",
@@ -1861,7 +1862,9 @@ def check_release_ux_0405() -> None:
     markdown = (admin_root / "src/Helper/MarkdownEditorHelper.php").read_text(encoding="utf-8")
     marker = (admin_root / "sql/updates/mysql/0.4.5.sql").read_text(encoding="utf-8")
 
-    mail_tab = newsletter[newsletter.find("pm-mail-content"):newsletter.find("pm-content-selection")]
+    mail_start = newsletter.find("HTMLHelper::_('uitab.addTab', 'pm-newsletter-tabs', 'pm-mail-content'")
+    content_start = newsletter.find("HTMLHelper::_('uitab.addTab', 'pm-newsletter-tabs', 'pm-content-selection'")
+    mail_tab = newsletter[mail_start:content_start]
     sidebar = newsletter[newsletter.find('<aside class="col-12 col-xl-3">'):newsletter.find('name="schedule_from_editor"')]
 
     required = (
@@ -2186,6 +2189,70 @@ def check_release_ux_0601() -> None:
                 fail(f"0.6.1 is missing {locale} navigation/archive copy: {key}")
 
 
+
+def check_release_fix_0602() -> None:
+    """Protect 0.6.2 returned-mail status and administrator-context fixes."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    bounce_service = (admin_root / "src/Service/BounceService.php").read_text(encoding="utf-8")
+    mail_settings = (admin_root / "src/Service/MailSettingsRepository.php").read_text(encoding="utf-8")
+    delivery_layout = (admin_root / "tmpl/delivery/default.php").read_text(encoding="utf-8")
+    dashboard_layout = (admin_root / "tmpl/dashboard/default.php").read_text(encoding="utf-8")
+    subscriber_layout = (admin_root / "tmpl/subscribers/default.php").read_text(encoding="utf-8")
+    newsletter_controller = (admin_root / "src/Controller/NewsletterController.php").read_text(encoding="utf-8")
+    newsletter_layout = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    install = (admin_root / "sql/install.mysql.sql").read_text(encoding="utf-8")
+    migration = (admin_root / "sql/updates/mysql/0.6.2.sql").read_text(encoding="utf-8")
+
+    if re.search(r"imap_fetchheader\([^;]*FT_PEEK", bounce_service, re.DOTALL) is not None:
+        fail("0.6.2 returned-mail processor still passes FT_PEEK to imap_fetchheader()")
+    if "imap_fetchheader($connection, $messageNumber);" not in bounce_service:
+        fail("0.6.2 returned-mail processor is missing the valid raw-header fetch")
+    if "imap_body($connection, $messageNumber, FT_PEEK)" not in bounce_service:
+        fail("0.6.2 returned-mail processor no longer peeks the message body safely")
+
+    for token in ("'suppressed' => 0", "recordBounceCheck", "rememberCheck", "updateSubscriberBounce"):
+        if token not in bounce_service:
+            fail(f"0.6.2 bounce result tracking is missing {token!r}")
+    for token in ("getBounceCheck", "recordBounceCheck", "bounce_last_check_result", "bounce_last_check_error"):
+        if token not in mail_settings:
+            fail(f"0.6.2 latest returned-mail status storage is missing {token!r}")
+    for token in ("bounce_last_check_at", "bounce_last_check_status", "bounce_last_check_result", "bounce_last_check_error"):
+        if token not in install or token not in migration:
+            fail(f"0.6.2 returned-mail status schema is missing {token!r}")
+
+    for token in ("COM_PUNGAMAIL_RETURNED_MAIL_LAST_CHECK", 'id="returned-mail"', "COM_PUNGAMAIL_RETURNED_MAIL_NEW_SUPPRESSIONS"):
+        if token not in delivery_layout:
+            fail(f"0.6.2 Delivery returned-mail summary is missing {token!r}")
+    for token in ("COM_PUNGAMAIL_DASHBOARD_BOUNCE_SUPPRESSIONS", "COM_PUNGAMAIL_DASHBOARD_RETURNED_MAIL_FAILED"):
+        if token not in dashboard_layout:
+            fail(f"0.6.2 Dashboard returned-mail attention state is missing {token!r}")
+
+    if "COM_PUNGAMAIL_SUPPRESSION_HELP" in subscriber_layout:
+        fail("0.6.2 Subscribers list still renders the removed delivery-block explanation")
+    if "&tab=pm-mail-content" not in newsletter_controller:
+        fail("0.6.2 Apply template does not return to the Mail content tab")
+    for token in ("$requestedTab", "$activeTab", "$recallTabs"):
+        if token not in newsletter_layout:
+            fail(f"0.6.2 Newsletter tab restoration is missing {token!r}")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin_root / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_RETURNED_MAIL_LAST_CHECK",
+            "COM_PUNGAMAIL_RETURNED_MAIL_LAST_RESULT",
+            "COM_PUNGAMAIL_RETURNED_MAIL_NEW_SUPPRESSIONS",
+            "COM_PUNGAMAIL_DASHBOARD_BOUNCE_SUPPRESSIONS",
+            "COM_PUNGAMAIL_DASHBOARD_RETURNED_MAIL_FAILED",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.6.2 is missing {locale} returned-mail copy: {key}")
+
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    if "0.6.2 focused acceptance — returned-mail status and editor context" not in test_guide:
+        fail("0.6.2 focused returned-mail acceptance guide missing")
+
+
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
 
@@ -2327,6 +2394,7 @@ def main() -> int:
         check_release_fix_0502,
         check_release_ux_0600,
         check_release_ux_0601,
+        check_release_fix_0602,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

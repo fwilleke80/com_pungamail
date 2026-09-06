@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.6.1 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.6.2 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -30,7 +30,7 @@ Newsletter drafts and immutable send-snapshot metadata.
 
 Two state concepts remain separate:
 
-- Joomla `state`: `1` active, `-2` trashed.
+- Joomla `state`: `1` active, `2` archived, `-2` trashed.
 - Delivery `status`: `0` draft, `1` queued, `2` sending, `3` sent, `4` sent with failures.
 
 0.2.0 adds `template_id`, layered style/custom-CSS data, and `reminder_sent_at`. `content_cutoff_start` is the editor-selected discovery lower bound; `content_cutoff_end` is frozen at queue time and becomes the default for the next newsletter.
@@ -54,6 +54,11 @@ Additional Joomla user groups selected as recipients.
 Frozen per-recipient delivery snapshot. `recipient_name` stores the resolved Joomla display name (or email fallback) at queue time for `{recipient}` personalization. `(newsletter_id, email_normalized)` is a database-level idempotency barrier. Workers atomically claim `pending` rows, send them, retry recoverable failures, and mark exhausted attempts `failed`. Stale `processing` rows are recoverable.
 
 SMTP handoff and DB update cannot be one distributed transaction. A crash after SMTP acceptance but before the `sent` update can therefore cause one duplicate after stale recovery; Punga Mail prefers that rare duplicate to silently losing a message.
+
+
+## `#__pungamail_mail_settings`
+
+Singleton storage for the returned-mail mailbox configuration. The password remains encrypted. 0.6.2 also stores only the **latest** returned-mail check timestamp/status, a compact JSON counter summary, and a sanitized failure message. Joomla Scheduled Tasks remains the authoritative task-execution history; Punga Mail does not create an unbounded duplicate run-history table merely to render the Delivery/Dashboard status.
 
 ## `#__pungamail_events`
 
@@ -115,3 +120,5 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 - `0.5.2.sql` — unsaved-change tracking correction marker; no schema changes.
 - `0.6.0.sql` — creates `#__pungamail_content_layouts` for the central default/per-content-type selected-content layout system. The package installer migrates the former component-wide layout into the central Default layout; legacy per-Newsletter/per-Template overrides remain stored because they cannot always be mapped losslessly.
 - `0.6.1.sql` — schema-version marker only. Newsletter archiving uses the existing `state` column with Joomla state `2` and therefore requires no table alteration.
+
+- `0.6.2.sql` — adds latest returned-mail check timestamp/status/result fields to `#__pungamail_mail_settings` for Delivery and Dashboard visibility.
