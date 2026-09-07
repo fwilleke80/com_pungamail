@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.10 — 2026-09-07
+
+- Fixed frontend browser-tab titles for all Punga Mail site views by using Joomla's standard document-title composition, including the configured site-name prefix/suffix.
+- The Newsletter subscription menu item now honours Joomla's **Browser Page Title** setting and otherwise falls back to the menu/page title.
+- Public browser-view newsletters now use the immutable sent newsletter subject as the browser-tab title, with the newsletter title and generic Newsletter label as safe fallbacks.
+- Confirmation, status-message, and unsubscribe routes now use their own meaningful translated page titles instead of inheriting the generic Newsletter menu title.
+- Added acceptance/release checks covering frontend title composition and the browser-view subject title.
+- Added the 0.6.10 database-version marker; no schema change is required.
+
 ## 0.6.9 — 2026-09-07
 
 - Fixed Joomla User Custom Field placeholder discovery. Joomla stores the machine-readable Custom Field identifier in `#__fields.name`, not an `alias` column; 0.6.8 therefore swallowed the database error and showed no `{userfield|...}` entries in the Markdown placeholder menu.

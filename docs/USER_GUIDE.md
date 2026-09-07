@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.9. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.10. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -787,6 +787,8 @@ The page is a complete standalone subscription destination and acts as the Jooml
 - If no topics are published, the page still provides global newsletter signup and subscription management.
 
 Unlike the signup module, this menu page has no configured Channel subset: it offers every currently published Channel the current visitor is eligible to subscribe to.
+
+Punga Mail follows Joomla's normal browser-title rules on frontend pages. The subscription page uses the menu item's **Browser Page Title** when one is configured, otherwise its normal menu/page title, and Joomla adds the site name according to **Global Configuration → SEO → Site Name in Page Titles**. Confirmation, unsubscribe, and status pages use their own translated titles. A sent newsletter opened through **View in browser** uses that newsletter's frozen subject as its browser-tab title.
 
 Do not restrict the menu item to an access level that ordinary email recipients cannot use, or their confirmation and unsubscribe links may not reach the intended page.
 

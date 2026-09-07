@@ -8,6 +8,8 @@
 
 namespace Punga\Component\PungaMail\Site\View\Subscription;
 
+use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 
 /**
@@ -28,6 +30,16 @@ final class HtmlView extends BaseHtmlView
 	public function display($tpl = null): void
 	{
 		$this->subscriptionState = $this->getModel()->getSubscriptionState();
+
+		$params = Factory::getApplication()->getParams();
+		$title = trim((string) $params->get('page_title', ''));
+
+		if ($title === '')
+		{
+			$title = Text::_('COM_PUNGAMAIL_SUBSCRIPTION_PAGE_HEADING');
+		}
+
+		$this->setDocumentTitle($title);
 		parent::display($tpl);
 	}
 }

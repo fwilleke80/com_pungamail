@@ -1,4 +1,4 @@
-# Punga Mail 0.6.9 Live Acceptance Test Guide
+# Punga Mail 0.6.10 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -698,14 +698,17 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Expected:** Hidden/unavailable memberships are not accidentally deleted by the profile form. Current eligibility still controls delivery.
 
-### PM-082 — Subscription menu item and SEF routes
+### PM-082 — Subscription menu item, SEF routes, and browser titles
 
 **Steps:**
 
-1. Open the published Newsletter subscription menu item logged out and logged in.
-2. Exercise confirmation/unsubscribe/browser-view routes with SEF enabled.
+1. In Joomla Global Configuration, set **Site Name in Page Titles** to append the site name.
+2. Open the published Newsletter subscription menu item logged out and logged in.
+3. Confirm that the browser tab uses the menu item's **Browser Page Title** when configured, otherwise the normal menu/page title, followed by the Joomla site name.
+4. Exercise valid and invalid confirmation, status-message, and unsubscribe routes with SEF enabled and inspect each browser-tab title.
+5. Send a controlled newsletter with browser view enabled and open its public browser-view link.
 
-**Expected:** Public routes resolve through Joomla routing, use the intended menu item, and do not expose administrator-only pages.
+**Expected:** Public routes resolve through Joomla routing and use meaningful Joomla-composed document titles. The subscription page behaves like other Joomla menu pages (for example `Newsletter - Example Site` when the site name is configured as a suffix). Confirmation/status/unsubscribe pages use their own translated page titles plus the site name. The browser-view page uses the immutable sent newsletter subject plus the site name. Public routes do not expose administrator-only pages.
 
 ---
 

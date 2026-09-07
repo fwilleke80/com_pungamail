@@ -119,6 +119,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.7.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.8.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.9.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.10.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
@@ -2843,7 +2844,6 @@ def check_release_fix_0609() -> None:
 
     user_guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
     for token in (
-        "Punga Mail 0.6.9",
         "{userfield|field-name}",
         "Name** is `mobile-phone`",
     ):
@@ -2852,13 +2852,65 @@ def check_release_fix_0609() -> None:
 
     test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
     for token in (
-        "Punga Mail 0.6.9 Live Acceptance Test Guide",
         "PM-108A — Joomla User Custom Field placeholders",
         "Name** is `mobile-phone`",
     ):
         if token not in test_guide:
             fail(f"0.6.9 TEST_GUIDE is missing {token!r}")
 
+
+
+def check_release_fix_0610() -> None:
+    """Protect frontend Joomla document-title composition."""
+
+    site_root = ROOT / "extensions/com_pungamail/components/com_pungamail/src/View"
+    subscription = (site_root / "Subscription/HtmlView.php").read_text(encoding="utf-8")
+    browser = (site_root / "Browser/HtmlView.php").read_text(encoding="utf-8")
+    confirm = (site_root / "Confirm/HtmlView.php").read_text(encoding="utf-8")
+    message = (site_root / "Message/HtmlView.php").read_text(encoding="utf-8")
+    unsubscribe = (site_root / "Unsubscribe/HtmlView.php").read_text(encoding="utf-8")
+
+    if "getParams()" not in subscription or "get('page_title'" not in subscription:
+        fail("0.6.10 subscription view must honour Joomla menu Browser Page Title")
+
+    for label, contents in (
+        ("subscription", subscription),
+        ("browser", browser),
+        ("confirmation", confirm),
+        ("status message", message),
+        ("unsubscribe", unsubscribe),
+    ):
+        if "setDocumentTitle(" not in contents:
+            fail(f"0.6.10 {label} frontend view does not use Joomla document-title composition")
+
+    for token in ("snapshot_subject", "newsletter->title", "COM_PUNGAMAIL_BROWSER_NOT_FOUND_TITLE"):
+        if token not in browser:
+            fail(f"0.6.10 browser-view title fallback is missing {token!r}")
+
+    migration = (
+        ROOT / "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.10.sql"
+    ).read_text(encoding="utf-8")
+    if "no schema change" not in migration.lower():
+        fail("0.6.10 migration marker does not document its no-schema-change contract")
+
+    user_guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "Punga Mail 0.6.10",
+        "Browser Page Title",
+        "Site Name in Page Titles",
+        "frozen subject",
+    ):
+        if token not in user_guide:
+            fail(f"0.6.10 USER_GUIDE is missing {token!r}")
+
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "Punga Mail 0.6.10 Live Acceptance Test Guide",
+        "PM-082 — Subscription menu item, SEF routes, and browser titles",
+        "immutable sent newsletter subject",
+    ):
+        if token not in test_guide:
+            fail(f"0.6.10 TEST_GUIDE is missing {token!r}")
 
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
@@ -3009,6 +3061,7 @@ def main() -> int:
         check_release_fix_0607,
         check_release_ux_0608,
         check_release_fix_0609,
+        check_release_fix_0610,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

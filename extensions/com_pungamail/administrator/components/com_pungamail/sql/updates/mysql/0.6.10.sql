@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.10 fixes frontend Joomla document-title composition; no schema change.
