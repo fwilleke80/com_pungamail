@@ -178,7 +178,8 @@ final class NewsletterController extends BaseController
 				$rendered['subject'],
 				$rendered['html'],
 				$rendered['text'],
-				RecipientName::resolve((string) $identity->name, $email)
+				RecipientName::resolve((string) $identity->name, $email),
+				(int) $identity->id
 			);
 			$template = $newsletter->template_id !== null ? ServiceFactory::templates()->find((int) $newsletter->template_id) : null;
 			$replyTo = ServiceFactory::mailConfiguration()->replyTo($template, $newsletter);

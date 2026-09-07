@@ -1,4 +1,4 @@
-# Punga Mail 0.6.7 Live Acceptance Test Guide
+# Punga Mail 0.6.9 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -477,6 +477,19 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Expected:** Channel eligibility follows the selected Joomla account immediately, before the subscriber exists in the database. Saving preserves the selected eligible Channels, server-side validation still rejects ineligible memberships, and no duplicate subscriber row is created.
 
+### PM-052A — Reject duplicate subscriber creation
+
+**Steps:**
+
+1. Ensure a controlled Joomla user already exists in **Audience → Subscribers**, with recognizable Channel selections.
+2. Open **New Subscriber**, choose **Joomla User**, and select that same Joomla account.
+3. Confirm the editor immediately reports that the recipient already exists and offers **Open existing subscriber**.
+4. Attempt **Save** / **Save & Close** and confirm the New form does not overwrite the existing record.
+5. Repeat with **Email address** using an address already present in Subscribers.
+6. Reopen the original subscriber and inspect its subscription status and Channel memberships.
+
+**Expected:** Duplicate Joomla-user and email identities are rejected in the New workflow. The existing subscriber is unchanged, no second row is created, and the server rejects duplicate creation even if client-side checks are bypassed.
+
 ### PM-053 — Administrator Channel membership changes
 
 **Steps:**
@@ -791,6 +804,21 @@ Keep the global queue paused except where a test explicitly says to resume it.
 5. Use **Image**, select media from Joomla Media Manager, click Select, and supply alt text if requested.
 
 **Expected:** Table and Image buttons are visually distinct. Media selection inserts Markdown image syntax at the current cursor rather than doing nothing. Selecting the same image again later still works.
+
+### PM-108A — Joomla User Custom Field placeholders
+
+**Prerequisite:** Create a published Joomla User Custom Field whose **Name** is `mobile-phone`, give a controlled Joomla user a recognizable value, and have at least one external email-only subscriber.
+
+**Steps:**
+
+1. Open a Template or Newsletter and inspect the Markdown editor's **Insert placeholder** menu.
+2. Confirm `{userfield|mobile-phone}` is listed.
+3. Put `{userfield|mobile-phone}` in the Markdown body and, separately, in the email subject.
+4. Preview/send a test while logged in as the controlled Joomla user, then send a real controlled newsletter to that user.
+5. Send the same content to the external email-only subscriber.
+6. Test an unknown field name such as `{userfield|does-not-exist}` and, if practical, unpublish the test field and repeat.
+
+**Expected:** The linked Joomla recipient receives their Custom Field value in subject/body; HTML output escapes unsafe characters. External recipients, unknown field names, and unpublished fields receive an empty value rather than a raw placeholder or error. The editor only offers published Joomla User Custom Field names.
 
 ### PM-109 — Markdown preview and sanitization
 

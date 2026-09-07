@@ -90,7 +90,7 @@ final class SubscriberController extends BaseController
 					throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_ERROR_USER_NOT_ELIGIBLE'));
 				}
 
-				$this->guardExistingMutation(
+				$this->assertNewSubscriberAvailable(
 					ServiceFactory::subscribers()->findByUserId((int) $user->id)
 						?? ServiceFactory::subscribers()->findByEmail((string) $user->email)
 				);
@@ -112,7 +112,7 @@ final class SubscriberController extends BaseController
 					throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_ERROR_VALID_EMAIL_REQUIRED'));
 				}
 
-				$this->guardExistingMutation(ServiceFactory::subscribers()->findByEmail($email));
+				$this->assertNewSubscriberAvailable(ServiceFactory::subscribers()->findByEmail($email));
 
 				$id = ServiceFactory::subscribers()->addAdministratorExternal($email);
 				ServiceFactory::subscribers()->updateRecipientName($id, $recipientName);
@@ -303,7 +303,10 @@ final class SubscriberController extends BaseController
 
 			$recipientType = $app->getInput()->post->getCmd('recipient_type', 'email');
 			$userId = max(0, $app->getInput()->post->getInt('user_id'));
+			$email = trim((string) $app->getInput()->post->getString('email', ''));
 			$effectiveUserId = null;
+			$duplicate = null;
+			$subscribers = ServiceFactory::subscribers();
 
 			if ($recipientType === 'user' && $userId > 0)
 			{
@@ -318,13 +321,28 @@ final class SubscriberController extends BaseController
 				if ($selectedUser !== null && (int) $selectedUser->block === 0 && filter_var((string) $selectedUser->email, FILTER_VALIDATE_EMAIL))
 				{
 					$effectiveUserId = (int) $selectedUser->id;
+					$existing = $subscribers->findByUserId($effectiveUserId) ?? $subscribers->findByEmail((string) $selectedUser->email);
+
+					if ($existing !== null)
+					{
+						$duplicate = $this->duplicateResponse($existing);
+					}
+				}
+			}
+			elseif ($recipientType === 'email' && filter_var($email, FILTER_VALIDATE_EMAIL))
+			{
+				$existing = $subscribers->findByEmail($email);
+
+				if ($existing !== null)
+				{
+					$duplicate = $this->duplicateResponse($existing);
 				}
 			}
 
 			$topics = ServiceFactory::topics()->availableForAdministration();
 			$ids = array_map(static fn (object $topic): int => (int) $topic->id, $topics);
 			$eligibleIds = ServiceFactory::topics()->eligibleIds($ids, $effectiveUserId, false);
-			echo new JsonResponse(['eligible_ids' => $eligibleIds]);
+			echo new JsonResponse(['eligible_ids' => $eligibleIds, 'duplicate' => $duplicate]);
 		}
 		catch (\Throwable $e)
 		{
@@ -417,18 +435,35 @@ final class SubscriberController extends BaseController
 	}
 
 	/**
-	 * Prevents create-only administrators from modifying an existing identity.
+	 * Keeps the New Subscriber workflow create-only.
 	 *
 	 * @param object|null $subscriber Existing subscriber, when found.
 	 *
 	 * @return void
 	 */
-	private function guardExistingMutation(?object $subscriber): void
+	private function assertNewSubscriberAvailable(?object $subscriber): void
 	{
-		if ($subscriber !== null && !Factory::getApplication()->getIdentity()->authorise('core.edit', 'com_pungamail'))
+		if ($subscriber !== null)
 		{
-			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_ERROR_SUBSCRIBER_ALREADY_EXISTS'));
 		}
+	}
+
+	/**
+	 * Builds the duplicate identity payload used by the live New Subscriber check.
+	 *
+	 * @param object $subscriber Existing subscriber row.
+	 *
+	 * @return array{id:int,url:string}
+	 */
+	private function duplicateResponse(object $subscriber): array
+	{
+		$id = (int) ($subscriber->id ?? 0);
+
+		return [
+			'id' => $id,
+			'url' => Route::_(AdministratorRoute::subscriber($id), false),
+		];
 	}
 
 	/** @return void */

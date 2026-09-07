@@ -10,8 +10,10 @@ use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Helper\MarkdownEditorHelper;
 use Punga\Component\PungaMail\Administrator\Service\NewsletterRenderer;
 use Punga\Component\PungaMail\Administrator\Service\NewsletterRepository;
+use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 $item = $this->item;
+$mailPlaceholders = array_merge(['{recipient}', '{new_content}'], ServiceFactory::userFields()->placeholders());
 $isDraft = $item === null || in_array((int) $item->status, [NewsletterRepository::STATUS_DRAFT, NewsletterRepository::STATUS_SCHEDULED], true);
 $selectedByKey = [];
 foreach ($this->selectedItems as $selected)
@@ -227,7 +229,7 @@ if ($item !== null && !empty($item->scheduled_at))
 							'pm-body',
 							(string) ($item->body_markdown ?? ''),
 							18,
-							['{recipient}', '{new_content}'],
+							$mailPlaceholders,
 							[Text::_('COM_PUNGAMAIL_NEWSLETTER_PLACEHOLDER_HELP'), Text::_('COM_PUNGAMAIL_MARKDOWN_HELP'), Text::_('COM_PUNGAMAIL_MARKDOWN_IMAGE_HELP'), Text::_('COM_PUNGAMAIL_MARKDOWN_TABLE_HELP')]
 						); ?>
 					</div>

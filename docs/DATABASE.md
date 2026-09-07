@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.6.7 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.6.9 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -126,3 +126,5 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 - `0.6.4.sql` — adds `bounce_last_check_acknowledged_at` to `#__pungamail_mail_settings` so Dashboard suppression warnings can be acknowledged without changing bounce/suppression data.
 - `0.6.5.sql` — database-version marker for live unsaved Joomla-user Channel eligibility and subscriber deletion; no schema change.
 - `0.6.7.sql` — database-version marker for the clickable Automatic Newsletter state control; no schema change.
+- `0.6.8.sql` — database-version marker for duplicate-subscriber protection and Joomla User Custom Field placeholders; no schema change.
+- `0.6.9.sql` — database-version marker for the Joomla User Custom Field name/discovery correction; no schema change.

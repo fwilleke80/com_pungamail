@@ -1,0 +1,2 @@
+-- Punga Mail 0.6.8
+-- Duplicate-subscriber protection and Joomla User Custom Field placeholders; no schema change required.

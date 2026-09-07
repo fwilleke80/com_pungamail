@@ -35,7 +35,8 @@ final class TemplatepreviewModel extends BaseDatabaseModel
 			$rendered['subject'],
 			$rendered['html'],
 			$rendered['text'],
-			RecipientName::resolve((string) $identity->name, (string) $identity->email)
+			RecipientName::resolve((string) $identity->name, (string) $identity->email),
+			(int) $identity->id
 		);
 		$rendered['subject'] = $personalized['subject'];
 		$rendered['html'] = $personalized['html'];

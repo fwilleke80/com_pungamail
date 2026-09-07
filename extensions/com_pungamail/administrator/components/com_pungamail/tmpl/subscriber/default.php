@@ -44,6 +44,12 @@ $softBounceThreshold = max(1, (int) ComponentHelper::getParams('com_pungamail')-
 			<?php if ($this->item !== null) : ?>
 				<?php echo $this->form?->renderField('status') ?? ''; ?>
 			<?php endif; ?>
+			<?php if ($this->item === null) : ?>
+				<div id="pm-subscriber-duplicate" class="alert alert-warning mt-3" hidden>
+					<span><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_ALREADY_EXISTS'); ?></span>
+					<a id="pm-subscriber-duplicate-link" class="alert-link ms-1" href="#"><?php echo Text::_('COM_PUNGAMAIL_OPEN_EXISTING_SUBSCRIBER'); ?></a>
+				</div>
+			<?php endif; ?>
 					<p class="form-text"><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_PERMISSION_HELP'); ?></p>
 				</div>
 			</div>
@@ -143,12 +149,19 @@ document.addEventListener('DOMContentLoaded', function ()
 	// The actual selected account ID lives in the hidden field-user-input.
 	const userInput = document.querySelector('input[name="jform[user_id]"].field-user-input')
 		|| document.getElementById('jform_user_id_id');
+	const emailInput = document.querySelector('input[name="jform[email]"]');
 	const recipientTypeInputs = Array.from(document.querySelectorAll('input[name="jform[recipient_type]"]'));
+	const duplicateAlert = document.getElementById('pm-subscriber-duplicate');
+	const duplicateLink = document.getElementById('pm-subscriber-duplicate-link');
+	const adminForm = document.getElementById('adminForm');
 	const endpoint = <?php echo json_encode(Route::_('index.php?option=com_pungamail&task=subscriber.channelEligibility&format=json', false)); ?>;
 	const csrfToken = <?php echo json_encode(Session::getFormToken()); ?>;
 	let lastRecipientType = '';
 	let lastUserId = '';
+	let lastEmail = '';
 	let requestSerial = 0;
+	let duplicateSubscriberId = 0;
+	let emailRefreshTimer = 0;
 
 	const updateEmptyNote = function ()
 	{
@@ -200,6 +213,21 @@ document.addEventListener('DOMContentLoaded', function ()
 		updateEmptyNote();
 	};
 
+	const applyDuplicate = function (duplicate)
+	{
+		duplicateSubscriberId = duplicate && Number(duplicate.id) > 0 ? Number(duplicate.id) : 0;
+
+		if (duplicateAlert)
+		{
+			duplicateAlert.hidden = duplicateSubscriberId <= 0;
+		}
+
+		if (duplicateLink && duplicateSubscriberId > 0)
+		{
+			duplicateLink.href = String(duplicate.url || '#');
+		}
+	};
+
 	const refreshEligibility = async function (force)
 	{
 		if (!recipientTypeInputs.length)
@@ -209,18 +237,21 @@ document.addEventListener('DOMContentLoaded', function ()
 
 		const recipientType = currentRecipientType();
 		const userId = userInput ? String(userInput.value || '') : '';
+		const email = emailInput ? String(emailInput.value || '').trim() : '';
 
-		if (!force && recipientType === lastRecipientType && userId === lastUserId)
+		if (!force && recipientType === lastRecipientType && userId === lastUserId && email === lastEmail)
 		{
 			return;
 		}
 
 		lastRecipientType = recipientType;
 		lastUserId = userId;
+		lastEmail = email;
 		const serial = ++requestSerial;
 		const body = new URLSearchParams();
 		body.set('recipient_type', recipientType);
 		body.set('user_id', recipientType === 'user' ? userId : '0');
+		body.set('email', recipientType === 'email' ? email : '');
 		body.set(csrfToken, '1');
 
 		try
@@ -240,6 +271,7 @@ document.addEventListener('DOMContentLoaded', function ()
 			}
 
 			applyEligibility(payload.data && payload.data.eligible_ids ? payload.data.eligible_ids : []);
+			applyDuplicate(payload.data ? payload.data.duplicate : null);
 		}
 		catch (error)
 		{
@@ -277,6 +309,59 @@ document.addEventListener('DOMContentLoaded', function ()
 		{
 			refreshEligibility(false);
 		}, 500);
+	}
+
+	if (emailInput)
+	{
+		const scheduleEmailRefresh = function ()
+		{
+			window.clearTimeout(emailRefreshTimer);
+			emailRefreshTimer = window.setTimeout(function ()
+			{
+				refreshEligibility(true);
+			}, 250);
+		};
+
+		emailInput.addEventListener('input', scheduleEmailRefresh);
+		emailInput.addEventListener('change', function ()
+		{
+			refreshEligibility(true);
+		});
+	}
+
+	if (adminForm)
+	{
+		adminForm.addEventListener('submit', function (event)
+		{
+			if (duplicateSubscriberId > 0)
+			{
+				event.preventDefault();
+
+				if (duplicateAlert)
+				{
+					duplicateAlert.scrollIntoView({behavior: 'smooth', block: 'center'});
+				}
+			}
+		});
+	}
+
+	if (window.Joomla && typeof Joomla.submitbutton === 'function')
+	{
+		const originalSubmitbutton = Joomla.submitbutton;
+		Joomla.submitbutton = function (task)
+		{
+			if (duplicateSubscriberId > 0 && (task === 'subscriber.save' || task === 'subscriber.save2close'))
+			{
+				if (duplicateAlert)
+				{
+					duplicateAlert.scrollIntoView({behavior: 'smooth', block: 'center'});
+				}
+
+				return false;
+			}
+
+			return originalSubmitbutton(task);
+		};
 	}
 
 	updateEmptyNote();

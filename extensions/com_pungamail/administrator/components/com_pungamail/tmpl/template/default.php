@@ -15,8 +15,10 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Helper\MarkdownEditorHelper;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
+use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 $item = $this->item;
+$mailPlaceholders = array_merge(['{recipient}', '{new_content}'], ServiceFactory::userFields()->placeholders());
 $style = $this->styleOverrides;
 $styleFields = [
 	'content_width' => 'COM_PUNGAMAIL_STYLE_CONTENT_WIDTH',
@@ -66,7 +68,7 @@ $styleFields = [
 							'pt-body',
 							(string) ($item->body_markdown ?? ''),
 							18,
-							['{recipient}', '{new_content}'],
+							$mailPlaceholders,
 							[Text::_('COM_PUNGAMAIL_NEWSLETTER_PLACEHOLDER_HELP'), Text::_('COM_PUNGAMAIL_MARKDOWN_HELP'), Text::_('COM_PUNGAMAIL_MARKDOWN_IMAGE_HELP'), Text::_('COM_PUNGAMAIL_MARKDOWN_TABLE_HELP')]
 						); ?>
 					</div>

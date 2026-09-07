@@ -117,6 +117,8 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.5.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.6.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.7.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.8.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.9.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
@@ -132,6 +134,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/PreflightService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/TopicRepository.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/CsvService.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/UserFieldService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/forms/subscriber.xml",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Model/SubscriberModel.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/View/Subscriber/HtmlView.php",
@@ -1049,7 +1052,7 @@ def check_subscription_management_035() -> None:
         (edit_controller, "function save2close()", "subscriber Save & Close controller"),
         (edit_controller, "updateAdministratorTopics", "administrator Channel persistence"),
         (edit_controller, "if ($newStatus !== $currentStatus)", "topic/consent state separation"),
-        (edit_controller, "guardExistingMutation", "create/edit ACL separation"),
+        (edit_controller, "assertNewSubscriberAvailable", "create-only subscriber safety"),
         (topic_repository, "isset($selected[$topicId]) ? self::MEMBERSHIP_PENDING : self::MEMBERSHIP_UNSUBSCRIBED", "complete double-opt-in topic staging"),
     )
     for contents, token, label in required:
@@ -2542,7 +2545,7 @@ def check_release_fix_0605() -> None:
         "function channelEligibility(): void",
         "eligibleIds($ids, $effectiveUserId, false)",
         "Session::checkToken('post')",
-        "new JsonResponse(['eligible_ids' => $eligibleIds])",
+        "'eligible_ids' => $eligibleIds",
     ):
         if token not in subscriber_controller:
             fail(f"0.6.5 live Channel eligibility endpoint is missing {token!r}")
@@ -2712,7 +2715,6 @@ def check_release_fix_0607() -> None:
 
     user_guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
     for token in (
-        "Punga Mail 0.6.7",
         "actual selected Joomla account ID",
         "do not have to save the subscriber first",
     ):
@@ -2721,13 +2723,141 @@ def check_release_fix_0607() -> None:
 
     test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
     for token in (
-        "Punga Mail 0.6.7 Live Acceptance Test Guide",
         "PM-052 — Add a Joomla user and choose restricted Channels before saving",
         "Do not save yet",
         "become selectable immediately",
     ):
         if token not in test_guide:
             fail(f"0.6.7 TEST_GUIDE is missing {token!r}")
+
+
+
+def check_release_ux_0608() -> None:
+    """Protect duplicate create safety and Joomla User Custom Field placeholders."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    controller = (admin_root / "src/Controller/SubscriberController.php").read_text(encoding="utf-8")
+    subscriber_template = (admin_root / "tmpl/subscriber/default.php").read_text(encoding="utf-8")
+    renderer = (admin_root / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    user_fields = (admin_root / "src/Service/UserFieldService.php").read_text(encoding="utf-8")
+    mail_service = (admin_root / "src/Service/MailService.php").read_text(encoding="utf-8")
+    newsletter_template = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    template_template = (admin_root / "tmpl/template/default.php").read_text(encoding="utf-8")
+    migration = (admin_root / "sql/updates/mysql/0.6.8.sql").read_text(encoding="utf-8")
+
+    for token in (
+        "assertNewSubscriberAvailable",
+        "COM_PUNGAMAIL_ERROR_SUBSCRIBER_ALREADY_EXISTS",
+        "duplicateResponse",
+        "'duplicate' => $duplicate",
+        "findByUserId($effectiveUserId) ?? $subscribers->findByEmail",
+    ):
+        if token not in controller:
+            fail(f"0.6.8 duplicate-subscriber protection is missing {token!r}")
+
+    if "guardExistingMutation" in controller:
+        fail("0.6.8 New Subscriber flow still contains the old silent-existing-mutation guard")
+
+    for token in (
+        "pm-subscriber-duplicate",
+        "pm-subscriber-duplicate-link",
+        "body.set('email', recipientType === 'email' ? email : '')",
+        "duplicateSubscriberId",
+        "subscriber.save2close",
+    ):
+        if token not in subscriber_template:
+            fail(f"0.6.8 live duplicate warning is missing {token!r}")
+
+    for token in (
+        "com_users.user",
+        "#__fields",
+        "#__fields_values",
+        "state') . ' = 1'",
+        "{userfield|",
+        "valuesForUser",
+    ):
+        if token not in user_fields:
+            fail(f"0.6.8 Joomla User Custom Field resolver is missing {token!r}")
+
+    for token in (
+        "replaceUserFieldPlaceholders",
+        r"\{userfield\|([A-Za-z0-9_-]+)\}",
+        "valuesForUser($userId)",
+        "htmlspecialchars($value, ENT_QUOTES, 'UTF-8')",
+    ):
+        if token not in renderer:
+            fail(f"0.6.8 recipient user-field rendering is missing {token!r}")
+
+    if "(int) $recipient->user_id" not in mail_service:
+        fail("0.6.8 queue delivery does not pass the recipient Joomla user ID into personalization")
+
+    for label, contents in (("Newsletter", newsletter_template), ("Template", template_template)):
+        if "ServiceFactory::userFields()->placeholders()" not in contents or "$mailPlaceholders" not in contents:
+            fail(f"0.6.8 {label} editor does not expose published Joomla User Custom Field placeholders")
+
+    if "no schema change required" not in migration.lower():
+        fail("0.6.8 migration marker does not document its no-schema-change contract")
+
+    user_guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "New Subscriber is create-only",
+        "Open existing subscriber",
+        "{userfield|mobile-phone}",
+        "published Joomla User Custom Fields",
+    ):
+        if token not in user_guide:
+            fail(f"0.6.8 USER_GUIDE is missing {token!r}")
+
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "PM-052A — Reject duplicate subscriber creation",
+        "PM-108A — Joomla User Custom Field placeholders",
+        "{userfield|mobile-phone}",
+    ):
+        if token not in test_guide:
+            fail(f"0.6.8 TEST_GUIDE is missing {token!r}")
+
+
+
+def check_release_fix_0609() -> None:
+    """Protect the Joomla User Custom Field discovery correction release."""
+
+    admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    user_fields = (admin_root / "src/Service/UserFieldService.php").read_text(encoding="utf-8")
+    migration = (admin_root / "sql/updates/mysql/0.6.9.sql").read_text(encoding="utf-8")
+
+    for token in (
+        "quoteName('name')",
+        "quoteName('f.name', 'name')",
+        "row->name",
+        "{userfield|",
+    ):
+        if token not in user_fields:
+            fail(f"0.6.9 Joomla User Custom Field discovery is missing {token!r}")
+
+    if "quoteName('alias')" in user_fields or "quoteName('f.alias'" in user_fields or "row->alias" in user_fields:
+        fail("0.6.9 must not query a nonexistent Joomla #__fields.alias column")
+
+    if "no schema change required" not in migration.lower():
+        fail("0.6.9 migration marker does not document its no-schema-change contract")
+
+    user_guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "Punga Mail 0.6.9",
+        "{userfield|field-name}",
+        "Name** is `mobile-phone`",
+    ):
+        if token not in user_guide:
+            fail(f"0.6.9 USER_GUIDE is missing {token!r}")
+
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "Punga Mail 0.6.9 Live Acceptance Test Guide",
+        "PM-108A — Joomla User Custom Field placeholders",
+        "Name** is `mobile-phone`",
+    ):
+        if token not in test_guide:
+            fail(f"0.6.9 TEST_GUIDE is missing {token!r}")
 
 
 def check_package_members() -> None:
@@ -2877,6 +3007,8 @@ def main() -> int:
         check_release_fix_0605,
         check_release_ux_0606,
         check_release_fix_0607,
+        check_release_ux_0608,
+        check_release_fix_0609,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

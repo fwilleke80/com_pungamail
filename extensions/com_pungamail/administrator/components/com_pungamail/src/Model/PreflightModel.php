@@ -33,7 +33,8 @@ final class PreflightModel extends BaseDatabaseModel
 			$data['rendered']['subject'],
 			$data['rendered']['html'],
 			$data['rendered']['text'],
-			RecipientName::resolve((string) $identity->name, (string) $identity->email)
+			RecipientName::resolve((string) $identity->name, (string) $identity->email),
+			(int) $identity->id
 		);
 		$data['rendered'] = $personalized;
 		$sourceCounts = [];

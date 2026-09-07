@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.9 — 2026-09-07
+
+- Fixed Joomla User Custom Field placeholder discovery. Joomla stores the machine-readable Custom Field identifier in `#__fields.name`, not an `alias` column; 0.6.8 therefore swallowed the database error and showed no `{userfield|...}` entries in the Markdown placeholder menu.
+- Newsletter and Template editors now list published Joomla User Custom Fields correctly as `{userfield|field-name}` placeholders.
+- Per-recipient Custom Field value lookup now uses the same Joomla field name and preserves multiple stored values by joining them as comma-separated text.
+- Added release checks that reject the invalid `#__fields.alias` lookup and verify the `name`-based contract.
+- Updated USER_GUIDE and TEST_GUIDE terminology to refer to Joomla's Custom Field **Name** (the machine-readable identifier used in the placeholder).
+- Added the 0.6.9 database-version marker; no schema change is required.
+
+## 0.6.8 — 2026-09-07
+
+- Made the administrator **New Subscriber** workflow create-only: selecting an existing Joomla user or entering an existing subscriber email now shows a live duplicate warning with a link to the existing subscriber instead of silently editing/reactivating that record.
+- Added the same duplicate protection server-side so bypassing JavaScript cannot overwrite an existing subscriber or its Channel memberships.
+- Added recipient-specific Joomla User Custom Field placeholders using `{userfield|field-alias}`, including automatic discovery of published User Custom Fields in Newsletter/Template Markdown placeholder menus.
+- User Custom Field placeholders work in subject and body, are HTML-escaped in HTML mail, and resolve to an empty value for external subscribers or unknown/unpublished aliases.
+- Updated USER_GUIDE, TEST_GUIDE, CONCEPT/DATABASE notes and release checks for the new workflows.
+- Added the 0.6.8 database-version marker; no schema change is required.
+
 ## 0.6.7 — 2026-09-06
 
 - Fixed live Channel eligibility for new Joomla User subscribers before the first save.

@@ -63,7 +63,8 @@ final class MailService
 			(string) $newsletter->snapshot_subject,
 			(string) $newsletter->snapshot_html,
 			(string) $newsletter->snapshot_text,
-			$recipientName
+			$recipientName,
+			isset($recipient->user_id) && $recipient->user_id !== null ? (int) $recipient->user_id : null
 		);
 		$newsletterId = (int) $newsletter->id;
 		$unsubscribeUrl = $this->unsubscribeUrl((int) $recipient->subscriber_id, $newsletterId);

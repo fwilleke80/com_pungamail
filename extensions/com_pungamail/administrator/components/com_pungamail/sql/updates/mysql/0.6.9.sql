@@ -1,0 +1,2 @@
+-- Punga Mail 0.6.9 fixes Joomla User Custom Field discovery to use Joomla's `name` column.
+-- No schema change required.

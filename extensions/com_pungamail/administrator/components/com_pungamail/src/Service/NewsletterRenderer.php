@@ -38,7 +38,8 @@ final class NewsletterRenderer
 		private readonly TemplateRepository $templates,
 		private readonly MailTextService $mailText,
 		private readonly MailConfigurationService $mailConfiguration,
-		private readonly ContentLayoutRepository $contentLayouts
+		private readonly ContentLayoutRepository $contentLayouts,
+		private readonly UserFieldService $userFields
 	)
 	{
 	}
@@ -188,21 +189,52 @@ final class NewsletterRenderer
 	 * @param string $subject       Rendered/frozen subject.
 	 * @param string $html          Rendered/frozen HTML body.
 	 * @param string $text          Rendered/frozen plain-text body.
-	 * @param string $recipientName Display name, or email fallback.
+	 * @param string   $recipientName Display name, or email fallback.
+	 * @param int|null $userId        Linked Joomla user ID, when available.
 	 *
 	 * @return array{subject:string,html:string,text:string}
 	 */
-	public function personalize(string $subject, string $html, string $text, string $recipientName): array
+	public function personalize(string $subject, string $html, string $text, string $recipientName, ?int $userId = null): array
 	{
 		$recipientName = trim($recipientName);
 		$htmlRecipient = htmlspecialchars($recipientName, ENT_QUOTES, 'UTF-8');
+		$userFields = $this->userFields->valuesForUser($userId);
 
 		return [
-			'subject' => str_replace(self::RECIPIENT_PLACEHOLDER, $recipientName, $subject),
-			'html' => str_replace(self::RECIPIENT_PLACEHOLDER, $htmlRecipient, $html),
-			'text' => str_replace(self::RECIPIENT_PLACEHOLDER, $recipientName, $text),
+			'subject' => $this->replaceUserFieldPlaceholders(str_replace(self::RECIPIENT_PLACEHOLDER, $recipientName, $subject), $userFields, false),
+			'html' => $this->replaceUserFieldPlaceholders(str_replace(self::RECIPIENT_PLACEHOLDER, $htmlRecipient, $html), $userFields, true),
+			'text' => $this->replaceUserFieldPlaceholders(str_replace(self::RECIPIENT_PLACEHOLDER, $recipientName, $text), $userFields, false),
 		];
 	}
+
+	/**
+	 * Replaces Joomla User Custom Field placeholders in one recipient output.
+	 *
+	 * Unknown aliases and recipients without a Joomla account intentionally
+	 * resolve to an empty string so no implementation token leaks into mail.
+	 *
+	 * @param string               $content    Subject, HTML, or plain-text content.
+	 * @param array<string,string> $userFields Published field values by lower-case alias.
+	 * @param bool                 $escapeHtml Escape replacement values for HTML output.
+	 *
+	 * @return string Personalized content.
+	 */
+	private function replaceUserFieldPlaceholders(string $content, array $userFields, bool $escapeHtml): string
+	{
+		$result = preg_replace_callback(
+			'/\{userfield\|([A-Za-z0-9_-]+)\}/i',
+			static function (array $match) use ($userFields, $escapeHtml): string
+			{
+				$value = (string) ($userFields[strtolower((string) $match[1])] ?? '');
+
+				return $escapeHtml ? htmlspecialchars($value, ENT_QUOTES, 'UTF-8') : $value;
+			},
+			$content
+		);
+
+		return is_string($result) ? $result : $content;
+	}
+
 
 	public function renderTemplate(object $template): array
 	{

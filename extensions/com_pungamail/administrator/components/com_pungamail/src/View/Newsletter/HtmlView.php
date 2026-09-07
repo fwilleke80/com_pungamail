@@ -70,7 +70,8 @@ final class HtmlView extends BaseHtmlView
 				(string) ($this->item->snapshot_subject ?? ''),
 				(string) ($this->item->snapshot_html ?? ''),
 				(string) ($this->item->snapshot_text ?? ''),
-				RecipientName::resolve((string) $identity->name, (string) $identity->email)
+				RecipientName::resolve((string) $identity->name, (string) $identity->email),
+				(int) $identity->id
 			);
 		}
 		ToolbarHelper::title($this->item ? Text::_('COM_PUNGAMAIL_EDIT_NEWSLETTER') : Text::_('COM_PUNGAMAIL_NEW_NEWSLETTER'), 'envelope');

@@ -90,6 +90,12 @@ final class ServiceFactory
 		return new ContentLayoutRepository(self::database());
 	}
 
+	/** @return UserFieldService */
+	public static function userFields(): UserFieldService
+	{
+		return new UserFieldService(self::database());
+	}
+
 	/** @return TemplateRepository */
 	public static function templates(): TemplateRepository
 	{
@@ -105,7 +111,7 @@ final class ServiceFactory
 	/** @return NewsletterRenderer */
 	public static function renderer(): NewsletterRenderer
 	{
-		return new NewsletterRenderer(new MarkdownRenderer(), self::contentTypes(), self::styles(), self::templates(), new MailTextService(), self::mailConfiguration(), self::contentLayouts());
+		return new NewsletterRenderer(new MarkdownRenderer(), self::contentTypes(), self::styles(), self::templates(), new MailTextService(), self::mailConfiguration(), self::contentLayouts(), self::userFields());
 	}
 
 	/** @return RecipientResolver */

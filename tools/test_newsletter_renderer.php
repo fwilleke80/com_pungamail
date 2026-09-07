@@ -105,6 +105,7 @@ namespace
 	use Punga\Component\PungaMail\Administrator\Service\MarkdownRenderer;
 	use Punga\Component\PungaMail\Administrator\Service\NewsletterRenderer;
 	use Punga\Component\PungaMail\Administrator\Service\TemplateRepository;
+	use Punga\Component\PungaMail\Administrator\Service\UserFieldService;
 
 	$serviceRoot = dirname(__DIR__) . '/extensions/com_pungamail/administrator/components/com_pungamail/src/Service/';
 	require_once $serviceRoot . 'MarkdownRenderer.php';
@@ -114,6 +115,7 @@ namespace
 	require_once $serviceRoot . 'MailConfigurationService.php';
 	require_once $serviceRoot . 'MailTextService.php';
 	require_once $serviceRoot . 'TemplateRepository.php';
+	require_once $serviceRoot . 'UserFieldService.php';
 	require_once $serviceRoot . 'NewsletterRenderer.php';
 
 	/**
@@ -149,6 +151,9 @@ namespace
 		ContentLayoutRepository::DEFAULT_KEY => (object) ['layout_markdown' => ContentLayoutRepository::DEFAULT_LAYOUT],
 		'com_example.item' => null,
 	]);
+	$userFieldsReflection = new \ReflectionClass(UserFieldService::class);
+	/** @var UserFieldService $userFields */
+	$userFields = $userFieldsReflection->newInstanceWithoutConstructor();
 
 	$renderer = new NewsletterRenderer(
 		new MarkdownRenderer(),
@@ -157,7 +162,8 @@ namespace
 		$templates,
 		new MailTextService(),
 		$mailConfiguration,
-		$contentLayouts
+		$contentLayouts,
+		$userFields
 	);
 	$newsletter = (object) [
 		'subject' => 'Renderer test for {recipient}',
@@ -258,6 +264,21 @@ namespace
 	if (!str_contains($personalized['text'], 'Hello Alice & Bob.') || str_contains($personalized['text'], NewsletterRenderer::RECIPIENT_PLACEHOLDER))
 	{
 		failNewsletterRendererTest('Recipient placeholder was not resolved in plain-text output.');
+	}
+
+	$replaceUserField = (new \ReflectionClass(NewsletterRenderer::class))->getMethod('replaceUserFieldPlaceholders');
+	$fieldValues = ['mobile-phone' => '+49 30 <123>', 'department' => 'Engineering'];
+	$fieldHtml = $replaceUserField->invoke($renderer, 'Call {userfield|mobile-phone}; {userfield|missing}', $fieldValues, true);
+	$fieldText = $replaceUserField->invoke($renderer, '{userfield|department} / {userfield|missing}', $fieldValues, false);
+
+	if ($fieldHtml !== 'Call +49 30 &lt;123&gt;; ')
+	{
+		failNewsletterRendererTest('Joomla User Custom Field placeholder was not HTML-escaped or unknown alias was not cleared.');
+	}
+
+	if ($fieldText !== 'Engineering / ')
+	{
+		failNewsletterRendererTest('Joomla User Custom Field placeholder was not resolved in plain text.');
 	}
 
 
