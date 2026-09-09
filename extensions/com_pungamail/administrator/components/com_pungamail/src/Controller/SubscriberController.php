@@ -16,6 +16,7 @@ use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Response\JsonResponse;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
@@ -291,7 +292,7 @@ final class SubscriberController extends BaseController
 		{
 			$user = $app->getIdentity();
 
-			if (!$user->authorise('core.create', 'com_pungamail') && !$user->authorise('core.edit', 'com_pungamail'))
+			if (!Permissions::can(Permissions::MANAGE_AUDIENCE))
 			{
 				throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 			}
@@ -380,7 +381,7 @@ final class SubscriberController extends BaseController
 	 */
 	private function guardBounceRecovery(): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise('core.edit', 'com_pungamail'))
+		if (!Permissions::can(Permissions::MANAGE_AUDIENCE))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
@@ -400,7 +401,7 @@ final class SubscriberController extends BaseController
 	 */
 	private function guardCreate(bool $checkToken): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise('core.create', 'com_pungamail'))
+		if (!Permissions::can(Permissions::MANAGE_AUDIENCE))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
@@ -423,7 +424,7 @@ final class SubscriberController extends BaseController
 	{
 		$permission = $id > 0 ? 'core.edit' : 'core.create';
 
-		if (!Factory::getApplication()->getIdentity()->authorise($permission, 'com_pungamail'))
+		if (!Permissions::can(Permissions::MANAGE_AUDIENCE))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
@@ -469,7 +470,7 @@ final class SubscriberController extends BaseController
 	/** @return void */
 	private function guard(): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise('core.manage', 'com_pungamail'))
+		if (!Permissions::can(Permissions::MANAGE_AUDIENCE))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}

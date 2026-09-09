@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.10. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.11. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -94,6 +94,8 @@ Punga Mail keeps the primary Joomla sidebar compact by grouping related work:
 | Tools | Subscriber **Import / Export** and future infrequent maintenance tools. |
 
 When you move between Subscribers and Channels, or between Templates and Content layouts, the parent sidebar entry remains selected. Save/Cancel actions, filters, inline actions, and editor redirects preserve the same grouped parent context. Existing old administrator bookmarks continue to work, but normal navigation uses these grouped sections.
+
+The visible navigation is permission-aware. A backend user only sees Punga Mail sections they are allowed to use. For example, a Manager who may create/edit/send Newsletters but may not manage Delivery will not see the Delivery entry while working in Punga Mail. Hiding a menu item is only a convenience: the corresponding administrator views and controller actions enforce the same permission server-side, so entering a restricted URL manually does not bypass ACL.
 
 ## Dashboard
 
@@ -231,6 +233,32 @@ When an Automatic Newsletter is configured to **Create draft**, Punga Mail can e
 | Uninstall: Remove database tables | **No**, the default, preserves all Punga Mail data when the extension is uninstalled. **Yes** permanently removes subscriber, suppression, topic, newsletter, queue, history, and related data during uninstall. |
 
 Leave this at **No** unless permanent deletion is intentional and a suitable backup exists.
+
+### Permissions
+
+The final **Permissions** tab in Component Options uses Joomla's normal ACL system. Select a Joomla user group (for example **Manager**, **Administrator**, or a custom group) and grant or deny the capabilities that group should have. Joomla inheritance still applies, so a permission may be inherited from a parent group or explicitly denied.
+
+| Permission | Allows |
+| --- | --- |
+| Configure ACL & Options | Joomla `core.admin`: change Punga Mail permissions and all component options. Keep this restricted to trusted administrators. |
+| Configure Punga Mail | Joomla `core.options`: change ordinary Punga Mail Component Options without granting permission to rewrite ACL. |
+| Access Punga Mail | Open the Punga Mail administrator component. Other Punga Mail permissions assume this access. |
+| Create Newsletters | Create new Newsletter drafts and duplicate an existing Newsletter as a new draft. |
+| Edit Newsletters | Edit existing Newsletter drafts and their content/audience/settings. |
+| Change Newsletter state | Archive/unarchive and other Joomla record-state changes for Newsletters. |
+| Delete Newsletters | Trash/delete Newsletters where the Newsletter lifecycle permits it. |
+| Send Newsletters | Test-send, enter Preflight/send workflows, schedule/cancel scheduled sends, and control a queued Newsletter mailing. This is intentionally separate from editing. |
+| Manage Automatic Newsletters | View, create, edit, enable/disable, and manage Automatic Newsletters and their history. |
+| Manage Audience | Manage Subscribers and Channels. |
+| Manage Design | Manage Templates and Content Layouts. |
+| Manage Delivery | View/process the mail queue, delivery diagnostics, returned mail, bounce recovery, and related Dashboard attention actions. |
+| Manage Tools | Use subscriber Import / Export and other Tools-section operations. |
+
+A common editorial setup is to give a **Manager** group **Access Punga Mail**, **Create Newsletters**, **Edit Newsletters**, and **Send Newsletters**, while keeping **Manage Delivery**, **Configure Punga Mail**, and **Configure ACL & Options** restricted to Administrators. The Manager then sees only the sections and toolbar actions relevant to those granted capabilities.
+
+Newsletter editing and sending are deliberately separate. A user may be allowed to prepare drafts without being allowed to send test messages, schedule delivery, or queue a real mailing. Likewise, users without **Manage Delivery** do not see Delivery-specific Dashboard controls or the Delivery section, and direct access is rejected server-side.
+
+The **Options** toolbar button is shown only to users who may configure Punga Mail. `Configure Punga Mail` (`core.options`) is sufficient for ordinary settings; changing the ACL itself requires Joomla's stronger `Configure ACL & Options` (`core.admin`) permission.
 
 ## Channels
 

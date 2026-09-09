@@ -15,6 +15,7 @@ use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
 use Joomla\Registry\Registry;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 
@@ -222,7 +223,7 @@ final class DeliveryController extends BaseController
 	/** @return void */
 	private function guardOptions(): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise('core.admin', 'com_pungamail'))
+		if (!Permissions::canConfigure())
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
@@ -236,7 +237,7 @@ final class DeliveryController extends BaseController
 	/** @return void */
 	private function guard(): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise('core.manage', 'com_pungamail'))
+		if (!Permissions::can(Permissions::MANAGE_DELIVERY))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}

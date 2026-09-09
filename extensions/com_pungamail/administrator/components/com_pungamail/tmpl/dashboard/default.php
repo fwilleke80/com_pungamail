@@ -8,8 +8,15 @@ use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 
 $siteTimezone = (string) Factory::getApplication()->get('offset', 'UTC');
+$canCreateNewsletter = Permissions::can('core.create');
+$canSendNewsletter = Permissions::can(Permissions::SEND_NEWSLETTERS);
+$canAutomatic = Permissions::can(Permissions::MANAGE_AUTOMATIC);
+$canAudience = Permissions::can(Permissions::MANAGE_AUDIENCE);
+$canDesign = Permissions::can(Permissions::MANAGE_DESIGN);
+$canDelivery = Permissions::can(Permissions::MANAGE_DELIVERY);
 $data = $this->data;
 $subscribers = $data['subscribers'];
 $queue = $data['queue'];
@@ -17,14 +24,18 @@ $tasks = $data['tasks'];
 $automationNeeds = $data['automation'];
 $overview = (array) ($data['overview'] ?? []);
 $lastNewsletter = $overview['last_newsletter'] ?? null;
-$nextAutomatic = $overview['next_automatic'] ?? null;
+$nextAutomatic = $canAutomatic ? ($overview['next_automatic'] ?? null) : null;
 $delivery = (array) ($overview['delivery'] ?? ['sent' => 0, 'failed' => 0, 'bounced' => 0, 'rate' => null]);
 $chart = (array) ($overview['chart'] ?? []);
 $upcoming = (array) ($overview['upcoming'] ?? []);
 $nextScheduled = $upcoming[0] ?? null;
 $automatic = (array) ($overview['automatic'] ?? []);
-$channelStats = (array) ($overview['channel_stats'] ?? []);
+$channelStats = $canAudience ? (array) ($overview['channel_stats'] ?? []) : [];
 $activity = (array) ($overview['activity'] ?? []);
+if (!$canAutomatic)
+{
+	$activity = array_values(array_filter($activity, static fn (array $entry): bool => (string) ($entry['type'] ?? '') === 'sent'));
+}
 $bounceCheck = $data['bounce_check'] ?? null;
 $taskReady = static fn (?object $task): bool => $task !== null && (int) $task->state === 1;
 $issues = [];
@@ -34,36 +45,36 @@ if ((bool) ($data['schema_incomplete'] ?? false))
 	$issues[] = ['class' => 'danger', 'text' => Text::_('COM_PUNGAMAIL_DATABASE_UPDATE_REQUIRED'), 'url' => 'index.php?option=com_installer&view=database'];
 }
 
-if (!$taskReady($tasks['queue']))
+if ($canDelivery && !$taskReady($tasks['queue']))
 {
 	$issues[] = ['class' => 'warning', 'text' => Text::_('COM_PUNGAMAIL_TASK_NOT_CONFIGURED'), 'url' => 'index.php?option=com_scheduler&view=tasks'];
 }
 
-if ((int) ($automationNeeds['digests'] ?? 0) > 0 && !$taskReady($tasks['digests']))
+if ($canAutomatic && (int) ($automationNeeds['digests'] ?? 0) > 0 && !$taskReady($tasks['digests']))
 {
 	$issues[] = ['class' => 'warning', 'text' => Text::_('COM_PUNGAMAIL_DIGEST_TASK_NOT_CONFIGURED'), 'url' => 'index.php?option=com_scheduler&view=tasks'];
 }
 
-if ((int) ($automationNeeds['scheduled'] ?? 0) > 0 && !$taskReady($tasks['scheduled']))
+if ($canSendNewsletter && (int) ($automationNeeds['scheduled'] ?? 0) > 0 && !$taskReady($tasks['scheduled']))
 {
 	$issues[] = ['class' => 'warning', 'text' => Text::_('COM_PUNGAMAIL_SCHEDULED_SEND_TASK_NOT_CONFIGURED'), 'url' => 'index.php?option=com_scheduler&view=tasks'];
 }
 
-if (($automationNeeds['bounce_configured'] ?? false) && !$taskReady($tasks['bounces']))
+if ($canDelivery && ($automationNeeds['bounce_configured'] ?? false) && !$taskReady($tasks['bounces']))
 {
 	$issues[] = ['class' => 'warning', 'text' => Text::_('COM_PUNGAMAIL_BOUNCE_TASK_NOT_CONFIGURED'), 'url' => 'index.php?option=com_scheduler&view=tasks'];
 }
 
-if ((int) ($queue['failed'] ?? 0) > 0)
+if ($canDelivery && (int) ($queue['failed'] ?? 0) > 0)
 {
 	$issues[] = ['class' => 'warning', 'text' => Text::sprintf('COM_PUNGAMAIL_DASHBOARD_FAILED_DELIVERIES', (int) $queue['failed']), 'url' => 'index.php?option=com_pungamail&view=delivery'];
 }
 
-if ($bounceCheck !== null && !$bounceCheck->ok)
+if ($canDelivery && $bounceCheck !== null && !$bounceCheck->ok)
 {
 	$issues[] = ['class' => 'warning', 'text' => Text::_('COM_PUNGAMAIL_DASHBOARD_RETURNED_MAIL_FAILED'), 'url' => 'index.php?option=com_pungamail&view=delivery#returned-mail'];
 }
-elseif ($bounceCheck !== null && (bool) ($bounceCheck->attention_pending ?? false))
+elseif ($canDelivery && $bounceCheck !== null && (bool) ($bounceCheck->attention_pending ?? false))
 {
 	$issues[] = [
 		'class' => 'warning',
@@ -103,6 +114,7 @@ foreach ($chart as $point)
 	</div>
 
 	<div class="row g-3 mb-4">
+		<?php if ($canAudience) : ?>
 		<div class="col-12 col-sm-6 col-xl-3">
 			<a class="pm-dashboard-card-link" href="<?php echo Route::_(AdministratorRoute::subscribers()); ?>">
 				<div class="card h-100"><div class="card-body">
@@ -112,6 +124,7 @@ foreach ($chart as $point)
 				</div></div>
 			</a>
 		</div>
+		<?php endif; ?>
 		<div class="col-12 col-sm-6 col-xl-3">
 			<a class="pm-dashboard-card-link" href="<?php echo $lastNewsletter ? Route::_(AdministratorRoute::newsletter((int) $lastNewsletter->id)) : Route::_(AdministratorRoute::newsletters()); ?>">
 				<div class="card h-100"><div class="card-body">
@@ -141,6 +154,7 @@ foreach ($chart as $point)
 				<?php if (!$nextScheduled && !$nextAutomatic) : ?><div class="text-muted"><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_NO_NEXT_NEWSLETTERS'); ?></div><?php endif; ?>
 			</div></div>
 		</div>
+		<?php if ($canDelivery) : ?>
 		<div class="col-12 col-sm-6 col-xl-3">
 			<a class="pm-dashboard-card-link" href="<?php echo Route::_('index.php?option=com_pungamail&view=delivery'); ?>">
 				<div class="card h-100"><div class="card-body">
@@ -150,6 +164,7 @@ foreach ($chart as $point)
 				</div></div>
 			</a>
 		</div>
+		<?php endif; ?>
 	</div>
 
 	<div class="card mb-4">
@@ -183,12 +198,12 @@ foreach ($chart as $point)
 	<div class="card mb-4">
 		<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_QUICK_ACTIONS'); ?></strong></div>
 		<div class="card-body d-flex flex-wrap gap-2">
-			<a class="btn btn-primary" href="<?php echo Route::_(AdministratorRoute::newsletter()); ?>"><?php echo Text::_('COM_PUNGAMAIL_NEW_NEWSLETTER'); ?></a>
-			<a class="btn btn-outline-primary" href="<?php echo Route::_(AdministratorRoute::digest()); ?>"><?php echo Text::_('COM_PUNGAMAIL_NEW_DIGEST'); ?></a>
-			<a class="btn btn-outline-secondary" href="<?php echo Route::_(AdministratorRoute::subscriber()); ?>"><?php echo Text::_('COM_PUNGAMAIL_ADD_SUBSCRIBER'); ?></a>
-			<a class="btn btn-outline-secondary" href="<?php echo Route::_(AdministratorRoute::topics()); ?>"><?php echo Text::_('COM_PUNGAMAIL_TOPICS'); ?></a>
-			<a class="btn btn-outline-secondary" href="<?php echo Route::_(AdministratorRoute::templates()); ?>"><?php echo Text::_('COM_PUNGAMAIL_TEMPLATES'); ?></a>
-			<?php if ((int) ($queue['pending'] ?? 0) > 0 || (int) ($queue['processing'] ?? 0) > 0 || !$taskReady($tasks['queue'])) : ?>
+			<?php if ($canCreateNewsletter) : ?><a class="btn btn-primary" href="<?php echo Route::_(AdministratorRoute::newsletter()); ?>"><?php echo Text::_('COM_PUNGAMAIL_NEW_NEWSLETTER'); ?></a><?php endif; ?>
+			<?php if ($canAutomatic) : ?><a class="btn btn-outline-primary" href="<?php echo Route::_(AdministratorRoute::digest()); ?>"><?php echo Text::_('COM_PUNGAMAIL_NEW_DIGEST'); ?></a><?php endif; ?>
+			<?php if ($canAudience) : ?><a class="btn btn-outline-secondary" href="<?php echo Route::_(AdministratorRoute::subscriber()); ?>"><?php echo Text::_('COM_PUNGAMAIL_ADD_SUBSCRIBER'); ?></a><?php endif; ?>
+			<?php if ($canAudience) : ?><a class="btn btn-outline-secondary" href="<?php echo Route::_(AdministratorRoute::topics()); ?>"><?php echo Text::_('COM_PUNGAMAIL_TOPICS'); ?></a><?php endif; ?>
+			<?php if ($canDesign) : ?><a class="btn btn-outline-secondary" href="<?php echo Route::_(AdministratorRoute::templates()); ?>"><?php echo Text::_('COM_PUNGAMAIL_TEMPLATES'); ?></a><?php endif; ?>
+			<?php if ($canDelivery && ((int) ($queue['pending'] ?? 0) > 0 || (int) ($queue['processing'] ?? 0) > 0 || !$taskReady($tasks['queue']))) : ?>
 				<form action="<?php echo Route::_('index.php?option=com_pungamail&view=dashboard'); ?>" method="post" class="d-inline">
 					<button type="submit" class="btn btn-outline-secondary"><?php echo Text::_('COM_PUNGAMAIL_PROCESS_QUEUE'); ?></button>
 					<input type="hidden" name="task" value="newsletter.processQueue">
@@ -251,6 +266,7 @@ foreach ($chart as $point)
 	</div>
 
 	<div class="row g-3 mb-4">
+		<?php if ($canDelivery) : ?>
 		<div class="col-12 col-xl-7">
 			<div class="card h-100">
 				<div class="card-header d-flex justify-content-between align-items-center"><strong><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_DELIVERY_30_DAYS'); ?></strong><span class="small text-muted"><?php echo Text::sprintf('COM_PUNGAMAIL_DASHBOARD_SENT_TOTAL', (int) $delivery['sent']); ?></span></div>
@@ -265,6 +281,8 @@ foreach ($chart as $point)
 				</div>
 			</div>
 		</div>
+		<?php endif; ?>
+		<?php if ($canAudience) : ?>
 		<div class="col-12 col-xl-5">
 			<div class="card h-100">
 				<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_CHANNELS'); ?></strong></div>
@@ -276,8 +294,10 @@ foreach ($chart as $point)
 				</div>
 			</div>
 		</div>
+		<?php endif; ?>
 	</div>
 
+	<?php if ($canAutomatic) : ?>
 	<div class="card mb-3">
 		<div class="card-header d-flex justify-content-between align-items-center"><strong><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_AUTOMATIC'); ?></strong><a class="btn btn-sm btn-outline-secondary" href="<?php echo Route::_(AdministratorRoute::digests()); ?>"><?php echo Text::_('COM_PUNGAMAIL_VIEW_ALL'); ?></a></div>
 		<div class="table-responsive">
@@ -287,4 +307,5 @@ foreach ($chart as $point)
 			</tbody></table>
 		</div>
 	</div>
+	<?php endif; ?>
 </div>

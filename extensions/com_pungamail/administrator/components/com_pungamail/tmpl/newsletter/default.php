@@ -95,7 +95,7 @@ if ($item !== null && !empty($item->scheduled_at))
 		<?php endforeach; ?>
 		</tbody></table>
 	</div></div>
-	<form class="mt-3 d-flex flex-wrap gap-2" action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post"><input type="hidden" name="id" value="<?php echo (int) $item->id; ?>"><?php if (in_array((int) $item->status, [NewsletterRepository::STATUS_QUEUED, NewsletterRepository::STATUS_SENDING], true)) : ?><input type="hidden" name="paused" value="<?php echo (int) $item->queue_paused === 1 ? 0 : 1; ?>"><button class="btn btn-outline-warning" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.toggleMailingPause'); ?>" type="submit"><?php echo Text::_((int) $item->queue_paused === 1 ? 'COM_PUNGAMAIL_RESUME_MAILING' : 'COM_PUNGAMAIL_PAUSE_MAILING'); ?></button><button class="btn btn-danger" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.cancelRemaining'); ?>" type="submit" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CANCEL_REMAINING_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CANCEL_REMAINING'); ?></button><?php endif; ?><a class="btn btn-outline-secondary" href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletters'); ?>"><?php echo Text::_('JTOOLBAR_BACK'); ?></a><?php echo HTMLHelper::_('form.token'); ?></form>
+	<form class="mt-3 d-flex flex-wrap gap-2" action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post"><input type="hidden" name="id" value="<?php echo (int) $item->id; ?>"><?php if ($this->canSend && in_array((int) $item->status, [NewsletterRepository::STATUS_QUEUED, NewsletterRepository::STATUS_SENDING], true)) : ?><input type="hidden" name="paused" value="<?php echo (int) $item->queue_paused === 1 ? 0 : 1; ?>"><button class="btn btn-outline-warning" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.toggleMailingPause'); ?>" type="submit"><?php echo Text::_((int) $item->queue_paused === 1 ? 'COM_PUNGAMAIL_RESUME_MAILING' : 'COM_PUNGAMAIL_PAUSE_MAILING'); ?></button><button class="btn btn-danger" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.cancelRemaining'); ?>" type="submit" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CANCEL_REMAINING_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CANCEL_REMAINING'); ?></button><?php endif; ?><a class="btn btn-outline-secondary" href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletters'); ?>"><?php echo Text::_('JTOOLBAR_BACK'); ?></a><?php echo HTMLHelper::_('form.token'); ?></form>
 <?php else : ?>
 	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm" data-pm-unsaved-warning="1">
 		<input type="hidden" name="id" value="<?php echo (int) ($item->id ?? 0); ?>">
@@ -385,6 +385,7 @@ if ($item !== null && !empty($item->scheduled_at))
 						</div>
 					</div>
 				</div>
+				<?php if ($this->canEdit && $this->canSend) : ?>
 				<div class="card mb-3">
 					<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_SCHEDULE_SEND'); ?></strong></div>
 					<div class="card-body">
@@ -397,6 +398,7 @@ if ($item !== null && !empty($item->scheduled_at))
 						<?php endif; ?>
 					</div>
 				</div>
+				<?php endif; ?>
 			</aside>
 		</div>
 		<input type="hidden" name="schedule_from_editor" value="1">

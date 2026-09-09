@@ -13,6 +13,7 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
@@ -103,7 +104,7 @@ final class TopicController extends BaseController
 	/** @return void */
 	private function guard(bool $token): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise('core.manage', 'com_pungamail'))
+		if (!Permissions::can(Permissions::MANAGE_AUDIENCE))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}

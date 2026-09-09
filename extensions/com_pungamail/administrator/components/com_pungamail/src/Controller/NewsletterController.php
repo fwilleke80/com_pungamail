@@ -16,6 +16,7 @@ use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 use Punga\Component\PungaMail\Administrator\Service\RecipientName;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
@@ -40,7 +41,7 @@ final class NewsletterController extends BaseController
 	/** @return void */
 	public function save2close(): void
 	{
-		$this->requireManage();
+		$this->requireEditForInput();
 		$this->requireToken();
 
 		try
@@ -77,7 +78,7 @@ final class NewsletterController extends BaseController
 	 */
 	public function applyTemplate(): void
 	{
-		$this->requireManage();
+		$this->requireEditForInput();
 		$this->requireToken();
 		$input = Factory::getApplication()->getInput();
 		$templateId = $input->post->getInt('template_id');
@@ -122,7 +123,7 @@ final class NewsletterController extends BaseController
 	/** @return void */
 	public function preview(): void
 	{
-		$this->requireManage();
+		$this->requireEditForInput();
 		$this->requireToken();
 
 		try
@@ -139,7 +140,8 @@ final class NewsletterController extends BaseController
 	/** @return void */
 	public function preflight(): void
 	{
-		$this->requireManage();
+		$this->requireEditForInput();
+		Permissions::require(Permissions::SEND_NEWSLETTERS);
 		$this->requireToken();
 
 		try
@@ -156,7 +158,8 @@ final class NewsletterController extends BaseController
 	/** @return void */
 	public function sendTest(): void
 	{
-		$this->requireManage();
+		$this->requireEditForInput();
+		Permissions::require(Permissions::SEND_NEWSLETTERS);
 		$this->requireToken();
 
 		try
@@ -195,7 +198,7 @@ final class NewsletterController extends BaseController
 	/** @return void */
 	public function confirmQueue(): void
 	{
-		$this->requireManage();
+		Permissions::require(Permissions::SEND_NEWSLETTERS);
 		$this->requireToken();
 		$id = Factory::getApplication()->getInput()->getInt('id');
 
@@ -214,10 +217,15 @@ final class NewsletterController extends BaseController
 	/** @return void */
 	public function schedule(): void
 	{
-		$this->requireManage();
+		Permissions::require(Permissions::SEND_NEWSLETTERS);
 		$this->requireToken();
 		$input = Factory::getApplication()->getInput();
 		$fromEditor = $input->post->getInt('schedule_from_editor', 0) === 1;
+
+		if ($fromEditor)
+		{
+			$this->requireEditForInput();
+		}
 		$id = $input->post->getInt('id');
 
 		try
@@ -250,10 +258,15 @@ final class NewsletterController extends BaseController
 	/** @return void */
 	public function cancelScheduled(): void
 	{
-		$this->requireManage();
+		Permissions::require(Permissions::SEND_NEWSLETTERS);
 		$this->requireToken();
 		$input = Factory::getApplication()->getInput();
 		$fromEditor = $input->post->getInt('schedule_from_editor', 0) === 1;
+
+		if ($fromEditor)
+		{
+			$this->requireEditForInput();
+		}
 		$id = $input->post->getInt('id');
 
 		try
@@ -284,7 +297,7 @@ final class NewsletterController extends BaseController
 	/** @return void */
 	public function toggleMailingPause(): void
 	{
-		$this->requireManage();
+		Permissions::require(Permissions::SEND_NEWSLETTERS);
 		$this->requireToken();
 		$input = Factory::getApplication()->getInput();
 		$id = $input->getInt('id');
@@ -296,7 +309,7 @@ final class NewsletterController extends BaseController
 	/** @return void */
 	public function cancelRemaining(): void
 	{
-		$this->requireManage();
+		Permissions::require(Permissions::SEND_NEWSLETTERS);
 		$this->requireToken();
 		$id = Factory::getApplication()->getInput()->getInt('id');
 		$count = ServiceFactory::newsletters()->cancelRemaining($id);
@@ -306,7 +319,7 @@ final class NewsletterController extends BaseController
 	/** @return void */
 	public function processQueue(): void
 	{
-		$this->requireManage();
+		Permissions::require(Permissions::MANAGE_DELIVERY);
 		$this->requireToken();
 
 		$returnView = Factory::getApplication()->getInput()->post->getCmd('return') === 'dashboard' ? 'dashboard' : 'newsletters';
@@ -327,14 +340,10 @@ final class NewsletterController extends BaseController
 	/** @return void */
 	public function duplicate(): void
 	{
-		$this->requireManage();
 		$this->requireToken();
 		$application = Factory::getApplication();
 
-		if (!$application->getIdentity()->authorise('core.create', 'com_pungamail'))
-		{
-			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
-		}
+		Permissions::require('core.create');
 
 		try
 		{
@@ -353,7 +362,7 @@ final class NewsletterController extends BaseController
 	/** @return void */
 	private function persistAndRedirect(string $messageKey, bool $validateRequired = true): void
 	{
-		$this->requireManage();
+		$this->requireEditForInput();
 		$this->requireToken();
 
 		try
@@ -519,12 +528,22 @@ final class NewsletterController extends BaseController
 	}
 
 	/** @return void */
-	private function requireManage(): void { $this->requirePermission('core.manage'); }
+	private function requireManage(): void
+	{
+		Permissions::require('core.manage');
+	}
+
+	/** @return void */
+	private function requireEditForInput(): void
+	{
+		$id = Factory::getApplication()->getInput()->getInt('id');
+		Permissions::require($id > 0 ? 'core.edit' : 'core.create');
+	}
 
 	/** @return void */
 	private function requirePermission(string $permission): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise($permission, 'com_pungamail'))
+		if (!Permissions::can($permission))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.11 — 2026-09-09
+
+- Added Joomla-standard **Permissions** to Punga Mail Component Options.
+- Added granular ACL capabilities for Punga Mail access, Newsletter create/edit/state/delete/send, Automatic Newsletters, Audience, Design, Delivery, Tools, and ordinary component configuration.
+- Kept Joomla's `core.admin` (**Configure ACL & Options**) separate from `core.options` (**Configure Punga Mail**) so ordinary configuration can be delegated without allowing a group to rewrite its own permissions.
+- Separated Newsletter editing from sending: a user may prepare drafts without being able to test-send, schedule, queue, pause/resume, or cancel a mailing.
+- Enforced section permissions server-side on administrator views and controller actions; manually entering a restricted backend URL does not bypass ACL.
+- Made Punga Mail toolbars, Dashboard actions/panels, Options buttons, and component section navigation permission-aware so unavailable functionality is not offered to restricted users.
+- Added the 0.6.11 database-version marker; no schema change is required.
+- Updated USER_GUIDE, TEST_GUIDE, CONCEPT, DATABASE, README, and release checks for the new permission model.
+
 ## 0.6.10 — 2026-09-07
 
 - Fixed frontend browser-tab titles for all Punga Mail site views by using Joomla's standard document-title composition, including the configured site-name prefix/suffix.

@@ -6,6 +6,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 
 /** Joomla-standard template list view. */
 final class HtmlView extends BaseHtmlView
@@ -20,18 +21,21 @@ final class HtmlView extends BaseHtmlView
 	public function display($tpl = null): void
 	{
 		$user = Factory::getApplication()->getIdentity();
-		if (!$user->authorise('core.manage', 'com_pungamail')) { throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403); }
+		if (!Permissions::can(Permissions::MANAGE_DESIGN)) { throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403); }
 		$model = $this->getModel();
 		$this->items = $model->getItems(); $this->pagination = $model->getPagination(); $this->state = $model->getState(); $this->filterForm = $model->getFilterForm(); $this->activeFilters = $model->getActiveFilters();
 		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_TEMPLATES'), 'copy');
-		if ($user->authorise('core.create', 'com_pungamail')) { ToolbarHelper::addNew('template.add'); }
+		if (Permissions::can(Permissions::MANAGE_DESIGN)) { ToolbarHelper::addNew('template.add'); }
 		if ((string) $this->state->get('filter.state') === '-2')
 		{
-			if ($user->authorise('core.edit.state', 'com_pungamail')) { ToolbarHelper::publish('templates.restore', Text::_('COM_PUNGAMAIL_RESTORE'), true); }
-			if ($user->authorise('core.delete', 'com_pungamail')) { ToolbarHelper::deleteList(Text::_('COM_PUNGAMAIL_CONFIRM_DELETE_TEMPLATES'), 'templates.delete'); }
+			if (Permissions::can(Permissions::MANAGE_DESIGN)) { ToolbarHelper::publish('templates.restore', Text::_('COM_PUNGAMAIL_RESTORE'), true); }
+			if (Permissions::can(Permissions::MANAGE_DESIGN)) { ToolbarHelper::deleteList(Text::_('COM_PUNGAMAIL_CONFIRM_DELETE_TEMPLATES'), 'templates.delete'); }
 		}
-		elseif ($user->authorise('core.edit.state', 'com_pungamail')) { ToolbarHelper::trash('templates.trash'); }
-		if ($user->authorise('core.admin', 'com_pungamail')) { ToolbarHelper::preferences('com_pungamail'); }
+		elseif (Permissions::can(Permissions::MANAGE_DESIGN)) { ToolbarHelper::trash('templates.trash'); }
+		if (Permissions::canConfigure())
+		{
+			ToolbarHelper::preferences('com_pungamail');
+		}
 		parent::display($tpl);
 	}
 }

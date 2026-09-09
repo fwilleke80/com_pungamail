@@ -2,8 +2,8 @@
 <extension type="package" method="upgrade">
 	<name>Punga Mail</name>
 	<packagename>pungamail</packagename>
-	<version>0.6.10</version>
-	<creationDate>2026-09-07</creationDate>
+	<version>0.6.11</version>
+	<creationDate>2026-09-09</creationDate>
 	<author>Punga</author>
 	<license>MIT License; see LICENSE.md</license>
 	<description>Punga Mail newsletter package for Joomla! 6.</description>

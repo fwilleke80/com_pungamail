@@ -1,4 +1,4 @@
-# Punga Mail 0.6.10 Live Acceptance Test Guide
+# Punga Mail 0.6.11 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -347,6 +347,59 @@ Keep the global queue paused except where a test explicitly says to resume it.
 **Expected:** Draft mode can notify the configured reviewer with useful context and direct admin link. Automatic-send mode does not send the draft-review notification.
 
 ---
+
+### PM-025 — Joomla Permissions tab and group inheritance
+
+**Setup:** Use a non-Super-User test account in a Joomla group such as Manager. Keep a separate Super User session available for restoring ACL.
+
+1. As Super User, open Punga Mail **Options → Permissions**.
+2. Select the test group.
+3. Grant **Access Punga Mail**, **Create Newsletters**, and **Edit Newsletters**. Leave **Manage Delivery**, **Manage Audience**, **Manage Design**, **Manage Tools**, and **Configure Punga Mail** denied/inherited as appropriate.
+4. Save the ACL and log in as the test account.
+
+**Expected:**
+- Joomla renders the standard component Permissions matrix with Allowed/Denied/Inherited behavior.
+- The test account can open Punga Mail and work only in the sections/actions it has been granted.
+- The test account cannot change Punga Mail ACL unless it has Joomla `core.admin`.
+
+### PM-026 — Permission-aware navigation and direct URL protection
+
+1. Using the restricted Manager from PM-025, open Punga Mail.
+2. Inspect the Punga Mail sidebar and Dashboard quick/actions.
+3. Attempt to open a restricted Delivery URL directly, for example `administrator/index.php?option=com_pungamail&view=delivery`.
+4. Repeat for another denied section such as Audience or Design.
+
+**Expected:**
+- Restricted Punga Mail section links/buttons are not offered in the component UI.
+- Allowed sections remain visible and usable.
+- A manually entered restricted URL is rejected with Joomla's not-authorized response; hiding navigation is not the security boundary.
+- The component does not fall back to Dashboard and expose restricted content.
+
+### PM-027 — Edit newsletters without Send permission
+
+1. Grant the test Manager **Access Punga Mail**, **Create Newsletters**, and **Edit Newsletters**, but deny **Send Newsletters**.
+2. Open/create a Newsletter draft.
+3. Save and edit subject/body/audience settings.
+4. Inspect the Newsletter toolbar/sidebar.
+5. Attempt direct task URLs/POSTs for test send, Preflight/send, scheduling, or queued-mailing controls.
+
+**Expected:**
+- Draft creation/editing works.
+- Send/test/schedule controls are absent.
+- Server-side send/schedule operations are denied even if called manually.
+
+### PM-028 — Delegated newsletter sender without configuration/delivery access
+
+1. Grant the Manager **Send Newsletters** in addition to create/edit, but keep **Manage Delivery**, **Configure Punga Mail**, and `core.admin` denied.
+2. Re-login as the Manager.
+3. Open a draft and run Preview/Test/Preflight or schedule/send according to the test environment.
+4. Inspect the backend navigation and toolbars.
+
+**Expected:**
+- Newsletter send/schedule workflow is available.
+- Delivery queue/bounce administration remains unavailable.
+- **Options** buttons are not shown.
+- SMTP/IMAP settings and the Permissions matrix cannot be changed by this account.
 
 ## C. Channels
 

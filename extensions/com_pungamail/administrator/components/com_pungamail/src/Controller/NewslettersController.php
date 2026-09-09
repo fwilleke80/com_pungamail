@@ -14,6 +14,7 @@ use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
 use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 /**
@@ -148,7 +149,7 @@ final class NewslettersController extends BaseController
 	/** @return void */
 	private function requirePermission(string $permission): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise($permission, 'com_pungamail'))
+		if (!Permissions::can($permission))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}

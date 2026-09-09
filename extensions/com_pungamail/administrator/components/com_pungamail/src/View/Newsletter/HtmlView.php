@@ -13,6 +13,7 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
 use Punga\Component\PungaMail\Administrator\Helper\UnsavedChangesHelper;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 use Punga\Component\PungaMail\Administrator\Service\RecipientName;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
@@ -33,6 +34,8 @@ final class HtmlView extends BaseHtmlView
 	public array $selectedTopicIds = [];
 	public array $statistics = [];
 	public ?string $contentCutoffStart = null;
+	public bool $canEdit = false;
+	public bool $canSend = false;
 
 	/** @var array{subject:string,html:string,text:string}|null */
 	public ?array $snapshotPreview = null;
@@ -40,7 +43,7 @@ final class HtmlView extends BaseHtmlView
 	/** @return void */
 	public function display($tpl = null): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise('core.manage', 'com_pungamail'))
+		if (!Permissions::can('core.manage'))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
@@ -49,6 +52,13 @@ final class HtmlView extends BaseHtmlView
 		UnsavedChangesHelper::load();
 		$model = $this->getModel();
 		$this->item = $model->getItem();
+		$this->canEdit = $this->item === null ? Permissions::can('core.create') : Permissions::can('core.edit');
+		$this->canSend = Permissions::can(Permissions::SEND_NEWSLETTERS);
+
+		if ($this->item === null && !$this->canEdit)
+		{
+			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+		}
 		$this->selectedItems = $model->getSelectedItems();
 		$this->availableContent = $model->getAvailableContent();
 		$this->contentTypes = $model->getContentTypes();
@@ -81,26 +91,30 @@ final class HtmlView extends BaseHtmlView
 			\Punga\Component\PungaMail\Administrator\Service\NewsletterRepository::STATUS_SCHEDULED,
 		], true);
 
-		if ($isDraft)
+		if ($isDraft && $this->canEdit)
 		{
 			ToolbarHelper::apply('newsletter.save');
 			ToolbarHelper::save('newsletter.save2close');
 			ToolbarHelper::cancel('newsletter.cancel');
 
-			if ($this->item !== null && $user->authorise('core.create', 'com_pungamail'))
+			if ($this->item !== null && Permissions::can('core.create'))
 			{
 				ToolbarHelper::custom('newsletter.duplicate', 'copy', '', Text::_('COM_PUNGAMAIL_DUPLICATE_AS_DRAFT'), false);
 			}
 
 			ToolbarHelper::custom('newsletter.preview', 'eye', '', Text::_('COM_PUNGAMAIL_PREVIEW'), false);
-			ToolbarHelper::custom('newsletter.sendTest', 'mail', '', Text::_('COM_PUNGAMAIL_SEND_TEST_MAIL'), false);
-			ToolbarHelper::custom('newsletter.preflight', 'check', '', Text::_('COM_PUNGAMAIL_REVIEW_AND_SEND'), false);
+
+			if ($this->canSend)
+			{
+				ToolbarHelper::custom('newsletter.sendTest', 'mail', '', Text::_('COM_PUNGAMAIL_SEND_TEST_MAIL'), false);
+				ToolbarHelper::custom('newsletter.preflight', 'check', '', Text::_('COM_PUNGAMAIL_REVIEW_AND_SEND'), false);
+			}
 
 			Factory::getApplication()->getDocument()->getWebAssetManager()->addInlineStyle(
 				'#toolbar-eye { margin-inline-start: auto; }'
 			);
 		}
-		elseif ($this->item !== null && $user->authorise('core.create', 'com_pungamail'))
+		elseif ($this->item !== null && Permissions::can('core.create'))
 		{
 			ToolbarHelper::custom('newsletter.duplicate', 'copy', '', Text::_('COM_PUNGAMAIL_DUPLICATE_AS_DRAFT'), false);
 		}

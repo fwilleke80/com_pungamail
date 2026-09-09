@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <access component="com_pungamail">
 	<section name="component">
-		<action name="core.admin" title="JACTION_ADMIN" />
-		<action name="core.manage" title="JACTION_MANAGE" />
-		<action name="core.create" title="JACTION_CREATE" />
-		<action name="core.edit" title="JACTION_EDIT" />
-		<action name="core.edit.state" title="JACTION_EDITSTATE" />
-		<action name="core.delete" title="JACTION_DELETE" />
+		<action name="core.admin" title="JACTION_ADMIN" description="JACTION_ADMIN_COMPONENT_DESC" />
+		<action name="core.options" title="COM_PUNGAMAIL_PERMISSION_OPTIONS" description="COM_PUNGAMAIL_PERMISSION_OPTIONS_DESC" />
+		<action name="core.manage" title="COM_PUNGAMAIL_PERMISSION_ACCESS" description="COM_PUNGAMAIL_PERMISSION_ACCESS_DESC" />
+		<action name="core.create" title="COM_PUNGAMAIL_PERMISSION_NEWSLETTERS_CREATE" description="COM_PUNGAMAIL_PERMISSION_NEWSLETTERS_CREATE_DESC" />
+		<action name="core.edit" title="COM_PUNGAMAIL_PERMISSION_NEWSLETTERS_EDIT" description="COM_PUNGAMAIL_PERMISSION_NEWSLETTERS_EDIT_DESC" />
+		<action name="core.edit.state" title="COM_PUNGAMAIL_PERMISSION_NEWSLETTERS_STATE" description="COM_PUNGAMAIL_PERMISSION_NEWSLETTERS_STATE_DESC" />
+		<action name="core.delete" title="COM_PUNGAMAIL_PERMISSION_NEWSLETTERS_DELETE" description="COM_PUNGAMAIL_PERMISSION_NEWSLETTERS_DELETE_DESC" />
+		<action name="pungamail.newsletters.send" title="COM_PUNGAMAIL_PERMISSION_NEWSLETTERS_SEND" description="COM_PUNGAMAIL_PERMISSION_NEWSLETTERS_SEND_DESC" />
+		<action name="pungamail.automatic.manage" title="COM_PUNGAMAIL_PERMISSION_AUTOMATIC" description="COM_PUNGAMAIL_PERMISSION_AUTOMATIC_DESC" />
+		<action name="pungamail.audience.manage" title="COM_PUNGAMAIL_PERMISSION_AUDIENCE" description="COM_PUNGAMAIL_PERMISSION_AUDIENCE_DESC" />
+		<action name="pungamail.design.manage" title="COM_PUNGAMAIL_PERMISSION_DESIGN" description="COM_PUNGAMAIL_PERMISSION_DESIGN_DESC" />
+		<action name="pungamail.delivery.manage" title="COM_PUNGAMAIL_PERMISSION_DELIVERY" description="COM_PUNGAMAIL_PERMISSION_DELIVERY_DESC" />
+		<action name="pungamail.tools.manage" title="COM_PUNGAMAIL_PERMISSION_TOOLS" description="COM_PUNGAMAIL_PERMISSION_TOOLS_DESC" />
 	</section>
 </access>

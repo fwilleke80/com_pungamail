@@ -12,6 +12,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 
 /**
  * Newsletter list view using Joomla administrator list conventions.
@@ -38,7 +39,7 @@ final class HtmlView extends BaseHtmlView
 	{
 		$user = Factory::getApplication()->getIdentity();
 
-		if (!$user->authorise('core.manage', 'com_pungamail'))
+		if (!Permissions::can('core.manage'))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
@@ -52,7 +53,7 @@ final class HtmlView extends BaseHtmlView
 
 		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_NEWSLETTERS'), 'envelope');
 
-		if ($user->authorise('core.create', 'com_pungamail'))
+		if (Permissions::can('core.create'))
 		{
 			ToolbarHelper::addNew('newsletter.add');
 			ToolbarHelper::custom('newsletters.duplicate', 'copy', '', Text::_('COM_PUNGAMAIL_DUPLICATE_AS_DRAFT'), true);
@@ -62,31 +63,34 @@ final class HtmlView extends BaseHtmlView
 
 		if ($recordState === '-2')
 		{
-			if ($user->authorise('core.edit.state', 'com_pungamail'))
+			if (Permissions::can('core.edit.state'))
 			{
 				ToolbarHelper::publish('newsletters.restore', Text::_('COM_PUNGAMAIL_RESTORE'), true);
 			}
 
-			if ($user->authorise('core.delete', 'com_pungamail'))
+			if (Permissions::can('core.delete'))
 			{
 				ToolbarHelper::deleteList(Text::_('COM_PUNGAMAIL_CONFIRM_DELETE_NEWSLETTERS'), 'newsletters.delete');
 			}
 		}
 		elseif ($recordState === '2')
 		{
-			if ($user->authorise('core.edit.state', 'com_pungamail'))
+			if (Permissions::can('core.edit.state'))
 			{
 				ToolbarHelper::custom('newsletters.unarchive', 'unarchive', '', Text::_('COM_PUNGAMAIL_UNARCHIVE'), true);
 				ToolbarHelper::trash('newsletters.trash');
 			}
 		}
-		elseif ($user->authorise('core.edit.state', 'com_pungamail'))
+		elseif (Permissions::can('core.edit.state'))
 		{
 			ToolbarHelper::custom('newsletters.archive', 'archive', '', Text::_('COM_PUNGAMAIL_ARCHIVE'), true);
 			ToolbarHelper::trash('newsletters.trash');
 		}
 
-		ToolbarHelper::preferences('com_pungamail');
+		if (Permissions::canConfigure())
+		{
+			ToolbarHelper::preferences('com_pungamail');
+		}
 		parent::display($tpl);
 	}
 }

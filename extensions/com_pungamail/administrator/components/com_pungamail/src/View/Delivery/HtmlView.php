@@ -12,6 +12,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 
 /** Delivery health administrator view. */
 final class HtmlView extends BaseHtmlView
@@ -27,7 +28,7 @@ final class HtmlView extends BaseHtmlView
 	/** @return void */
 	public function display($tpl = null): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise('core.manage', 'com_pungamail'))
+		if (!Permissions::can(Permissions::MANAGE_DELIVERY))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
@@ -41,7 +42,10 @@ final class HtmlView extends BaseHtmlView
 		$this->queueNewsletters = $model->getQueueNewsletters();
 		$this->queueFilters = $model->getQueueFilters();
 		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_DELIVERY_HEALTH'), 'heart');
-		ToolbarHelper::preferences('com_pungamail');
+		if (Permissions::canConfigure())
+		{
+			ToolbarHelper::preferences('com_pungamail');
+		}
 		parent::display($tpl);
 	}
 }

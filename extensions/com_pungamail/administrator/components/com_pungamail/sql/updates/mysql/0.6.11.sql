@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.11 adds component-level ACL permissions; no database schema change.

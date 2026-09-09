@@ -6,6 +6,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 
 /** Central selected-content layout list view. */
 final class HtmlView extends BaseHtmlView
@@ -16,7 +17,7 @@ final class HtmlView extends BaseHtmlView
 	/** @return void */
 	public function display($tpl = null): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise('core.manage', 'com_pungamail'))
+		if (!Permissions::can(Permissions::MANAGE_DESIGN))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
@@ -25,7 +26,10 @@ final class HtmlView extends BaseHtmlView
 		$this->items = $model->getItems();
 		$this->legacyOverrides = $model->getLegacyOverrideCounts();
 		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_CONTENT_LAYOUTS'), 'palette');
-		ToolbarHelper::preferences('com_pungamail');
+		if (Permissions::canConfigure())
+		{
+			ToolbarHelper::preferences('com_pungamail');
+		}
 		parent::display($tpl);
 	}
 }

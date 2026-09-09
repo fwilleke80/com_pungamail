@@ -11,6 +11,7 @@ namespace Punga\Component\PungaMail\Administrator\Controller;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 
 /**
  * Default administrator display controller.
@@ -36,10 +37,7 @@ final class DisplayController extends BaseController
 	{
 		$app = Factory::getApplication();
 
-		if (!$app->getIdentity()->authorise('core.manage', 'com_pungamail'))
-		{
-			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
-		}
+		Permissions::require('core.manage');
 
 		$input = $app->getInput();
 		$contextView = $input->getCmd('view', $this->default_view);
@@ -66,6 +64,9 @@ final class DisplayController extends BaseController
 		{
 			$screen = $defaultScreens[$contextView];
 		}
+
+		Permissions::require(Permissions::actionForView($contextView, $screen));
+		Permissions::prepareAdministratorMenu();
 
 		if ($screen !== '' && in_array($screen, $screenViews[$contextView] ?? [], true))
 		{

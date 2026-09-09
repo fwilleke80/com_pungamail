@@ -28,6 +28,8 @@ It is designed for websites that want to manage newsletters directly inside Joom
 
 By default, Punga Mail uses Joomla's configured mail transport. Administrators can instead select **Custom SMTP** in Punga Mail Options when newsletters should use a separate outgoing account; Joomla system mail remains unchanged.
 
+- Granular Joomla ACL permissions let administrators delegate newsletter writing/sending without exposing Delivery or component configuration.
+
 ## Installation
 
 Install the Punga Mail package through:

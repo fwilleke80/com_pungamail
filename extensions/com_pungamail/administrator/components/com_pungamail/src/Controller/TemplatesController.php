@@ -7,6 +7,7 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
@@ -34,6 +35,7 @@ final class TemplatesController extends BaseController
 		if ($ids === []) { throw new \InvalidArgumentException(Text::_('JLIB_HTML_PLEASE_MAKE_A_SELECTION_FROM_THE_LIST')); }
 		return $ids;
 	}
-	/** @return void */ private function requirePermission(string $permission): void { if (!Factory::getApplication()->getIdentity()->authorise($permission, 'com_pungamail')) { throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403); } }
+	/** @return void */ private function requirePermission(string $permission): void { if (!Permissions::can(Permissions::MANAGE_DESIGN))
+		{ throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403); } }
 	/** @return void */ private function requireToken(): void { if (!Session::checkToken()) { throw new \RuntimeException(Text::_('JINVALID_TOKEN'), 403); } }
 }

@@ -12,6 +12,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 
 /**
  * Administrator dashboard view.
@@ -31,7 +32,10 @@ final class HtmlView extends BaseHtmlView
 
 		$this->data = $this->getModel()->getData();
 		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_DASHBOARD'), 'dashboard');
-		ToolbarHelper::preferences('com_pungamail');
+		if (Permissions::canConfigure())
+		{
+			ToolbarHelper::preferences('com_pungamail');
+		}
 		parent::display($tpl);
 	}
 }

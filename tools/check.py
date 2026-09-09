@@ -120,6 +120,8 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.8.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.9.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.10.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.11.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/Permissions.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
@@ -987,7 +989,7 @@ def check_stabilization_033() -> None:
     bounce_service = (admin_root / "src/Service/BounceService.php").read_text(encoding="utf-8")
 
     required_security_tokens = (
-        (display, "authorise('core.manage', 'com_pungamail')", "administrator display ACL"),
+        (display, "Permissions::require('core.manage')", "administrator display ACL"),
         (csv_controller, "MAX_CSV_BYTES", "bounded CSV upload"),
         (csv_controller, "escapeSpreadsheetCell", "spreadsheet-formula-safe CSV export"),
         (csv_controller, "clear('pungamail.csv.contents')", "stale CSV preview clearing"),
@@ -2357,7 +2359,7 @@ def check_release_ux_0603() -> None:
         "function saveOutgoingSettings(): void",
         "function testOutgoing(): void",
         "function guardOptions(): void",
-        "authorise('core.admin', 'com_pungamail')",
+        "Permissions::canConfigure()",
     ):
         if token not in controller:
             fail(f"0.6.3 protected mail-settings controller is missing {token!r}")
@@ -2895,7 +2897,7 @@ def check_release_fix_0610() -> None:
 
     user_guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
     for token in (
-        "Punga Mail 0.6.10",
+        f"Punga Mail {VERSION}",
         "Browser Page Title",
         "Site Name in Page Titles",
         "frozen subject",
@@ -2905,12 +2907,113 @@ def check_release_fix_0610() -> None:
 
     test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
     for token in (
-        "Punga Mail 0.6.10 Live Acceptance Test Guide",
+        f"Punga Mail {VERSION} Live Acceptance Test Guide",
         "PM-082 — Subscription menu item, SEF routes, and browser titles",
         "immutable sent newsletter subject",
     ):
         if token not in test_guide:
             fail(f"0.6.10 TEST_GUIDE is missing {token!r}")
+
+
+def check_release_acl_0611() -> None:
+    """Protect granular Joomla ACL and permission-sensitive administrator UI."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    access = (admin / "access.xml").read_text(encoding="utf-8")
+    config = (admin / "config.xml").read_text(encoding="utf-8")
+    permissions = (admin / "src/Service/Permissions.php").read_text(encoding="utf-8")
+    display = (admin / "src/Controller/DisplayController.php").read_text(encoding="utf-8")
+    newsletter = (admin / "src/Controller/NewsletterController.php").read_text(encoding="utf-8")
+    dashboard = (admin / "tmpl/dashboard/default.php").read_text(encoding="utf-8")
+
+    for action in (
+        "core.options",
+        "pungamail.newsletters.send",
+        "pungamail.automatic.manage",
+        "pungamail.audience.manage",
+        "pungamail.design.manage",
+        "pungamail.delivery.manage",
+        "pungamail.tools.manage",
+    ):
+        if f'name="{action}"' not in access:
+            fail(f"0.6.11 access.xml is missing ACL action {action}")
+
+    for token in (
+        'name="permissions"',
+        'type="rules"',
+        'component="com_pungamail"',
+        'section="component"',
+    ):
+        if token not in config:
+            fail(f"0.6.11 Component Options permissions tab is missing {token!r}")
+
+    for token in (
+        "SEND_NEWSLETTERS",
+        "MANAGE_AUTOMATIC",
+        "MANAGE_AUDIENCE",
+        "MANAGE_DESIGN",
+        "MANAGE_DELIVERY",
+        "MANAGE_TOOLS",
+        "canConfigure",
+        "actionForView",
+        "prepareAdministratorMenu",
+    ):
+        if token not in permissions:
+            fail(f"0.6.11 central Permissions service is missing {token!r}")
+
+    for token in (
+        "Permissions::require('core.manage')",
+        "Permissions::actionForView",
+        "Permissions::prepareAdministratorMenu",
+    ):
+        if token not in display:
+            fail(f"0.6.11 DisplayController is missing {token!r}")
+
+    if newsletter.count("Permissions::require(Permissions::SEND_NEWSLETTERS)") < 6:
+        fail("0.6.11 Newsletter send/schedule actions are not consistently protected")
+    if "Permissions::require(Permissions::MANAGE_DELIVERY)" not in newsletter:
+        fail("0.6.11 manual queue processing is not protected by Manage Delivery")
+
+    for token in ("$canAutomatic", "$canAudience", "$canDesign", "$canDelivery"):
+        if token not in dashboard:
+            fail(f"0.6.11 Dashboard is not permission-sensitive: missing {token}")
+
+    for path, action in (
+        (admin / "src/Controller/DigestController.php", "MANAGE_AUTOMATIC"),
+        (admin / "src/Controller/SubscriberController.php", "MANAGE_AUDIENCE"),
+        (admin / "src/Controller/TemplateController.php", "MANAGE_DESIGN"),
+        (admin / "src/Controller/DeliveryController.php", "MANAGE_DELIVERY"),
+        (admin / "src/Controller/ImportController.php", "MANAGE_TOOLS"),
+    ):
+        contents = path.read_text(encoding="utf-8")
+        if f"Permissions::{action}" not in contents:
+            fail(f"0.6.11 {path.name} is not protected by {action}")
+
+    migration = (admin / "sql/updates/mysql/0.6.11.sql").read_text(encoding="utf-8")
+    if "no database schema change" not in migration.lower():
+        fail("0.6.11 migration marker does not document its no-schema-change contract")
+
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "### Permissions",
+        "Send Newsletters",
+        "Manage Audience",
+        "Manage Delivery",
+        "Manager",
+    ):
+        if token not in guide:
+            fail(f"0.6.11 USER_GUIDE is missing ACL documentation {token!r}")
+
+    tests = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "Punga Mail 0.6.11 Live Acceptance Test Guide",
+        "Permissions",
+        "Manager",
+        "direct URL",
+    ):
+        if token not in tests:
+            fail(f"0.6.11 TEST_GUIDE is missing ACL acceptance coverage {token!r}")
+
 
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
@@ -3062,6 +3165,7 @@ def main() -> int:
         check_release_ux_0608,
         check_release_fix_0609,
         check_release_fix_0610,
+        check_release_acl_0611,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

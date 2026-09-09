@@ -6,6 +6,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 
 /** Mailing-topic list view. */
 final class HtmlView extends BaseHtmlView
@@ -21,7 +22,7 @@ final class HtmlView extends BaseHtmlView
 	{
 		$user = Factory::getApplication()->getIdentity();
 
-		if (!$user->authorise('core.manage', 'com_pungamail'))
+		if (!Permissions::can(Permissions::MANAGE_AUDIENCE))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
@@ -45,6 +46,11 @@ final class HtmlView extends BaseHtmlView
 			ToolbarHelper::publish('topics.publish', 'JTOOLBAR_PUBLISH', true);
 			ToolbarHelper::unpublish('topics.unpublish', 'JTOOLBAR_UNPUBLISH', true);
 			ToolbarHelper::trash('topics.trash');
+		}
+
+		if (Permissions::canConfigure())
+		{
+			ToolbarHelper::preferences('com_pungamail');
 		}
 
 		parent::display($tpl);

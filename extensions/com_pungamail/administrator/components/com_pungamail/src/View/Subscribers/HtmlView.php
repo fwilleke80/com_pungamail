@@ -12,6 +12,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 
 /**
  * Subscriber list view using Joomla administrator list conventions.
@@ -36,7 +37,7 @@ final class HtmlView extends BaseHtmlView
 	/** @return void */
 	public function display($tpl = null): void
 	{
-		if (!Factory::getApplication()->getIdentity()->authorise('core.manage', 'com_pungamail'))
+		if (!Permissions::can(Permissions::MANAGE_AUDIENCE))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
@@ -50,19 +51,22 @@ final class HtmlView extends BaseHtmlView
 
 		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_SUBSCRIBERS'), 'users');
 
-		if (Factory::getApplication()->getIdentity()->authorise('core.create', 'com_pungamail'))
+		if (Permissions::can(Permissions::MANAGE_AUDIENCE))
 		{
 			ToolbarHelper::addNew('subscriber.add');
 		}
 		ToolbarHelper::custom('subscribers.unsubscribe', 'ban-circle', '', Text::_('COM_PUNGAMAIL_UNSUBSCRIBE_SELECTED'), true);
 		ToolbarHelper::custom('subscribers.requestConfirmation', 'mail', '', Text::_('COM_PUNGAMAIL_SEND_CONFIRMATION_SELECTED'), true);
 
-		if (Factory::getApplication()->getIdentity()->authorise('core.delete', 'com_pungamail'))
+		if (Permissions::can(Permissions::MANAGE_AUDIENCE))
 		{
 			ToolbarHelper::deleteList(Text::_('COM_PUNGAMAIL_CONFIRM_DELETE_SUBSCRIBERS'), 'subscribers.delete');
 		}
 
-		ToolbarHelper::preferences('com_pungamail');
+		if (Permissions::canConfigure())
+		{
+			ToolbarHelper::preferences('com_pungamail');
+		}
 		parent::display($tpl);
 	}
 }

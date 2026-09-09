@@ -13,6 +13,7 @@ use Joomla\CMS\Form\Form;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 
 /**
  * Administrator form for adding a newsletter recipient.
@@ -34,9 +35,7 @@ final class HtmlView extends BaseHtmlView
 
 		$model = $this->getModel();
 		$this->item = $model->getItem();
-		$permission = $this->item === null ? 'core.create' : 'core.edit';
-
-		if (!$user->authorise($permission, 'com_pungamail'))
+		if (!Permissions::can(Permissions::MANAGE_AUDIENCE))
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
