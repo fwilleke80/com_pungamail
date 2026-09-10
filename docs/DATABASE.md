@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.6.14 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.6.15 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -133,3 +133,4 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 - `0.6.12.sql` — no-op version marker for the Joomla user-profile display fix; no database schema change is required.
 - `0.6.13.sql` — no-op version marker for Channel lifecycle/membership consistency fixes; no database schema change is required.
 - `0.6.14.sql` — no-op version marker for Channel permanent-delete cascade fixes; no database schema change is required.
+- `0.6.15.sql` — no-op version marker for registered content-type routing fixes; no database schema change is required.

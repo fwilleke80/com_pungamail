@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.15 — 2026-09-10
+
+- Fixed `{new_content}` and selected-content links so Punga Mail uses each Joomla registered content type's `router` callback when one is available instead of always constructing a generic `option/view/id` URL.
+- Registered routers receive Joomla's conventional `id:alias` slug, category ID and content language, allowing the originating extension to produce its canonical menu-aware route.
+- Added content-language discovery from registered `core_language` field mappings so multilingual route helpers receive the source item's language.
+- Hardened routing integration: Punga Mail asks Joomla to boot the originating component before resolving its router class; malformed, stale, unavailable or failing third-party router callbacks safely fall back to the previous conventional component/view URL rather than breaking newsletter generation. Legacy component route helpers may still be loaded from their conventional frontend helper file when required.
+- Updated routing acceptance coverage and release checks, and added the 0.6.15 no-schema-change database-version marker.
+
 ## 0.6.14 — 2026-09-10
 
 - Fixed permanent Channel deletion so Newsletter and Automatic Newsletter Channel assignments no longer block deletion.

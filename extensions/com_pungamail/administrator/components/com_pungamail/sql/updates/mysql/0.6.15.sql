@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.15 fixes registered content-type routing; no database schema change is required.

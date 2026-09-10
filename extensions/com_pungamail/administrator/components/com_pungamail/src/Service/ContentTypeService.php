@@ -256,8 +256,9 @@ final class ContentTypeService
 	}
 
 	/**
-	 * Builds an absolute site URL using the conventional component/view route
-	 * represented by a registered type alias.
+	 * Builds an absolute site URL through the registered Joomla content router.
+	 * Falls back to the conventional component/view route when the content type
+	 * does not expose a usable router or its router fails.
 	 *
 	 * @param object $type Type metadata.
 	 * @param object $item Normalized item.
@@ -275,14 +276,114 @@ final class ContentTypeService
 			return '';
 		}
 
-		$link = 'index.php?option=' . rawurlencode($option) . '&view=' . rawurlencode($view) . '&id=' . rawurlencode((string) $item->id);
+		$link = $this->registeredRoute($type, $item, $option);
 
-		if ((string) ($item->catid ?? '') !== '')
+		if ($link === '')
 		{
-			$link .= '&catid=' . rawurlencode((string) $item->catid);
+			$link = 'index.php?option=' . rawurlencode($option) . '&view=' . rawurlencode($view) . '&id=' . rawurlencode((string) $item->id);
+
+			if ((string) ($item->catid ?? '') !== '')
+			{
+				$link .= '&catid=' . rawurlencode((string) $item->catid);
+			}
 		}
 
 		return Route::link('site', $link, false, Route::TLS_IGNORE, true);
+	}
+
+	/**
+	 * Invokes a content type's registered static Joomla route helper.
+	 * Joomla content routers conventionally receive an id:alias slug, category
+	 * ID and content language. Invalid or failing third-party routers are treated
+	 * as unavailable so newsletter generation can safely use the fallback route.
+	 *
+	 * @param object $type   Type metadata.
+	 * @param object $item   Normalized item.
+	 * @param string $option Validated component option.
+	 *
+	 * @return string Internal Joomla URL, or an empty string when unavailable.
+	 */
+	private function registeredRoute(object $type, object $item, string $option): string
+	{
+		$router = trim((string) ($type->router ?? ''));
+
+		if ($router === '' || !str_contains($router, '::'))
+		{
+			return '';
+		}
+
+		[$class, $method] = array_map('trim', explode('::', $router, 2));
+		$class = ltrim($class, '\\');
+		$classParts = explode('\\', $class);
+
+		if ($class === '' || preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $method) !== 1)
+		{
+			return '';
+		}
+
+		foreach ($classParts as $classPart)
+		{
+			if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $classPart) !== 1)
+			{
+				return '';
+			}
+		}
+
+		if (!class_exists($class))
+		{
+			$app = Factory::getApplication();
+
+			if (method_exists($app, 'bootComponent'))
+			{
+				try
+				{
+					$app->bootComponent($option);
+				}
+				catch (\Throwable)
+				{
+					// A stale or broken registration must not break Newsletter rendering.
+				}
+			}
+		}
+
+		if (!class_exists($class))
+		{
+			$legacyHelper = JPATH_SITE . '/components/' . $option . '/helpers/route.php';
+
+			if (is_file($legacyHelper) && class_exists('JLoader'))
+			{
+			\JLoader::register($class, $legacyHelper);
+			}
+		}
+
+		if (!is_callable([$class, $method]))
+		{
+			return '';
+		}
+
+		$id = trim((string) ($item->id ?? ''));
+
+		if ($id === '')
+		{
+			return '';
+		}
+
+		$alias = trim((string) ($item->alias ?? ''));
+		$slug = $alias !== '' ? $id . ':' . $alias : $id;
+		$catid = (string) ($item->catid ?? '') !== '' ? (int) $item->catid : 0;
+		$language = trim((string) ($item->language ?? '*'));
+		$language = $language !== '' ? $language : '*';
+
+		try
+		{
+			$link = $class::$method($slug, $catid, $language);
+		}
+		catch (\Throwable)
+		{
+			return '';
+		}
+
+		return is_string($link) ? trim($link) : '';
 	}
 
 	/**
@@ -337,6 +438,8 @@ final class ContentTypeService
 			'catid' => $this->column((string) ($common['core_catid'] ?? '')),
 			'alias' => $this->column((string) ($common['core_alias'] ?? '')),
 			'access' => $this->column((string) ($common['core_access'] ?? '')),
+			'language' => $this->column((string) ($common['core_language'] ?? '')),
+			'router' => trim((string) ($row->router ?? '')),
 		];
 	}
 
@@ -402,7 +505,7 @@ final class ContentTypeService
 			$publishedExpression . ' AS ' . $this->db->quoteName('published'),
 		];
 
-		foreach (['body', 'created', 'catid', 'alias', 'access'] as $optional)
+		foreach (['body', 'created', 'catid', 'alias', 'access', 'language'] as $optional)
 		{
 			$column = $type->{$optional} ?? null;
 			$select[] = $column !== null
@@ -470,6 +573,8 @@ final class ContentTypeService
 			$row->body = (string) ($row->body ?? '');
 			$row->access = $row->access !== null ? (int) $row->access : null;
 			$row->access_mapped = $type->access !== null;
+			$row->language = trim((string) ($row->language ?? '*'));
+			$row->language = $row->language !== '' ? $row->language : '*';
 			$row->published = (string) ($row->published ?? ($row->created ?? ''));
 			$row->url = $this->itemUrl($type, $row);
 		}

@@ -124,6 +124,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.12.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.13.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.14.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.15.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/Permissions.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
@@ -3171,9 +3172,49 @@ def check_release_fix_0614() -> None:
             fail(f"0.6.14 USER_GUIDE is missing Channel-delete cascade documentation {token!r}")
 
     tests = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
-    for token in ("Punga Mail 0.6.14 Live Acceptance Test Guide", "Channel assignments in Newsletters/Automatic Newsletters", "stored browser-view/message snapshot"):
+    for token in ("Live Acceptance Test Guide", "Channel assignments in Newsletters/Automatic Newsletters", "stored browser-view/message snapshot"):
         if token not in tests:
             fail(f"0.6.14 TEST_GUIDE is missing Channel-delete cascade acceptance coverage {token!r}")
+
+
+def check_release_fix_0615() -> None:
+    """Protect registered content-type routing and safe fallback behavior."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    service = (admin / "src/Service/ContentTypeService.php").read_text(encoding="utf-8")
+
+    for token in (
+        "'router' => trim((string) ($row->router ?? ''))",
+        "'language' => $this->column((string) ($common['core_language'] ?? ''))",
+        "['body', 'created', 'catid', 'alias', 'access', 'language']",
+        "registeredRoute($type, $item, $option)",
+        "$app->bootComponent($option)",
+        "$slug = $alias !== '' ? $id . ':' . $alias : $id;",
+        "$class::$method($slug, $catid, $language)",
+        "catch (\\Throwable)",
+        "\\JLoader::register($class, $legacyHelper)",
+        "Route::link('site', $link, false, Route::TLS_IGNORE, true)",
+    ):
+        if token not in service:
+            fail(f"0.6.15 registered content routing is missing {token!r}")
+
+    fallback = "'index.php?option=' . rawurlencode($option) . '&view=' . rawurlencode($view) . '&id='"
+    if fallback not in service:
+        fail("0.6.15 removed the safe conventional content URL fallback")
+
+    migration = (admin / "sql/updates/mysql/0.6.15.sql").read_text(encoding="utf-8")
+    if "no database schema change" not in migration.lower():
+        fail("0.6.15 migration marker does not document its no-schema-change contract")
+
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in ("registered Joomla `router` callback", "canonical alias- and menu-aware frontend URL", "safe fallback"):
+        if token not in guide:
+            fail(f"0.6.15 USER_GUIDE is missing registered-router documentation {token!r}")
+
+    tests = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    for token in ("Punga Mail 0.6.15 Live Acceptance Test Guide", "PM-121A", "Registered content-type canonical routing"):
+        if token not in tests:
+            fail(f"0.6.15 TEST_GUIDE is missing registered-router acceptance coverage {token!r}")
 
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
@@ -3329,6 +3370,7 @@ def main() -> int:
         check_release_fix_0612,
         check_release_fix_0613,
         check_release_fix_0614,
+        check_release_fix_0615,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

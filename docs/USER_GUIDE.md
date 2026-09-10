@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.14. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.15. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -497,6 +497,8 @@ Every layout always has the normalized Punga Mail placeholders:
 - `{content_type}`
 
 For a specific registered content type, Punga Mail also inspects its registered backing database table and exposes safe table columns directly as placeholders. No Punga Mail plugin or cooperation from the originating extension is required. If an Event table contains fields such as `start_at`, `end_at` and `venue`, that Event layout can use:
+
+When a selected item is linked, Punga Mail also uses the content type's registered Joomla `router` callback when available. That lets the originating extension supply its canonical alias- and menu-aware frontend URL. If a type has no usable router, Punga Mail keeps the conventional component/view/ID route as a safe fallback.
 
 ```text
 ### {title_link}
