@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.12 — 2026-09-10
+
+- Fixed the read-only Joomla user profile display for Punga Mail fields. **Receive newsletters** now renders as Joomla's localized Yes/No value instead of raw `1/0`.
+- Fixed **Channels** on the read-only profile so subscribed Channel names are shown instead of an empty value caused by Joomla's generic array-value renderer.
+- Kept edit-form storage unchanged: Punga Mail still stores the master preference as `0/1` and Channel memberships as IDs; only the profile presentation layer is formatted.
+- Updated USER_GUIDE and TEST_GUIDE acceptance coverage for human-readable frontend profile values.
+- Added the 0.6.12 database-version marker; no schema change is required.
+
 ## 0.6.11 — 2026-09-09
 
 - Added Joomla-standard **Permissions** to Punga Mail Component Options.

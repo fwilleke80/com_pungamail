@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.6.11 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.6.12 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -130,3 +130,4 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 - `0.6.9.sql` — database-version marker for the Joomla User Custom Field name/discovery correction; no schema change.
 - `0.6.10.sql` — database-version marker for frontend Joomla document-title composition; no schema change.
 - `0.6.11.sql` — no-op version marker for the Joomla ACL/Permissions release; no database schema change is required.
+- `0.6.12.sql` — no-op version marker for the Joomla user-profile display fix; no database schema change is required.

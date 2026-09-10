@@ -14,6 +14,8 @@ use Joomla\CMS\Event\User\AfterSaveEvent;
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Form\Form;
+use Joomla\CMS\HTML\HTMLHelper;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\Event\SubscriberInterface;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
@@ -110,6 +112,52 @@ final class PungaMail extends CMSPlugin implements SubscriberInterface
 
 		Form::addFormPath(__DIR__ . '/../../forms');
 		$form->loadFile('pungamail', false);
+		$this->registerProfileDisplayHelpers();
+	}
+
+	/**
+	 * Registers Joomla profile-display formatters for Punga Mail fields.
+	 *
+	 * Joomla's read-only profile view renders plugin form fields through
+	 * HTMLHelper users.* callbacks instead of their edit-form controls.
+	 * Without explicit callbacks the radio value is shown as a raw 0/1 and
+	 * the multiple Channel-ID value cannot be rendered meaningfully.
+	 *
+	 * @return void
+	 */
+	private function registerProfileDisplayHelpers(): void
+	{
+		if (!HTMLHelper::isRegistered('users.jform_pungamail_subscribed'))
+		{
+			HTMLHelper::register(
+				'users.jform_pungamail_subscribed',
+				static fn (mixed $value): string => (int) $value === 1 ? Text::_('JYES') : Text::_('JNO')
+			);
+		}
+
+		if (!HTMLHelper::isRegistered('users.jform_pungamail_topic_ids'))
+		{
+			HTMLHelper::register(
+				'users.jform_pungamail_topic_ids',
+				static function (mixed $value): string
+				{
+					$ids = array_values(array_unique(array_filter(array_map('intval', (array) $value))));
+
+					if ($ids === [])
+					{
+						return Text::_('PLG_USER_PUNGAMAIL_NO_CHANNELS');
+					}
+
+					$channels = ServiceFactory::topics()->active($ids);
+					$titles = array_map(
+						static fn (object $channel): string => htmlspecialchars((string) $channel->title, ENT_QUOTES, 'UTF-8'),
+						$channels
+					);
+
+					return $titles !== [] ? implode(', ', $titles) : Text::_('PLG_USER_PUNGAMAIL_NO_CHANNELS');
+				}
+			);
+		}
 	}
 
 	/**

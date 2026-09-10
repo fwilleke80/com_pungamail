@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.12 fixes Joomla user-profile newsletter display; no database schema change.

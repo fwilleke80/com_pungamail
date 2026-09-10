@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.11. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.12. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -793,8 +793,8 @@ The enabled Punga Mail user plugin adds a **Newsletter** fieldset to Joomla regi
 
 | Field | What it does |
 | --- | --- |
-| Receive newsletters | **Yes** enables the user's master Punga Mail permission. **No** globally opts the address out and overrides every topic/Joomla-group selection. |
-| Channels | Multi-select containing currently published Channels the Joomla account is eligible to subscribe to. Existing eligible memberships are preselected. Saving adds selected memberships and removes cleared visible memberships. |
+| Receive newsletters | **Yes** enables the user's master Punga Mail permission. **No** globally opts the address out and overrides every topic/Joomla-group selection. On the read-only frontend profile this is shown as Joomla's localized **Yes/No** value rather than raw `1/0`. |
+| Channels | Multi-select containing currently published Channels the Joomla account is eligible to subscribe to. Existing eligible memberships are preselected. Saving adds selected memberships and removes cleared visible memberships. On the read-only frontend profile the selected Channel **names** are listed instead of the stored numeric Channel IDs. |
 
 The two controls are deliberately independent. Topic choices are retained when **Receive newsletters** is No, but no newsletter is delivered until the master permission is Yes again. This lets a user opt out completely without losing their preferred topic set.
 

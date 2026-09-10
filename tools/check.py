@@ -121,6 +121,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.9.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.10.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.11.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.12.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/Permissions.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
@@ -3006,7 +3007,7 @@ def check_release_acl_0611() -> None:
 
     tests = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
     for token in (
-        "Punga Mail 0.6.11 Live Acceptance Test Guide",
+        "Live Acceptance Test Guide",
         "Permissions",
         "Manager",
         "direct URL",
@@ -3014,6 +3015,55 @@ def check_release_acl_0611() -> None:
         if token not in tests:
             fail(f"0.6.11 TEST_GUIDE is missing ACL acceptance coverage {token!r}")
 
+
+
+def check_release_fix_0612() -> None:
+    """Protect human-readable Joomla user-profile newsletter values."""
+
+    plugin = (
+        ROOT / "extensions/plg_user_pungamail/src/Extension/PungaMail.php"
+    ).read_text(encoding="utf-8")
+
+    for token in (
+        "users.jform_pungamail_subscribed",
+        "users.jform_pungamail_topic_ids",
+        "Text::_('JYES')",
+        "Text::_('JNO')",
+        "ServiceFactory::topics()->active($ids)",
+        "PLG_USER_PUNGAMAIL_NO_CHANNELS",
+    ):
+        if token not in plugin:
+            fail(f"0.6.12 Joomla profile display formatter is missing {token!r}")
+
+    for language in ("en-GB", "de-DE"):
+        strings = (
+            ROOT
+            / f"extensions/plg_user_pungamail/language/{language}/plg_user_pungamail.ini"
+        ).read_text(encoding="utf-8")
+        if "PLG_USER_PUNGAMAIL_NO_CHANNELS=" not in strings:
+            fail(f"0.6.12 {language} profile language is missing the no-Channels value")
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    migration = (admin / "sql/updates/mysql/0.6.12.sql").read_text(encoding="utf-8")
+    if "no database schema change" not in migration.lower():
+        fail("0.6.12 migration marker does not document its no-schema-change contract")
+
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "localized **Yes/No**",
+        "selected Channel **names**",
+    ):
+        if token not in guide:
+            fail(f"0.6.12 USER_GUIDE is missing profile-display documentation {token!r}")
+
+    tests = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    for token in (
+        "Punga Mail 0.6.12 Live Acceptance Test Guide",
+        "Ja/Nein",
+        "appearing blank or showing numeric IDs",
+    ):
+        if token not in tests:
+            fail(f"0.6.12 TEST_GUIDE is missing profile-display acceptance coverage {token!r}")
 
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
@@ -3166,6 +3216,7 @@ def main() -> int:
         check_release_fix_0609,
         check_release_fix_0610,
         check_release_acl_0611,
+        check_release_fix_0612,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

@@ -2,8 +2,8 @@
 <extension type="component" method="upgrade">
 	<name>COM_PUNGAMAIL</name>
 	<element>com_pungamail</element>
-	<version>0.6.11</version>
-	<creationDate>2026-09-09</creationDate>
+	<version>0.6.12</version>
+	<creationDate>2026-09-10</creationDate>
 	<author>Punga</author>
 	<license>MIT License</license>
 	<description>COM_PUNGAMAIL_XML_DESCRIPTION</description>

@@ -1,4 +1,4 @@
-# Punga Mail 0.6.11 Live Acceptance Test Guide
+# Punga Mail 0.6.12 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -736,11 +736,12 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Steps:**
 
-1. Open frontend profile and administrator user editor for a controlled Joomla user.
-2. Toggle **Receive newsletters** and select Channels.
-3. Save and compare Punga Mail subscriber state.
+1. Open the frontend read-only profile and administrator user editor for a controlled Joomla user.
+2. On the read-only profile, verify **Receive newsletters** is shown as localized **Yes/No** (for example **Ja/Nein**) rather than raw `1/0`.
+3. Verify **Channels** lists the names of the user's currently selected published Channels rather than appearing blank or showing numeric IDs.
+4. Edit the profile, toggle **Receive newsletters**, change the Channel selection, save, and reopen both surfaces.
 
-**Expected:** Master permission and Channel choices remain distinct. Channel choices may remain stored while Receive newsletters = No, but no newsletter is delivered until reception is re-enabled.
+**Expected:** Master permission and Channel choices remain distinct. The read-only profile presents human-readable localized subscription state and Channel names. Channel choices may remain stored while Receive newsletters = No, but no newsletter is delivered until reception is re-enabled.
 
 ### PM-081 — Unpublished/restricted Channels in profile
 
