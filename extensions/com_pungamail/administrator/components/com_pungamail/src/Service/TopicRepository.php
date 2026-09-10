@@ -44,20 +44,82 @@ final class TopicRepository
 	}
 
 	/**
-	 * Returns every non-trashed channel for administrator membership editing.
+	 * Returns Channels available for administrator membership editing.
 	 *
+	 * Normal Channels are always returned. When editing an existing subscriber,
+	 * trashed Channels that the subscriber still belongs to are also returned so
+	 * that the administrator can remove those otherwise-hidden memberships.
+	 *
+	 * @param int|null $subscriberId Existing subscriber ID, when editing one.
 	 * @return array<int,object>
 	 */
-	public function availableForAdministration(): array
+	public function availableForAdministration(?int $subscriberId = null): array
 	{
 		$trashed = -2;
 		$query = $this->db->getQuery(true)
-			->select('*')
-			->from($this->db->quoteName('#__pungamail_topics'))
-			->where($this->db->quoteName('state') . ' <> :trashed')
-			->order($this->db->quoteName('ordering') . ' ASC')
-			->order($this->db->quoteName('title') . ' ASC')
+			->select('t.*')
+			->from($this->db->quoteName('#__pungamail_topics', 't'));
+
+		if ($subscriberId !== null && $subscriberId > 0)
+		{
+			$subscribed = self::MEMBERSHIP_SUBSCRIBED;
+			$query->leftJoin(
+				$this->db->quoteName('#__pungamail_subscriber_topics', 'st')
+				. ' ON st.topic_id = t.id AND st.subscriber_id = :subscriberId AND st.status = :subscribed'
+			)
+				->where('(t.state <> :trashed OR st.subscriber_id IS NOT NULL)')
+				->bind(':subscriberId', $subscriberId, ParameterType::INTEGER)
+				->bind(':subscribed', $subscribed, ParameterType::INTEGER);
+		}
+		else
+		{
+			$query->where($this->db->quoteName('t.state') . ' <> :trashed');
+		}
+
+		$query->order($this->db->quoteName('t.ordering') . ' ASC')
+			->order($this->db->quoteName('t.title') . ' ASC')
 			->bind(':trashed', $trashed, ParameterType::INTEGER);
+
+		$topics = $this->db->setQuery($query)->loadObjectList();
+
+		foreach ($topics as $topic)
+		{
+			$topic->removable_only = (int) $topic->state === $trashed;
+		}
+
+		return $topics;
+	}
+
+	/**
+	 * Returns active Channels plus inactive Channels already selected by a record.
+	 *
+	 * This prevents an existing Newsletter or Automatic Newsletter dependency
+	 * from disappearing from its editor merely because the Channel was later
+	 * unpublished or trashed.
+	 *
+	 * @param array<int,int> $selectedIds Existing Channel IDs.
+	 * @return array<int,object>
+	 */
+	public function activeWithSelected(array $selectedIds): array
+	{
+		$selectedIds = array_values(array_unique(array_filter(array_map('intval', $selectedIds))));
+		$active = 1;
+		$query = $this->db->getQuery(true)
+			->select('*')
+			->from($this->db->quoteName('#__pungamail_topics'));
+
+		$stateCondition = $this->db->quoteName('state') . ' = :active';
+
+		if ($selectedIds !== [])
+		{
+			$stateCondition = '(' . $stateCondition . ' OR ' . $this->db->quoteName('id') . ' IN (' . implode(',', $selectedIds) . '))';
+		}
+
+		$query->where($stateCondition)
+			->bind(':active', $active, ParameterType::INTEGER);
+
+		$query->order($this->db->quoteName('ordering') . ' ASC')
+			->order($this->db->quoteName('title') . ' ASC');
 
 		return $this->db->setQuery($query)->loadObjectList();
 	}
@@ -247,43 +309,126 @@ final class TopicRepository
 		$this->db->setQuery($query)->execute();
 	}
 
-	/** @return int */
-	public function deleteTrashed(array $ids): int
+	/**
+	 * Permanently deletes trashed Channels and cascades live Channel relations.
+	 *
+	 * Subscriber records and immutable sent-message/delivery snapshots are never
+	 * deleted. Channel memberships and Channel targeting relations are removed
+	 * transactionally because they have no useful meaning after the Channel itself
+	 * has been permanently deleted.
+	 *
+	 * @param array<int,int> $ids Selected Channel IDs.
+	 * @return array{channels:int,memberships:int,newsletter_assignments:int,automatic_assignments:int} Deletion counts.
+	 */
+	public function deleteTrashed(array $ids): array
 	{
 		$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
 
 		if ($ids === [])
 		{
-			return 0;
+			return [
+				'channels' => 0,
+				'memberships' => 0,
+				'newsletter_assignments' => 0,
+				'automatic_assignments' => 0,
+			];
 		}
-
-		foreach (['#__pungamail_subscriber_topics', '#__pungamail_newsletter_topics', '#__pungamail_digest_topics'] as $table)
-		{
-			$query = $this->db->getQuery(true)
-				->select('COUNT(*)')
-				->from($this->db->quoteName($table))
-				->whereIn($this->db->quoteName('topic_id'), $ids);
-
-			if ((int) $this->db->setQuery($query)->loadResult() > 0)
-			{
-				throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_TOPIC_IN_USE'));
-			}
-		}
-
-		$deleteGroups = $this->db->getQuery(true)
-			->delete($this->db->quoteName('#__pungamail_topic_groups'))
-			->whereIn($this->db->quoteName('topic_id'), $ids);
-		$this->db->setQuery($deleteGroups)->execute();
 
 		$trashed = -2;
-		$query = $this->db->getQuery(true)
-			->delete($this->db->quoteName('#__pungamail_topics'))
+		$trashedQuery = $this->db->getQuery(true)
+			->select($this->db->quoteName('id'))
+			->from($this->db->quoteName('#__pungamail_topics'))
 			->whereIn($this->db->quoteName('id'), $ids)
 			->where($this->db->quoteName('state') . ' = :state')
 			->bind(':state', $trashed, ParameterType::INTEGER);
-		$this->db->setQuery($query)->execute();
+		$trashedIds = array_map('intval', $this->db->setQuery($trashedQuery)->loadColumn());
 
-		return $this->db->getAffectedRows();
+		if ($trashedIds === [])
+		{
+			return [
+				'channels' => 0,
+				'memberships' => 0,
+				'newsletter_assignments' => 0,
+				'automatic_assignments' => 0,
+			];
+		}
+
+		$newsletterCount = $this->relationCount('#__pungamail_newsletter_topics', $trashedIds);
+		$automaticCount = $this->relationCount('#__pungamail_digest_topics', $trashedIds);
+		$subscribed = self::MEMBERSHIP_SUBSCRIBED;
+		$membershipQuery = $this->db->getQuery(true)
+			->select('COUNT(*)')
+			->from($this->db->quoteName('#__pungamail_subscriber_topics'))
+			->whereIn($this->db->quoteName('topic_id'), $trashedIds)
+			->where($this->db->quoteName('status') . ' = :status')
+			->bind(':status', $subscribed, ParameterType::INTEGER);
+		$membershipCount = (int) $this->db->setQuery($membershipQuery)->loadResult();
+
+		$preferenceRequestQuery = $this->db->getQuery(true)
+			->select('DISTINCT ' . $this->db->quoteName('request_id'))
+			->from($this->db->quoteName('#__pungamail_preference_request_topics'))
+			->whereIn($this->db->quoteName('topic_id'), $trashedIds);
+		$preferenceRequestIds = array_map('intval', $this->db->setQuery($preferenceRequestQuery)->loadColumn());
+
+		$this->db->transactionStart();
+
+		try
+		{
+			foreach (
+				[
+					'#__pungamail_subscriber_topics',
+					'#__pungamail_preference_request_topics',
+					'#__pungamail_topic_groups',
+					'#__pungamail_newsletter_topics',
+					'#__pungamail_digest_topics',
+				] as $table
+			)
+			{
+				$delete = $this->db->getQuery(true)
+					->delete($this->db->quoteName($table))
+					->whereIn($this->db->quoteName('topic_id'), $trashedIds);
+				$this->db->setQuery($delete)->execute();
+			}
+
+			foreach ($preferenceRequestIds as $requestId)
+			{
+				$remainingQuery = $this->db->getQuery(true)
+					->select('COUNT(*)')
+					->from($this->db->quoteName('#__pungamail_preference_request_topics'))
+					->where($this->db->quoteName('request_id') . ' = :requestId')
+					->bind(':requestId', $requestId, ParameterType::INTEGER);
+
+				if ((int) $this->db->setQuery($remainingQuery)->loadResult() === 0)
+				{
+					$deleteRequest = $this->db->getQuery(true)
+						->delete($this->db->quoteName('#__pungamail_preference_requests'))
+						->where($this->db->quoteName('id') . ' = :requestId')
+						->bind(':requestId', $requestId, ParameterType::INTEGER);
+					$this->db->setQuery($deleteRequest)->execute();
+				}
+			}
+
+			$deleteTopics = $this->db->getQuery(true)
+				->delete($this->db->quoteName('#__pungamail_topics'))
+				->whereIn($this->db->quoteName('id'), $trashedIds)
+				->where($this->db->quoteName('state') . ' = :state')
+				->bind(':state', $trashed, ParameterType::INTEGER);
+			$this->db->setQuery($deleteTopics)->execute();
+			$channelCount = $this->db->getAffectedRows();
+			$this->db->transactionCommit();
+
+			return [
+				'channels' => $channelCount,
+				'memberships' => $membershipCount,
+				'newsletter_assignments' => $newsletterCount,
+				'automatic_assignments' => $automaticCount,
+			];
+		}
+		catch (\Throwable $e)
+		{
+			$this->db->transactionRollback();
+			throw $e;
+		}
 	}
 
 	/** @return array<int,int> */
@@ -363,6 +508,8 @@ final class TopicRepository
 	 */
 	public function updateAdministratorTopics(int $subscriberId, array $visibleIds, array $selectedIds, ?int $userId = null): void
 	{
+		$visibleIds = array_values(array_unique(array_filter(array_map('intval', $visibleIds))));
+		$selectedIds = array_values(array_unique(array_filter(array_map('intval', $selectedIds))));
 		$visible = $this->validAdministrativeIds($visibleIds);
 		$eligible = array_flip($this->eligibleIds($visible, $userId, false));
 		$selected = array_flip($this->eligibleIds($selectedIds, $userId, false));
@@ -376,6 +523,18 @@ final class TopicRepository
 
 			$status = isset($selected[$topicId]) ? self::MEMBERSHIP_SUBSCRIBED : self::MEMBERSHIP_UNSUBSCRIBED;
 			$this->upsertMembership($subscriberId, $topicId, $status);
+		}
+
+		// A trashed Channel can never gain a new membership, but an existing
+		// membership stays editable so the administrator can explicitly remove it.
+		$selectedMap = array_flip($selectedIds);
+
+		foreach ($this->subscribedTrashedTopicIds($subscriberId, $visibleIds) as $topicId)
+		{
+			if (!isset($selectedMap[$topicId]))
+			{
+				$this->upsertMembership($subscriberId, $topicId, self::MEMBERSHIP_UNSUBSCRIBED);
+			}
 		}
 	}
 
@@ -669,6 +828,44 @@ final class TopicRepository
 			];
 			$this->db->insertObject('#__pungamail_topic_groups', $row);
 		}
+	}
+
+	/** @return int */
+	private function relationCount(string $table, array $topicIds): int
+	{
+		$query = $this->db->getQuery(true)
+			->select('COUNT(*)')
+			->from($this->db->quoteName($table))
+			->whereIn($this->db->quoteName('topic_id'), $topicIds);
+
+		return (int) $this->db->setQuery($query)->loadResult();
+	}
+
+	/** @return array<int,int> */
+	private function subscribedTrashedTopicIds(int $subscriberId, array $visibleIds): array
+	{
+		$visibleIds = array_values(array_unique(array_filter(array_map('intval', $visibleIds))));
+
+		if ($subscriberId <= 0 || $visibleIds === [])
+		{
+			return [];
+		}
+
+		$trashed = -2;
+		$subscribed = self::MEMBERSHIP_SUBSCRIBED;
+		$query = $this->db->getQuery(true)
+			->select($this->db->quoteName('st.topic_id'))
+			->from($this->db->quoteName('#__pungamail_subscriber_topics', 'st'))
+			->innerJoin($this->db->quoteName('#__pungamail_topics', 't') . ' ON t.id = st.topic_id')
+			->where($this->db->quoteName('st.subscriber_id') . ' = :subscriberId')
+			->where($this->db->quoteName('st.status') . ' = :subscribed')
+			->where($this->db->quoteName('t.state') . ' = :trashed')
+			->whereIn($this->db->quoteName('st.topic_id'), $visibleIds)
+			->bind(':subscriberId', $subscriberId, ParameterType::INTEGER)
+			->bind(':subscribed', $subscribed, ParameterType::INTEGER)
+			->bind(':trashed', $trashed, ParameterType::INTEGER);
+
+		return array_map('intval', $this->db->setQuery($query)->loadColumn());
 	}
 
 	/** @return array<int,int> */

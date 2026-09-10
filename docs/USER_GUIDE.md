@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.12. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.14. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -270,10 +270,12 @@ The list supports Joomla search tools, status filtering, sorting, pagination, pu
 
 The columns show the title and description, alias, current member count, publication state, ordering, and record ID.
 
-- **Published** topics can be shown in the frontend module and selected for current newsletter/digest targeting.
-- **Unpublished** topics remain stored but are not available for public selection.
-- **Trashed** topics can be restored.
-- A trashed topic cannot be permanently deleted while subscriber, newsletter, or digest relationships still use it.
+- **Published** Channels can be shown in the frontend module and selected for current Newsletter/Automatic Newsletter targeting.
+- **Unpublished** Channels remain stored but are not available for public selection or delivery. Existing Newsletter/Automatic Newsletter assignments remain visible in their editors so they are not silently lost.
+- **Trashed** Channels remain reversible. Existing subscriber memberships and Newsletter/Automatic Newsletter assignments are preserved while the Channel is in the trash.
+- The subscriber count in the Channels list is a link to the Subscribers list filtered to that Channel, so you can inspect who belongs to it.
+- Permanently deleting a trashed Channel automatically removes that Channel's subscriber memberships, pending preference actions, and Channel targeting assignments in Newsletters and Automatic Newsletters. The subscriber and Newsletter/Automatic Newsletter records themselves are never deleted.
+- The delete confirmation explicitly warns about these cascading relation removals. Already-frozen sent-message content and delivery history remain untouched; deleting a Channel does not rewrite mail that has already been queued or sent.
 
 ### Channel editor
 
@@ -353,11 +355,13 @@ Select an email address in the list to edit that subscriber. The editor shows:
 | Email / Joomla user | The canonical subscriber identity. Existing identities are read-only here; edit a linked account through Joomla Users. |
 | Recipient name | Optional name for an external email-only subscriber. Linked accounts use the Joomla display name. |
 | Newsletter permission | The master state: Pending, Subscribed, or Unsubscribed. Pending can be retained for an existing confirmation request but cannot be assigned manually. |
-| Channels | All non-trashed Channels. Unpublished Channels remain visible to administrators. For a linked Joomla user, Channels the user is not eligible for are disabled and explain the required account/group access; external subscribers cannot be assigned registered/group-restricted Channels. |
+| Channels | All normal Channels plus any trashed Channel this subscriber still belongs to. Unpublished Channels remain visible to administrators. Existing memberships in trashed Channels are labelled **Trashed** and may be removed by unchecking them, but trashed Channels cannot gain new memberships. For a linked Joomla user, Channels the user is not eligible for are disabled and explain the required account/group access; external subscribers cannot be assigned registered/group-restricted Channels. |
 
 When creating a **new Joomla User subscriber**, Channel eligibility updates immediately after you select the Joomla account. You do not have to save the subscriber first; Punga Mail reacts to the actual selected Joomla account ID, not merely the displayed account name: registered-user Channels and Channels restricted to one of that user's Joomla groups become selectable as soon as the account is chosen. Changing the selected Joomla user updates the Channel controls again. Save still performs the same server-side eligibility check, so the live UI cannot bypass Channel access rules.
 
 The same live check also detects duplicate identities. Selecting a Joomla user who is already a Punga Mail subscriber, or entering an email address already present in Subscribers, shows **This recipient is already a subscriber** with **Open existing subscriber**. The New form cannot be used as a hidden edit shortcut; the existing record remains untouched.
+
+If a subscriber still belongs to a Channel that has been moved to the trash, the Subscriber editor keeps that membership visible as **Trashed**. Uncheck it and save to remove the membership. This avoids the previous dead end where trashing a Channel made its existing memberships impossible to edit.
 
 **Apply** saves and keeps the editor open. **Save & Close** saves and returns to Subscribers. **Cancel** discards unsaved changes.
 

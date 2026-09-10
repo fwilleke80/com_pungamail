@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.14 — 2026-09-10
+
+- Fixed permanent Channel deletion so Newsletter and Automatic Newsletter Channel assignments no longer block deletion.
+- Permanently deleting a trashed Channel now removes subscriber memberships, pending preference actions, Newsletter Channel assignments, Automatic Newsletter Channel assignments, and Channel-group relations transactionally before deleting the Channel itself.
+- Subscriber, Newsletter, and Automatic Newsletter records are never deleted by this cascade; already-frozen sent-message snapshots and delivery history remain untouched.
+- Expanded the permanent-delete confirmation and completion messages so administrators are told exactly which kinds of relations will be removed.
+- Updated USER_GUIDE, TEST_GUIDE, Channel tutorial, CONCEPT, DATABASE, and release checks for the corrected Channel lifecycle.
+- Added the 0.6.14 database-version marker; no schema change is required.
+
+## 0.6.13 — 2026-09-10
+
+- Fixed Channel lifecycle consistency: trashing a Channel remains reversible and preserves existing relationships, while permanent deletion may now automatically remove subscriber-to-Channel memberships without deleting subscriber records.
+- Permanent Channel deletion also removes pending preference-request actions for that Channel and cleans up now-empty requests.
+- Newsletter and Automatic Newsletter Channel assignments remain blocking dependencies for permanent deletion so campaign configuration/history is never silently rewritten.
+- Subscriber editors now keep an existing trashed Channel membership visible and removable, labelled **Trashed**, instead of hiding it and creating an administrative dead end.
+- Newsletter and Automatic Newsletter editors now keep already-selected unpublished/trashed Channels visible, preventing inactive dependencies from disappearing or being silently dropped on a later save.
+- Channel subscriber counts now link to a Subscribers list filtered to that Channel so administrators can inspect exactly who will be affected before permanent deletion.
+- Failed permanent Channel deletion returns to the Channel Trash view rather than unexpectedly leaving that context.
+- Updated USER_GUIDE and TEST_GUIDE with the clarified publish/trash/delete semantics and regression coverage.
+- Added the 0.6.13 database-version marker; no schema change is required.
+
 ## 0.6.12 — 2026-09-10
 
 - Fixed the read-only Joomla user profile display for Punga Mail fields. **Receive newsletters** now renders as Joomla's localized Yes/No value instead of raw `1/0`.

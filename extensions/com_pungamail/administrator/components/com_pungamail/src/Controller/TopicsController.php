@@ -60,14 +60,33 @@ final class TopicsController extends BaseController
 	{
 		$this->guard('core.delete');
 
+		$returnUrl = AdministratorRoute::topics() . '&filter[state]=-2';
+
 		try
 		{
-			$count = ServiceFactory::topics()->deleteTrashed($this->ids());
-			$this->setRedirect(Route::_(AdministratorRoute::topics() . '&filter[state]=-2', false), Text::plural('COM_PUNGAMAIL_TOPICS_DELETED', $count));
+			$result = ServiceFactory::topics()->deleteTrashed($this->ids());
+			$message = Text::plural('COM_PUNGAMAIL_TOPICS_DELETED', (int) $result['channels']);
+
+			if ((int) $result['memberships'] > 0)
+			{
+				$message .= ' ' . Text::plural('COM_PUNGAMAIL_CHANNEL_MEMBERSHIPS_REMOVED', (int) $result['memberships']);
+			}
+
+			if ((int) $result['newsletter_assignments'] > 0)
+			{
+				$message .= ' ' . Text::plural('COM_PUNGAMAIL_NEWSLETTER_CHANNEL_ASSIGNMENTS_REMOVED', (int) $result['newsletter_assignments']);
+			}
+
+			if ((int) $result['automatic_assignments'] > 0)
+			{
+				$message .= ' ' . Text::plural('COM_PUNGAMAIL_AUTOMATIC_CHANNEL_ASSIGNMENTS_REMOVED', (int) $result['automatic_assignments']);
+			}
+
+			$this->setRedirect(Route::_($returnUrl, false), $message);
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_(AdministratorRoute::topics(), false), ErrorMessage::sanitize($e), 'error');
+			$this->setRedirect(Route::_($returnUrl, false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 

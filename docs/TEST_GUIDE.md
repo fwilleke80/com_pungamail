@@ -1,4 +1,4 @@
-# Punga Mail 0.6.12 Live Acceptance Test Guide
+# Punga Mail 0.6.14 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -436,10 +436,31 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Steps:**
 
-1. Exercise publish/unpublish on a test Channel.
-2. Trash it, filter Trash, restore it, then permanently delete only a disposable Channel.
+1. Create a disposable Channel and subscribe at least two controlled subscribers to it.
+2. In the Channels list, click its subscriber count and verify the Subscribers page is filtered to those members.
+3. Move the Channel to Trash.
+4. Open one of those subscribers. Verify the trashed Channel is still visible, labelled **Trashed**, and can be unchecked to remove that membership.
+5. Restore the Channel and verify any membership you did not remove is still present.
+6. Trash it again and permanently delete it while it still has subscriber memberships and is assigned to at least one Newsletter and one Automatic Newsletter. Confirm the warning explicitly says subscriber memberships and Channel assignments in Newsletters/Automatic Newsletters will be removed, while subscriber records and already-frozen sent-message/delivery snapshots remain intact.
+7. Verify the Channel is deleted and the subscriber records remain. Verify their membership in that Channel is gone.
+8. Re-open the affected Newsletter and Automatic Newsletter and verify the deleted Channel is no longer selected. Other Channel assignments and settings must remain unchanged.
+9. If one affected Newsletter had already been sent, verify its stored browser-view/message snapshot and delivery history are unchanged.
 
-**Expected:** Joomla lifecycle actions behave normally. Existing memberships are not silently reassigned.
+**Expected:** Unpublish and Trash are reversible and do not silently erase relationships. Permanent deletion is an explicit destructive cleanup: it removes subscriber memberships, pending Channel preference actions, and Newsletter/Automatic Newsletter Channel-targeting relations in one transaction, but never deletes subscriber, Newsletter, Automatic Newsletter, sent-message snapshot, or delivery-history records.
+
+
+### PM-033A — Existing inactive Channel dependencies remain visible
+
+**Steps:**
+
+1. Assign a disposable Channel to a draft Newsletter and an Automatic Newsletter.
+2. Unpublish the Channel and reopen both editors.
+3. Verify the selected Channel remains visible and is labelled **Unpublished**.
+4. Trash the Channel and reopen both editors.
+5. Verify the selected Channel remains visible and is labelled **Trashed**.
+6. Save an unrelated change without clearing the Channel checkbox.
+
+**Expected:** Existing inactive/trashed Channel assignments are not hidden or silently dropped merely by saving another field. They remain non-delivering while inactive and can be deliberately removed from the editor.
 
 ### PM-034 — Channel eligibility: everyone
 

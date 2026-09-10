@@ -211,7 +211,13 @@ $newsletterStatus = static function (?int $status): string
 						<legend class="h6 mb-1"><?php echo Text::_('COM_PUNGAMAIL_TOPICS'); ?></legend>
 						<div class="small text-muted mb-2"><?php echo Text::_('COM_PUNGAMAIL_TOPICS_TARGET_HELP'); ?></div>
 						<?php foreach ($this->topics as $topic) : ?>
-							<div class="form-check"><input class="form-check-input pm-digest-audience-topic" type="checkbox" name="topic_ids[]" value="<?php echo (int) $topic->id; ?>" id="digest-topic-<?php echo (int) $topic->id; ?>" <?php echo in_array((int) $topic->id, $this->topicIds, true) ? 'checked' : ''; ?>><label class="form-check-label" for="digest-topic-<?php echo (int) $topic->id; ?>"><?php echo htmlspecialchars((string) $topic->title, ENT_QUOTES, 'UTF-8'); ?></label></div>
+							<div class="form-check">
+								<input class="form-check-input pm-digest-audience-topic" type="checkbox" name="topic_ids[]" value="<?php echo (int) $topic->id; ?>" id="digest-topic-<?php echo (int) $topic->id; ?>" <?php echo in_array((int) $topic->id, $this->topicIds, true) ? 'checked' : ''; ?>>
+								<label class="form-check-label" for="digest-topic-<?php echo (int) $topic->id; ?>">
+									<?php echo htmlspecialchars((string) $topic->title, ENT_QUOTES, 'UTF-8'); ?>
+									<?php if ((int) $topic->state === -2) : ?><span class="badge bg-secondary ms-1"><?php echo Text::_('JTRASHED'); ?></span><?php elseif ((int) $topic->state !== 1) : ?><span class="badge bg-warning text-dark ms-1"><?php echo Text::_('JUNPUBLISHED'); ?></span><?php endif; ?>
+								</label>
+							</div>
 						<?php endforeach; ?>
 					</fieldset>
 					<fieldset class="mt-3">

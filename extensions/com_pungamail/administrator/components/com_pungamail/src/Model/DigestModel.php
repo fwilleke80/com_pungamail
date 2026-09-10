@@ -75,7 +75,7 @@ final class DigestModel extends BaseDatabaseModel
 	/** @return array<int,object> */
 	public function getTopics(): array
 	{
-		return ServiceFactory::topics()->active();
+		return ServiceFactory::topics()->activeWithSelected($this->getTopicIds());
 	}
 
 	/** @return array<int,object> */

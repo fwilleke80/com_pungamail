@@ -122,6 +122,8 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.10.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.11.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.12.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.13.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.14.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/Permissions.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
@@ -1179,9 +1181,9 @@ def check_ux_and_fixes_037() -> None:
         fail("Channel editor still exposes the raw numeric ordering field")
 
     subscriber_requirements = (
-        (topic_repository, "availableForAdministration(): array", "administrator Channel list"),
+        (topic_repository, "availableForAdministration(?int $subscriberId = null): array", "administrator Channel list"),
         (topic_repository, "updateAdministratorTopics", "administrator Channel membership persistence"),
-        (subscriber_model, "availableForAdministration()", "subscriber editor Channel loading"),
+        (subscriber_model, "availableForAdministration(", "subscriber editor Channel loading"),
         (subscriber_model, "getSelectedTopicIds", "subscriber editor selected memberships"),
         (subscriber_controller, "updateAdministratorTopics", "subscriber Channel save path"),
         (subscriber_layout, "jform[topic_ids][]", "subscriber Channel checkboxes"),
@@ -3058,12 +3060,120 @@ def check_release_fix_0612() -> None:
 
     tests = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
     for token in (
-        "Punga Mail 0.6.12 Live Acceptance Test Guide",
+        "Live Acceptance Test Guide",
         "Ja/Nein",
         "appearing blank or showing numeric IDs",
     ):
         if token not in tests:
             fail(f"0.6.12 TEST_GUIDE is missing profile-display acceptance coverage {token!r}")
+
+
+
+def check_release_fix_0613() -> None:
+    """Protect Channel trash/delete membership consistency."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    topics = (admin / "src/Service/TopicRepository.php").read_text(encoding="utf-8")
+    subscriber_model = (admin / "src/Model/SubscriberModel.php").read_text(encoding="utf-8")
+    subscriber_controller = (admin / "src/Controller/SubscriberController.php").read_text(encoding="utf-8")
+    subscriber_tmpl = (admin / "tmpl/subscriber/default.php").read_text(encoding="utf-8")
+    newsletter_model = (admin / "src/Model/NewsletterModel.php").read_text(encoding="utf-8")
+    digest_model = (admin / "src/Model/DigestModel.php").read_text(encoding="utf-8")
+    topics_tmpl = (admin / "tmpl/topics/default.php").read_text(encoding="utf-8")
+    subscribers_model = (admin / "src/Model/SubscribersModel.php").read_text(encoding="utf-8")
+
+    for token in (
+        "availableForAdministration(?int $subscriberId = null)",
+        "removable_only",
+        "subscribedTrashedTopicIds",
+        "#__pungamail_subscriber_topics",
+        "#__pungamail_preference_request_topics",
+    ):
+        if token not in topics:
+            fail(f"0.6.13 Channel lifecycle repository is missing {token!r}")
+
+    if "availableForAdministration($item !== null ? (int) $item->id : null)" not in subscriber_model:
+        fail("0.6.13 Subscriber editor does not request existing trashed Channel memberships")
+
+    for token in ("$removableOnlyIds", "$currentIds = $topics->getSubscriberTopicIds", "updateAdministratorTopics"):
+        if token not in subscriber_controller:
+            fail(f"0.6.13 Subscriber membership save path is missing {token!r}")
+
+    for token in ("data-removable-only", "JTRASHED", "COM_PUNGAMAIL_SUBSCRIBER_TRASHED_CHANNEL_HELP"):
+        if token not in subscriber_tmpl:
+            fail(f"0.6.13 Subscriber trashed-Channel UI is missing {token!r}")
+
+    if "activeWithSelected($this->getSelectedTopicIds())" not in newsletter_model:
+        fail("0.6.13 Newsletter editor can hide inactive selected Channels")
+    if "activeWithSelected($this->getTopicIds())" not in digest_model:
+        fail("0.6.13 Automatic Newsletter editor can hide inactive selected Channels")
+    if "subscribersForChannel" not in topics_tmpl:
+        fail("0.6.13 Channel subscriber count is not inspectable")
+    if "filter.channel_id" not in subscribers_model:
+        fail("0.6.13 Subscribers list cannot filter by Channel")
+
+    migration = (admin / "sql/updates/mysql/0.6.13.sql").read_text(encoding="utf-8")
+    if "no database schema change" not in migration.lower():
+        fail("0.6.13 migration marker does not document its no-schema-change contract")
+
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in ("subscriber count", "Trashed", "subscriber memberships"):
+        if token not in guide:
+            fail(f"0.6.13 USER_GUIDE is missing Channel lifecycle documentation {token!r}")
+
+    tests = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    for token in ("Live Acceptance Test Guide", "PM-033A", "subscriber records remain"):
+        if token not in tests:
+            fail(f"0.6.13 TEST_GUIDE is missing Channel lifecycle acceptance coverage {token!r}")
+
+
+def check_release_fix_0614() -> None:
+    """Protect permanent Channel deletion cascades."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    topics = (admin / "src/Service/TopicRepository.php").read_text(encoding="utf-8")
+    controller = (admin / "src/Controller/TopicsController.php").read_text(encoding="utf-8")
+    en = (admin / "language/en-GB/com_pungamail.ini").read_text(encoding="utf-8")
+
+    if "COM_PUNGAMAIL_ERROR_TOPIC_CAMPAIGN_DEPENDENCIES" in topics:
+        fail("0.6.14 permanent Channel deletion still blocks Newsletter/Automatic Newsletter assignments")
+
+    for token in (
+        "#__pungamail_newsletter_topics",
+        "#__pungamail_digest_topics",
+        "newsletter_assignments",
+        "automatic_assignments",
+    ):
+        if token not in topics:
+            fail(f"0.6.14 Channel delete cascade is missing {token!r}")
+
+    for token in (
+        "COM_PUNGAMAIL_NEWSLETTER_CHANNEL_ASSIGNMENTS_REMOVED",
+        "COM_PUNGAMAIL_AUTOMATIC_CHANNEL_ASSIGNMENTS_REMOVED",
+    ):
+        if token not in controller:
+            fail(f"0.6.14 Channel delete completion message is missing {token!r}")
+
+    for token in (
+        "Channel assignments in Newsletters and Automatic Newsletters will be removed automatically",
+        "already-frozen sent-message/delivery snapshots",
+    ):
+        if token not in en:
+            fail(f"0.6.14 Channel delete confirmation is missing {token!r}")
+
+    migration = (admin / "sql/updates/mysql/0.6.14.sql").read_text(encoding="utf-8")
+    if "no database schema change" not in migration.lower():
+        fail("0.6.14 migration marker does not document its no-schema-change contract")
+
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    for token in ("Newsletter/Automatic Newsletter", "sent-message", "delivery history"):
+        if token not in guide:
+            fail(f"0.6.14 USER_GUIDE is missing Channel-delete cascade documentation {token!r}")
+
+    tests = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    for token in ("Punga Mail 0.6.14 Live Acceptance Test Guide", "Channel assignments in Newsletters/Automatic Newsletters", "stored browser-view/message snapshot"):
+        if token not in tests:
+            fail(f"0.6.14 TEST_GUIDE is missing Channel-delete cascade acceptance coverage {token!r}")
 
 def check_package_members() -> None:
     """Verify expected constituent extension ZIPs in package manifest."""
@@ -3217,6 +3327,8 @@ def main() -> int:
         check_release_fix_0610,
         check_release_acl_0611,
         check_release_fix_0612,
+        check_release_fix_0613,
+        check_release_fix_0614,
         check_package_members,
         check_release_metadata_source,
         check_feature_contracts,

@@ -71,7 +71,11 @@ if ($saveOrder && $this->items !== [] && $canChange)
 							<?php if ($item->description) : ?><div class="small text-muted"><?php echo htmlspecialchars((string) $item->description, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
 						</th>
 						<td><code><?php echo htmlspecialchars((string) $item->alias, ENT_QUOTES, 'UTF-8'); ?></code></td>
-						<td><?php echo (int) $item->subscriber_count; ?></td>
+						<td>
+							<?php if ((int) $item->subscriber_count > 0) : ?>
+								<a href="<?php echo Route::_(AdministratorRoute::subscribersForChannel((int) $item->id)); ?>" title="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_VIEW_CHANNEL_SUBSCRIBERS'), ENT_QUOTES, 'UTF-8'); ?>"><?php echo (int) $item->subscriber_count; ?></a>
+							<?php else : ?>0<?php endif; ?>
+						</td>
 						<td><?php echo (int) $item->state === 1 ? '<span class="badge bg-success">' . Text::_('JPUBLISHED') . '</span>' : ((int) $item->state === -2 ? '<span class="badge bg-secondary">' . Text::_('JTRASHED') . '</span>' : '<span class="badge bg-warning text-dark">' . Text::_('JUNPUBLISHED') . '</span>'); ?></td>
 						<td class="text-center"><?php echo (int) $item->id; ?></td>
 					</tr>

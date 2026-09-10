@@ -64,14 +64,17 @@ $softBounceThreshold = max(1, (int) ComponentHelper::getParams('com_pungamail')-
 					<legend class="h5"><?php echo Text::_('COM_PUNGAMAIL_TOPICS'); ?></legend>
 					<p class="form-text"><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_TOPICS_HELP'); ?></p>
 					<?php foreach ($this->topics as $topic) : ?>
+						<?php $selected = in_array((int) $topic->id, $this->selectedTopicIds, true); ?>
+						<?php $removableOnly = (bool) ($topic->removable_only ?? false) && $selected; ?>
 						<div class="form-check mb-2">
-							<input class="form-check-input pm-subscriber-topic" type="checkbox" name="jform[topic_ids][]" value="<?php echo (int) $topic->id; ?>" id="subscriber-topic-<?php echo (int) $topic->id; ?>" <?php echo in_array((int) $topic->id, $this->selectedTopicIds, true) ? 'checked' : ''; ?> <?php echo !($topic->eligible ?? true) ? 'disabled' : ''; ?>>
+							<input class="form-check-input pm-subscriber-topic" type="checkbox" name="jform[topic_ids][]" value="<?php echo (int) $topic->id; ?>" id="subscriber-topic-<?php echo (int) $topic->id; ?>" data-removable-only="<?php echo $removableOnly ? '1' : '0'; ?>" <?php echo $selected ? 'checked' : ''; ?> <?php echo !($topic->eligible ?? true) && !$removableOnly ? 'disabled' : ''; ?>>
 							<label class="form-check-label" for="subscriber-topic-<?php echo (int) $topic->id; ?>">
 								<?php echo htmlspecialchars((string) $topic->title, ENT_QUOTES, 'UTF-8'); ?>
-								<?php if ((int) $topic->state !== 1) : ?><span class="badge bg-secondary ms-1"><?php echo Text::_('JUNPUBLISHED'); ?></span><?php endif; ?>
+								<?php if ((int) $topic->state === -2) : ?><span class="badge bg-secondary ms-1"><?php echo Text::_('JTRASHED'); ?></span><?php elseif ((int) $topic->state !== 1) : ?><span class="badge bg-secondary ms-1"><?php echo Text::_('JUNPUBLISHED'); ?></span><?php endif; ?>
 							</label>
+							<?php if ($removableOnly) : ?><div class="form-text text-warning"><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIBER_TRASHED_CHANNEL_HELP'); ?></div><?php endif; ?>
 							<?php if (trim((string) $topic->description) !== '') : ?><div class="form-text"><?php echo htmlspecialchars((string) $topic->description, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-							<?php if ((string) ($topic->audience_mode ?? 'everyone') !== 'everyone') : ?>
+							<?php if (!$removableOnly && (string) ($topic->audience_mode ?? 'everyone') !== 'everyone') : ?>
 								<div class="form-text text-warning pm-topic-eligibility" data-topic-id="<?php echo (int) $topic->id; ?>" <?php echo ($topic->eligible ?? true) ? 'hidden' : ''; ?>>
 								<?php if ((string) ($topic->audience_mode ?? '') === 'groups') : ?>
 									<?php echo Text::sprintf('COM_PUNGAMAIL_CHANNEL_REQUIRES_GROUPS', htmlspecialchars(implode(', ', (array) ($topic->audience_group_titles ?? [])), ENT_QUOTES, 'UTF-8')); ?>
@@ -194,12 +197,23 @@ document.addEventListener('DOMContentLoaded', function ()
 		checks.forEach(function (check)
 		{
 			const id = Number(check.value);
+			const removableOnly = check.dataset.removableOnly === '1';
 			const allowed = eligible.has(id);
-			check.disabled = !allowed;
 
-			if (!allowed)
+			if (removableOnly)
 			{
-				check.checked = false;
+				// Existing memberships in trashed Channels remain removable, but
+				// are never treated as eligible for a new subscription.
+				check.disabled = false;
+			}
+			else
+			{
+				check.disabled = !allowed;
+
+				if (!allowed)
+				{
+					check.checked = false;
+				}
 			}
 
 			const help = document.querySelector('.pm-topic-eligibility[data-topic-id="' + id + '"]');

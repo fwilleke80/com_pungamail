@@ -8,7 +8,7 @@ Punga Mail is a focused, self-hosted Joomla! 6 newsletter extension. Its primary
 
 It is not intended to become a behavioural marketing/analytics platform.
 
-## Implemented through 0.6.12
+## Implemented through 0.6.14
 - Joomla User subscriber Channel eligibility updates immediately before save by resolving the selected Joomla account ID from Joomla's real hidden User field value.
 
 ### Lists, automation and access safety
@@ -155,3 +155,8 @@ Returned-mail suppression warnings on the Dashboard are operational attention it
 Punga Mail 0.6.11 delegates backend authorization to Joomla ACL instead of maintaining a separate user/group whitelist. `access.xml` defines standard newsletter CRUD actions plus Punga Mail-specific capabilities for sending, Automatic Newsletters, Audience, Design, Delivery, and Tools. Ordinary component configuration uses Joomla `core.options`; changing ACL remains protected by `core.admin`.
 
 Authorization is enforced twice by design: views/controllers reject unauthorized access server-side, while toolbar actions, Dashboard controls, and Punga Mail section navigation are filtered for usability. UI visibility is never treated as the security boundary. Newsletter editing and sending are separate capabilities so an editorial role can prepare drafts without being permitted to schedule or transmit them.
+
+
+### Channel lifecycle
+
+Channel trash is reversible and preserves relationships. Permanent deletion is explicit cleanup: subscriber memberships, pending preference actions, and Newsletter/Automatic Newsletter Channel-targeting relations are removed transactionally, while the subscriber/campaign records and immutable sent-message/delivery snapshots remain intact.

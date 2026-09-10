@@ -73,7 +73,7 @@ final class SubscriberModel extends FormModel
 		$item = $this->getItem();
 		$userId = $item !== null && $item->user_id !== null ? (int) $item->user_id : null;
 
-		return ServiceFactory::topics()->annotateEligibility(ServiceFactory::topics()->availableForAdministration(), $userId);
+		return ServiceFactory::topics()->annotateEligibility(ServiceFactory::topics()->availableForAdministration($item !== null ? (int) $item->id : null), $userId);
 	}
 
 	/** @return array<int,int> */

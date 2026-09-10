@@ -38,7 +38,7 @@ Select **Save & Close**.
 
 New topics are published by default. On the Topics list you can Publish, Unpublish, Trash, Restore, or Delete them using normal Joomla list controls.
 
-An unpublished topic is unavailable for new public choices but its stored relationships are retained. A topic in use cannot be permanently deleted until those relationships are removed.
+An unpublished Channel is unavailable for new public choices but its stored relationships are retained. Trashing is reversible and also preserves those relationships. Permanently deleting a trashed Channel removes its subscriber memberships, pending preference actions, and Newsletter/Automatic Newsletter Channel assignments after an explicit warning; the related subscriber/campaign records themselves are not deleted.
 
 ## 3. Create the subscription menu item
 

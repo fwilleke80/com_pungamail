@@ -220,19 +220,27 @@ final class SubscriberController extends BaseController
 		$topics = ServiceFactory::topics();
 		$subscriber = ServiceFactory::subscribers()->findById($subscriberId);
 		$userId = $subscriber !== null && $subscriber->user_id !== null ? (int) $subscriber->user_id : null;
-		$visibleIds = array_map(static fn (object $topic): int => (int) $topic->id, $topics->availableForAdministration());
+		$availableTopics = $topics->availableForAdministration($subscriberId);
+		$visibleIds = array_map(static fn (object $topic): int => (int) $topic->id, $availableTopics);
 		$eligibleIds = $topics->eligibleIds($visibleIds, $userId, false);
-		$selectedIds = array_values(array_intersect($eligibleIds, array_map('intval', $requestedIds)));
+		$removableOnlyIds = array_map(
+			static fn (object $topic): int => (int) $topic->id,
+			array_values(array_filter($availableTopics, static fn (object $topic): bool => (bool) ($topic->removable_only ?? false)))
+		);
+		$requestedIds = array_values(array_unique(array_filter(array_map('intval', $requestedIds))));
+		$selectedIds = array_values(array_unique(array_merge(
+			array_values(array_intersect($eligibleIds, $requestedIds)),
+			array_values(array_intersect($removableOnlyIds, $requestedIds))
+		)));
 		$previousIds = $topics->getSubscriberTopicIds($subscriberId);
 		$topics->updateAdministratorTopics($subscriberId, $visibleIds, $selectedIds, $userId);
+		$currentIds = $topics->getSubscriberTopicIds($subscriberId);
+		sort($previousIds);
+		sort($currentIds);
 
-		$currentVisibleIds = array_values(array_intersect($eligibleIds, $previousIds));
-		sort($currentVisibleIds);
-		sort($selectedIds);
-
-		if ($currentVisibleIds !== $selectedIds)
+		if ($previousIds !== $currentIds)
 		{
-			ServiceFactory::subscribers()->recordEvent($subscriberId, 'administrator_topics_updated', null, null, ['topic_ids' => $selectedIds]);
+			ServiceFactory::subscribers()->recordEvent($subscriberId, 'administrator_topics_updated', null, null, ['topic_ids' => $currentIds]);
 		}
 	}
 

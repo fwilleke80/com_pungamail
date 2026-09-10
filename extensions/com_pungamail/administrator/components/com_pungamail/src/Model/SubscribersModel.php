@@ -110,6 +110,17 @@ final class SubscribersModel extends ListModel
 			$query->where($db->quoteName('x.id') . ' IS NULL');
 		}
 
+		$channelId = (int) $this->getState('filter.channel_id', 0);
+
+		if ($channelId > 0)
+		{
+			$subscribed = 1;
+			$query->where('EXISTS (SELECT 1 FROM ' . $db->quoteName('#__pungamail_subscriber_topics', 'filter_st')
+				. ' WHERE filter_st.subscriber_id = s.id AND filter_st.topic_id = :channelId AND filter_st.status = :channelSubscribed)')
+				->bind(':channelId', $channelId, ParameterType::INTEGER)
+				->bind(':channelSubscribed', $subscribed, ParameterType::INTEGER);
+		}
+
 		$orderColumn = (string) $this->getState('list.ordering', 's.created');
 		$orderDirection = strtoupper((string) $this->getState('list.direction', 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
 		$query->order($db->escape($orderColumn) . ' ' . $orderDirection);

@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.13 fixes Channel lifecycle/membership consistency; no database schema change is required.

@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.14 fixes permanent Channel deletion cascades; no database schema change is required.

@@ -58,6 +58,12 @@ final class AdministratorRoute
 	}
 
 	/** @return string */
+	public static function subscribersForChannel(int $channelId): string
+	{
+		return self::subscribers() . '&filter[channel_id]=' . max(0, $channelId);
+	}
+
+	/** @return string */
 	public static function subscriber(int $id = 0): string
 	{
 		return self::audience() . '&screen=subscriber' . ($id > 0 ? '&id=' . $id : '');
