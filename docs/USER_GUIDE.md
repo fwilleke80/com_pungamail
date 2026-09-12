@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.15. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.16. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -572,7 +572,7 @@ Warnings do not block sending. They include malformed or suspicious links, image
 
 The recipient panels explain final inclusion and exclusion. Typical exclusion reasons are invalid address, globally unsubscribed/not subscribed, suppressed, permanent delivery failure, temporary-failure threshold, not in a selected topic, and duplicate eliminated.
 
-If the result is correct, choose **Queue emails** for immediate queueing. The confirmation dialog states the number of unique recipients about to be queued. Scheduling does not require navigating to Preflight first; use the Schedule controls in the Newsletter editor sidebar instead.
+If the result is correct, choose **Queue emails** in Joomla’s toolbar for immediate queueing. **Back to editor** is in the same toolbar, rather than at the bottom of the long Preflight page. The confirmation dialog states the number of unique recipients about to be queued. Scheduling is also available near the top of Preflight, but does not require navigating there first; use the Schedule controls in the Newsletter editor sidebar when preferred.
 
 ### Scheduled newsletters
 
@@ -680,9 +680,11 @@ This page contains operational controls, the live mail queue, and health informa
 
 ### Mail queue
 
+The queue defaults to **Current** history. Select completed Sent, Failed, Cancelled, or Bounced rows and choose **Archive selected** to remove old delivery history from the everyday view without deleting it. Pending and Processing rows cannot be archived. Use the **History** filter to show Archived or Current and archived rows, and **Restore selected** to bring archived rows back. Archiving changes only visibility; delivery status, statistics and bounce associations remain intact.
+
 The queue table shows the real per-recipient send rows, including Newsletter, recipient, state, attempts, next-attempt time, queued/updated/sent timestamps, and the latest error. Filter it by queue state, Newsletter, or recipient/title search.
 
-**Retry selected** is deliberately limited to failed rows and resets them for another normal queue attempt. **Cancel selected** is limited to pending or failed unsent rows; processing or already-sent rows are never recalled or rewritten by this action.
+**Retry selected** is deliberately limited to failed rows and resets them for another normal queue attempt. If an archived failed row is retried, Punga Mail automatically restores it to Current first so pending mail can never continue invisibly inside the archive. **Cancel selected** is limited to pending or failed unsent rows; processing or already-sent rows are never recalled or rewritten by this action.
 
 ### Bounce mailbox card
 

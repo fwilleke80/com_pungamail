@@ -43,17 +43,20 @@ final class DeliveryModel extends BaseDatabaseModel
 		return $db->setQuery($query, 0, 100)->loadObjectList();
 	}
 
-	/** @return array{status:string,newsletter_id:int,search:string} */
+	/** @return array{status:string,newsletter_id:int,search:string,archive:string} */
 	public function getQueueFilters(): array
 	{
 		$input = Factory::getApplication()->getInput();
 		$status = $input->getCmd('queue_status', '');
 		$allowedStatuses = ['pending', 'processing', 'sent', 'failed', 'cancelled', 'bounced'];
+		$archive = $input->getCmd('queue_archive', 'active');
+		$allowedArchiveFilters = ['active', 'archived', 'all'];
 
 		return [
 			'status' => in_array($status, $allowedStatuses, true) ? $status : '',
 			'newsletter_id' => max(0, $input->getInt('queue_newsletter', 0)),
 			'search' => trim($input->getString('queue_search')),
+			'archive' => in_array($archive, $allowedArchiveFilters, true) ? $archive : 'active',
 		];
 	}
 
@@ -66,6 +69,15 @@ final class DeliveryModel extends BaseDatabaseModel
 			->select(['q.*', 'n.title AS newsletter_title'])
 			->from($db->quoteName('#__pungamail_send_queue', 'q'))
 			->leftJoin($db->quoteName('#__pungamail_newsletters', 'n') . ' ON n.id = q.newsletter_id');
+
+		if ($filters['archive'] === 'active')
+		{
+			$query->where($db->quoteName('q.archived') . ' = 0');
+		}
+		elseif ($filters['archive'] === 'archived')
+		{
+			$query->where($db->quoteName('q.archived') . ' = 1');
+		}
 
 		if ($filters['status'] !== '')
 		{

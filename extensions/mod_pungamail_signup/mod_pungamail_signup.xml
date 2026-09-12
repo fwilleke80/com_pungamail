@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <extension type="module" client="site" method="upgrade">
 	<name>MOD_PUNGAMAIL_SIGNUP</name>
-	<version>0.6.15</version>
-	<creationDate>2026-09-10</creationDate>
+	<version>0.6.16</version>
+	<creationDate>2026-09-11</creationDate>
 	<author>Punga</author>
 	<license>MIT License</license>
 	<description>MOD_PUNGAMAIL_SIGNUP_DESCRIPTION</description>

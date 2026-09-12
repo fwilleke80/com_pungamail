@@ -234,10 +234,13 @@ CREATE TABLE IF NOT EXISTS `#__pungamail_send_queue` (
   `sent_at` DATETIME NULL,
   `cancelled_at` DATETIME NULL,
   `bounce_id` BIGINT UNSIGNED NULL,
+  `archived` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  `archived_at` DATETIME NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_pungamail_queue_recipient` (`newsletter_id`, `email_normalized`),
   KEY `idx_pungamail_queue_work` (`status`, `next_attempt_at`),
-  KEY `idx_pungamail_queue_newsletter` (`newsletter_id`, `status`)
+  KEY `idx_pungamail_queue_newsletter` (`newsletter_id`, `status`),
+  KEY `idx_pungamail_queue_archive` (`archived`, `status`, `created`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `#__pungamail_bounces` (

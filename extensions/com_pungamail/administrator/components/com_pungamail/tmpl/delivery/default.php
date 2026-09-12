@@ -52,7 +52,15 @@ $queueStatusKeys = [
 					<?php endforeach; ?>
 				</select>
 			</div>
-			<div class="col-12 col-md-4">
+			<div class="col-12 col-md-2">
+				<label class="form-label" for="queue-archive"><?php echo Text::_('COM_PUNGAMAIL_QUEUE_VISIBILITY'); ?></label>
+				<select class="form-select" id="queue-archive" name="queue_archive">
+					<option value="active" <?php echo ($this->queueFilters['archive'] ?? 'active') === 'active' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_QUEUE_ACTIVE'); ?></option>
+					<option value="archived" <?php echo ($this->queueFilters['archive'] ?? 'active') === 'archived' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_QUEUE_ARCHIVED'); ?></option>
+					<option value="all" <?php echo ($this->queueFilters['archive'] ?? 'active') === 'all' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_QUEUE_ACTIVE_AND_ARCHIVED'); ?></option>
+				</select>
+			</div>
+			<div class="col-12 col-md-2">
 				<label class="form-label" for="queue-search"><?php echo Text::_('JSEARCH_FILTER'); ?></label>
 				<input class="form-control" id="queue-search" name="queue_search" type="search" value="<?php echo htmlspecialchars((string) ($this->queueFilters['search'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_QUEUE_SEARCH_PLACEHOLDER'), ENT_QUOTES, 'UTF-8'); ?>">
 			</div>
@@ -84,7 +92,7 @@ $queueStatusKeys = [
 						<td class="text-center"><input class="form-check-input pm-queue-check" type="checkbox" name="queue_ids[]" value="<?php echo (int) $entry->id; ?>" aria-label="<?php echo (int) $entry->id; ?>"></td>
 						<td><a href="<?php echo Route::_(AdministratorRoute::newsletter((int) $entry->newsletter_id)); ?>"><?php echo htmlspecialchars((string) ($entry->newsletter_title ?: ('#' . $entry->newsletter_id)), ENT_QUOTES, 'UTF-8'); ?></a></td>
 						<td><div><?php echo htmlspecialchars((string) (($entry->recipient_name ?? '') ?: $entry->email), ENT_QUOTES, 'UTF-8'); ?></div><code class="small"><?php echo htmlspecialchars((string) $entry->email, ENT_QUOTES, 'UTF-8'); ?></code></td>
-						<td><?php echo Text::_($statusKey); ?></td>
+						<td><?php echo Text::_($statusKey); ?><?php if ((int) ($entry->archived ?? 0) === 1) : ?><div><span class="badge bg-secondary mt-1"><?php echo Text::_('COM_PUNGAMAIL_ARCHIVED_NOTE'); ?></span></div><?php endif; ?></td>
 						<td class="text-end"><?php echo (int) $entry->attempts; ?></td>
 						<td><?php echo $entry->next_attempt_at ? HTMLHelper::_('date', $entry->next_attempt_at, Text::_('DATE_FORMAT_LC5'), $siteTimezone) : '—'; ?></td>
 						<td><?php echo HTMLHelper::_('date', $entry->created, Text::_('DATE_FORMAT_LC5'), $siteTimezone); ?></td>
@@ -100,10 +108,17 @@ $queueStatusKeys = [
 		<div class="card-footer d-flex flex-wrap gap-2">
 			<button class="btn btn-outline-primary" type="submit" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=delivery.retryQueue'); ?>"><?php echo Text::_('COM_PUNGAMAIL_RETRY_SELECTED'); ?></button>
 			<button class="btn btn-outline-danger" type="submit" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=delivery.cancelQueue'); ?>" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_QUEUE_CANCEL_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CANCEL_SELECTED'); ?></button>
+			<?php if (($this->queueFilters['archive'] ?? 'active') !== 'archived') : ?>
+				<button class="btn btn-outline-secondary" type="submit" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=delivery.archiveQueue'); ?>" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_QUEUE_ARCHIVE_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_ARCHIVE_SELECTED'); ?></button>
+			<?php endif; ?>
+			<?php if (($this->queueFilters['archive'] ?? 'active') !== 'active') : ?>
+				<button class="btn btn-outline-secondary" type="submit" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=delivery.unarchiveQueue'); ?>"><?php echo Text::_('COM_PUNGAMAIL_UNARCHIVE_SELECTED'); ?></button>
+			<?php endif; ?>
 		</div>
 		<input type="hidden" name="queue_status" value="<?php echo htmlspecialchars((string) ($this->queueFilters['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
 		<input type="hidden" name="queue_newsletter" value="<?php echo (int) ($this->queueFilters['newsletter_id'] ?? 0); ?>">
 		<input type="hidden" name="queue_search" value="<?php echo htmlspecialchars((string) ($this->queueFilters['search'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+		<input type="hidden" name="queue_archive" value="<?php echo htmlspecialchars((string) ($this->queueFilters['archive'] ?? 'active'), ENT_QUOTES, 'UTF-8'); ?>">
 		<?php echo HTMLHelper::_('form.token'); ?>
 	</form>
 </div>

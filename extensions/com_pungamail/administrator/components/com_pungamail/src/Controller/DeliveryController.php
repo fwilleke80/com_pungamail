@@ -175,6 +175,38 @@ final class DeliveryController extends BaseController
 	}
 
 	/** @return void */
+	public function archiveQueue(): void
+	{
+		$this->guard();
+
+		try
+		{
+			$count = ServiceFactory::queue()->archive($this->selectedQueueIds());
+			$this->redirectToDelivery(Text::plural('COM_PUNGAMAIL_QUEUE_ENTRIES_ARCHIVED', $count));
+		}
+		catch (\Throwable $e)
+		{
+			$this->redirectToDelivery(ErrorMessage::sanitize($e), 'error');
+		}
+	}
+
+	/** @return void */
+	public function unarchiveQueue(): void
+	{
+		$this->guard();
+
+		try
+		{
+			$count = ServiceFactory::queue()->unarchive($this->selectedQueueIds());
+			$this->redirectToDelivery(Text::plural('COM_PUNGAMAIL_QUEUE_ENTRIES_UNARCHIVED', $count));
+		}
+		catch (\Throwable $e)
+		{
+			$this->redirectToDelivery(ErrorMessage::sanitize($e), 'error');
+		}
+	}
+
+	/** @return void */
 	public function toggleQueue(): void
 	{
 		$this->guard();
@@ -263,6 +295,7 @@ final class DeliveryController extends BaseController
 				'queue_status' => $input->post->getCmd('queue_status'),
 				'queue_newsletter' => $input->post->getInt('queue_newsletter'),
 				'queue_search' => trim($input->post->getString('queue_search')),
+				'queue_archive' => $input->post->getCmd('queue_archive'),
 			];
 
 			foreach ($filters as $key => $value)

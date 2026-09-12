@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.16 — 2026-09-11
+
+- Made the coloured mail heading use a table-based full-width email layout with redundant `bgcolor`/inline background styling so iOS Mail and other mobile clients carry the heading background across the complete newsletter content width.
+- Reduced the vertical space used by the optional “View in browser” strip; the link now uses only compact content-sized padding while logo spacing remains independent.
+- Moved **Back to editor** and **Queue emails** from the bottom of Preflight into Joomla's standard administrator toolbar; the queue action keeps its recipient-count confirmation.
+- Added non-destructive Delivery queue archiving. Completed Sent/Failed/Cancelled/Bounced rows can be archived in bulk, are hidden from the default Current view, remain intact for statistics/bounce history, and can be inspected or restored through the History filter. Pending/Processing rows cannot be archived, and retrying an archived failure automatically restores it before it becomes pending.
+- Added the 0.6.16 queue-archive database migration, German/English strings, documentation, and release checks.
+
 ## 0.6.15 — 2026-09-10
 
 - Fixed `{new_content}` and selected-content links so Punga Mail uses each Joomla registered content type's `router` callback when one is available instead of always constructing a generic `option/view/id` URL.

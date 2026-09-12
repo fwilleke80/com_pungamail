@@ -8,7 +8,7 @@ Punga Mail is a focused, self-hosted Joomla! 6 newsletter extension. Its primary
 
 It is not intended to become a behavioural marketing/analytics platform.
 
-## Implemented through 0.6.15
+## Implemented through 0.6.16
 - Joomla User subscriber Channel eligibility updates immediately before save by resolving the selected Joomla account ID from Joomla's real hidden User field value.
 
 ### Lists, automation and access safety
@@ -94,7 +94,7 @@ Blank override values inherit. The base renderer uses conservative inline styles
 ### Sending
 
 - Joomla `MailerFactoryInterface`; Punga Mail either uses Joomla's global mailer settings or supplies an isolated Custom SMTP `Registry` to Joomla's mailer factory. Punga Mail does not maintain a parallel PHPMailer stack.
-- Persistent send queue, database recipient uniqueness, atomic claims, retry/terminal-failure handling and stale-worker recovery.
+- Persistent send queue, database recipient uniqueness, atomic claims, retry/terminal-failure handling and stale-worker recovery. Completed queue history can be archived non-destructively; retrying an archived failed row restores it to the current queue before it becomes pending.
 - Joomla Scheduled Task **Punga Mail — Process send queue** for normal unattended delivery.
 - Separate Joomla task types queue due scheduled newsletters, generate due automatic digests, and process the configured bounce mailbox. Automatic-send digests still pass through the normal send queue.
 - Dashboard exposes all task states, warns contextually when a configured feature lacks its required enabled task, links directly to Joomla Scheduled Tasks, and provides **Process queue now** only as a manual diagnostic/maintenance action. The Newsletters list intentionally has no manual queue button.

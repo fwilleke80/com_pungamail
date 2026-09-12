@@ -1,4 +1,4 @@
-# Punga Mail 0.6.15 Live Acceptance Test Guide
+# Punga Mail 0.6.16 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -911,6 +911,16 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 ## G. Newsletter composition and selected content
 
+### PM-110 — Mobile mail heading and compact browser strip
+
+**Steps:**
+
+1. Configure a visible mail-heading background colour and enable View in browser.
+2. Send a controlled test/Newsletter and inspect it in iOS Mail at phone width and in a desktop mail client.
+3. Compare the heading background edge with the newsletter content edge and inspect the space above the heading.
+
+**Expected:** The coloured heading spans the complete newsletter content width on mobile and desktop. The View in browser strip has compact vertical spacing rather than inheriting the full content padding.
+
 ### PM-119A — Newsletter editor layout
 
 **Steps:**
@@ -1115,6 +1125,17 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Expected:** Preflight gives a useful final validation summary and does not alter subscriptions or delivery state.
 
+### PM-152A — Preflight toolbar actions
+
+**Steps:**
+
+1. Open a valid Preflight with a non-empty recipient set.
+2. Verify **Back to editor** and **Queue emails** are in Joomla’s top toolbar, not at the bottom of the page.
+3. Click **Queue emails**, cancel the confirmation once, then confirm it on a second controlled attempt.
+4. Use **Back to editor** from another Preflight.
+
+**Expected:** Cancelling the confirmation queues nothing. Confirming queues the displayed recipient count. Back returns to the same Newsletter editor. Scheduling remains available near the top of Preflight.
+
 ### PM-153 — Blocking Preflight errors
 
 **Steps:**
@@ -1188,6 +1209,18 @@ Keep the global queue paused except where a test explicitly says to resume it.
 4. Attempt the same on a sent/currently-processing row.
 
 **Expected:** Filters work. Retry/cancel actions are constrained to safe states and never rewrite already-sent history.
+
+### PM-172A — Queue history archiving
+
+**Steps:**
+
+1. Prepare Sent, Failed, Cancelled, Bounced, Pending, and Processing queue rows on staging.
+2. Select completed rows and choose **Archive selected**.
+3. Verify the default **Current** view hides them, then use **History → Archived** and **Current and archived**.
+4. Attempt to archive Pending/Processing rows, retry one archived Failed row, and then restore another archived row manually.
+5. Recheck the parent Newsletter statistics and any associated bounce record.
+
+**Expected:** Only Sent/Failed/Cancelled/Bounced rows are archived. Pending/Processing rows remain current and visible. Retrying an archived Failed row automatically restores it before it becomes Pending. Archive metadata does not alter delivery status, statistics, sent timestamps, errors, or bounce association. Restoring returns rows to Current history.
 
 ### PM-173 — Batch processing and successful handoff
 

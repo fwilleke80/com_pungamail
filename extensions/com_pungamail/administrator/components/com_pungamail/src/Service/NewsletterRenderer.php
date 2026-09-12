@@ -382,32 +382,33 @@ final class NewsletterRenderer
 		$siteName = (string) Factory::getApplication()->get('sitename');
 		$logoUrl = (string) ($style['logo_url'] ?? '');
 		$browserLink = $browserView
-			? '<p style="margin:0;text-align:center;font-size:12px"><a style="color:' . $link . ';text-decoration:underline" href="' . self::BROWSER_PLACEHOLDER . '">' . htmlspecialchars($this->mailText->text('COM_PUNGAMAIL_MAIL_VIEW_BROWSER'), ENT_QUOTES, 'UTF-8') . '</a></p>'
+			? '<p style="margin:0;text-align:center;font-size:12px;line-height:1.3"><a style="color:' . $link . ';text-decoration:underline" href="' . self::BROWSER_PLACEHOLDER . '">' . htmlspecialchars($this->mailText->text('COM_PUNGAMAIL_MAIL_VIEW_BROWSER'), ENT_QUOTES, 'UTF-8') . '</a></p>'
 			: '';
 
 		$html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' . $headCss . '</head>';
-		$html .= '<body style="margin:0;background:' . $outer . ';font-family:' . $font . ';font-size:' . $fontSize . 'px;color:' . $text . '">';
-		$html .= '<div style="max-width:' . $width . 'px;margin:0 auto;background:' . $content . '">';
+		$html .= '<body style="margin:0;padding:0;background:' . $outer . ';font-family:' . $font . ';font-size:' . $fontSize . 'px;color:' . $text . ';-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">';
+		$html .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;background:' . $outer . '"><tr><td align="center" style="padding:0">';
+		$html .= '<table role="presentation" width="' . $width . '" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:' . $width . 'px;border-collapse:collapse;background:' . $content . '"><tr><td style="padding:0">';
 
-		if ($browserLink !== '' || $logoUrl !== '')
+		if ($browserLink !== '')
 		{
-			$html .= '<div style="padding:' . $padding . 'px ' . $padding . 'px 0">';
-			$html .= $browserLink;
+			$html .= '<div style="padding:6px ' . $padding . 'px 0">' . $browserLink . '</div>';
+		}
 
-			if ($logoUrl !== '')
-			{
-				$logoMargin = $browserLink !== '' ? '16px' : '0';
-				$html .= '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '" width="' . (int) $style['logo_width'] . '" style="display:block;max-width:100%;height:auto;border:0;margin-top:' . $logoMargin . '">';
-			}
-
+		if ($logoUrl !== '')
+		{
+			$logoTop = $browserLink !== '' ? 10 : $padding;
+			$html .= '<div style="padding:' . $logoTop . 'px ' . $padding . 'px 0">';
+			$html .= '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '" width="' . (int) $style['logo_width'] . '" style="display:block;max-width:100%;height:auto;border:0;margin:0">';
 			$html .= '</div>';
 		}
 
 		if ($heading !== '')
 		{
-			$headingTop = ($browserLink !== '' || $logoUrl !== '') ? 16 : 0;
-			$backgroundStyle = $headingBackground !== '' ? 'background:' . $headingBackground . ';' : '';
-			$html .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin-top:' . $headingTop . 'px;' . $backgroundStyle . '"><tr><td style="padding:16px ' . $padding . 'px;' . $backgroundStyle . '">';
+			$headingTop = $logoUrl !== '' ? 16 : ($browserLink !== '' ? 8 : 0);
+			$backgroundStyle = $headingBackground !== '' ? 'background:' . $headingBackground . ';background-color:' . $headingBackground . ';' : '';
+			$backgroundAttribute = $headingBackground !== '' ? ' bgcolor="' . $headingBackground . '"' : '';
+			$html .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"' . $backgroundAttribute . ' style="width:100%;border-collapse:collapse;margin-top:' . $headingTop . 'px;' . $backgroundStyle . '"><tr><td width="100%"' . $backgroundAttribute . ' style="width:100%;padding:16px ' . $padding . 'px;' . $backgroundStyle . '">';
 			$html .= '<h1 style="margin:0;color:' . $mailHeadingColor . ';line-height:1.2">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h1>';
 			$html .= '</td></tr></table>';
 		}
@@ -418,7 +419,7 @@ final class NewsletterRenderer
 		$html .= '<footer style="margin-top:36px;padding-top:18px;border-top:1px solid #dddddd;font-size:12px;color:' . $footer . '">';
 		$html .= $footerHtml;
 		$html .= '<p style="margin:10px 0 0"><a style="color:' . $link . ';text-decoration:underline" href="' . self::UNSUBSCRIBE_PLACEHOLDER . '">' . htmlspecialchars($this->mailText->text('COM_PUNGAMAIL_MAIL_UNSUBSCRIBE'), ENT_QUOTES, 'UTF-8') . '</a></p>';
-		$html .= '</footer></div></div></body></html>';
+		$html .= '</footer></div></td></tr></table></td></tr></table></body></html>';
 
 		return $html;
 	}

@@ -196,6 +196,15 @@ final class NewsletterController extends BaseController
 	}
 
 	/** @return void */
+	public function backToEditor(): void
+	{
+		$this->requireEditForInput();
+		$this->requireToken();
+		$id = Factory::getApplication()->getInput()->getInt('id');
+		$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false));
+	}
+
+	/** @return void */
 	public function confirmQueue(): void
 	{
 		Permissions::require(Permissions::SEND_NEWSLETTERS);

@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.6.15 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.6.16 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -51,7 +51,7 @@ Additional Joomla user groups selected as recipients.
 
 ## `#__pungamail_send_queue`
 
-Frozen per-recipient delivery snapshot. `recipient_name` stores the resolved Joomla display name (or email fallback) at queue time for `{recipient}` personalization. `(newsletter_id, email_normalized)` is a database-level idempotency barrier. Workers atomically claim `pending` rows, send them, retry recoverable failures, and mark exhausted attempts `failed`. Stale `processing` rows are recoverable.
+Frozen per-recipient delivery snapshot. `recipient_name` stores the resolved Joomla display name (or email fallback) at queue time for `{recipient}` personalization. `(newsletter_id, email_normalized)` is a database-level idempotency barrier. Workers atomically claim `pending` rows, send them, retry recoverable failures, and mark exhausted attempts `failed`. Stale `processing` rows are recoverable. `archived`/`archived_at` are presentation/history metadata only: they never replace `status`. Only non-processing rows can be archived, and retrying an archived failed row clears its archive metadata before returning it to `pending`.
 
 SMTP handoff and DB update cannot be one distributed transaction. A crash after SMTP acceptance but before the `sent` update can therefore cause one duplicate after stale recovery; Punga Mail prefers that rare duplicate to silently losing a message.
 
@@ -134,3 +134,4 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 - `0.6.13.sql` — no-op version marker for Channel lifecycle/membership consistency fixes; no database schema change is required.
 - `0.6.14.sql` — no-op version marker for Channel permanent-delete cascade fixes; no database schema change is required.
 - `0.6.15.sql` — no-op version marker for registered content-type routing fixes; no database schema change is required.
+- `0.6.16.sql` — adds `archived` and `archived_at` to send-queue rows plus an archive/filter index; archive metadata never changes the delivery status.

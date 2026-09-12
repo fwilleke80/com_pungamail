@@ -232,6 +232,67 @@ final class QueueService
 	}
 
 	/**
+	 * Archives completed queue entries without changing their delivery status.
+	 *
+	 * Pending or currently processing rows are deliberately excluded so an
+	 * archived row can never continue sending invisibly in the background.
+	 *
+	 * @param array<int,int> $ids Queue row IDs.
+	 *
+	 * @return int Number of entries archived.
+	 */
+	public function archive(array $ids): int
+	{
+		$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+		if ($ids === [])
+		{
+			return 0;
+		}
+
+		$terminalStatuses = ['sent', 'failed', 'cancelled', 'bounced'];
+		$now = (new Date('now', 'UTC'))->toSql();
+		$query = $this->db->getQuery(true)
+			->update($this->db->quoteName('#__pungamail_send_queue'))
+			->set($this->db->quoteName('archived') . ' = 1')
+			->set($this->db->quoteName('archived_at') . ' = :archivedAt')
+			->whereIn($this->db->quoteName('id'), $ids)
+			->where($this->db->quoteName('archived') . ' = 0')
+			->whereIn($this->db->quoteName('status'), $terminalStatuses, ParameterType::STRING)
+			->bind(':archivedAt', $now);
+		$this->db->setQuery($query)->execute();
+
+		return $this->db->getAffectedRows();
+	}
+
+	/**
+	 * Restores archived queue entries to the normal Delivery history view.
+	 *
+	 * @param array<int,int> $ids Queue row IDs.
+	 *
+	 * @return int Number of entries restored.
+	 */
+	public function unarchive(array $ids): int
+	{
+		$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+		if ($ids === [])
+		{
+			return 0;
+		}
+
+		$query = $this->db->getQuery(true)
+			->update($this->db->quoteName('#__pungamail_send_queue'))
+			->set($this->db->quoteName('archived') . ' = 0')
+			->set($this->db->quoteName('archived_at') . ' = NULL')
+			->whereIn($this->db->quoteName('id'), $ids)
+			->where($this->db->quoteName('archived') . ' = 1');
+		$this->db->setQuery($query)->execute();
+
+		return $this->db->getAffectedRows();
+	}
+
+	/**
 	 * Changes queue rows from one state to another and refreshes parent counters.
 	 *
 	 * @param array<int,int> $ids           Queue row IDs.
@@ -282,6 +343,12 @@ final class QueueService
 		if ($resetAttempts)
 		{
 			$query->set($this->db->quoteName('attempts') . ' = 0');
+		}
+
+		if ($newStatus === 'pending')
+		{
+			$query->set($this->db->quoteName('archived') . ' = 0')
+				->set($this->db->quoteName('archived_at') . ' = NULL');
 		}
 
 		$this->db->setQuery($query)->execute();

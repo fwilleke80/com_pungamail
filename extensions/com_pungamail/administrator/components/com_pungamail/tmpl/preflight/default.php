@@ -40,8 +40,53 @@ $scheduledInputValue = !empty($newsletter->scheduled_at)
 	? HTMLHelper::_('date', (string) $newsletter->scheduled_at, 'Y-m-d\TH:i', $siteTimezone)
 	: '';
 ?>
+<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm">
+	<input type="hidden" name="id" value="<?php echo (int) $newsletter->id; ?>">
+	<input type="hidden" name="task" value="">
+	<?php echo HTMLHelper::_('form.token'); ?>
+</form>
+<script>
+document.addEventListener('DOMContentLoaded', function ()
+{
+	if (!window.Joomla)
+	{
+		return;
+	}
+
+	window.Joomla.submitbutton = function (task)
+	{
+		if (task === 'newsletter.confirmQueue')
+		{
+			const message = <?php echo json_encode(Text::sprintf('COM_PUNGAMAIL_CONFIRM_QUEUE', count($recipients)), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+
+			if (!window.confirm(message))
+			{
+				return;
+			}
+		}
+
+		Joomla.submitform(task, document.getElementById('adminForm'));
+	};
+});
+</script>
 <div class="container-fluid">
 	<div class="alert <?php echo $data['can_send'] ? 'alert-info' : 'alert-danger'; ?>"><strong><?php echo Text::_('COM_PUNGAMAIL_PREFLIGHT'); ?>.</strong> <?php echo Text::_($data['can_send'] ? 'COM_PUNGAMAIL_PREFLIGHT_HELP' : 'COM_PUNGAMAIL_PREFLIGHT_BLOCKED'); ?></div>
+	<?php if ($recipients !== [] && $data['can_send']) : ?>
+		<div class="card mb-3">
+			<div class="card-body py-2">
+				<form class="row g-2 align-items-end" action="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.schedule'); ?>" method="post">
+					<input type="hidden" name="id" value="<?php echo (int) $newsletter->id; ?>">
+					<div class="col-12 col-md-auto">
+						<label class="form-label mb-1" for="preflight-scheduled-at"><?php echo Text::_('COM_PUNGAMAIL_SCHEDULE_AT'); ?></label>
+						<input required class="form-control" id="preflight-scheduled-at" type="datetime-local" name="scheduled_at" value="<?php echo htmlspecialchars($scheduledInputValue, ENT_QUOTES, 'UTF-8'); ?>">
+					</div>
+					<div class="col-12 col-md-auto"><button class="btn btn-outline-success" type="submit"><?php echo Text::_('COM_PUNGAMAIL_SCHEDULE_SEND'); ?></button></div>
+					<div class="col-12"><div class="form-text"><?php echo Text::sprintf('COM_PUNGAMAIL_SITE_TIMEZONE_HELP', $siteTimezone); ?></div></div>
+					<?php echo HTMLHelper::_('form.token'); ?>
+				</form>
+			</div>
+		</div>
+	<?php endif; ?>
 	<div class="row g-3">
 		<div class="col-12 col-xl-5">
 			<div class="card mb-3"><div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_VALIDATION_CHECKS'); ?></strong></div><div class="list-group list-group-flush"><?php foreach ($data['checks'] as $check) : ?><div class="list-group-item d-flex gap-2"><span class="badge <?php echo $check['level'] === 'error' ? 'bg-danger' : ($check['level'] === 'warning' ? 'bg-warning text-dark' : 'bg-success'); ?>"><?php echo Text::_('COM_PUNGAMAIL_' . strtoupper((string) $check['level'])); ?></span><span><?php echo htmlspecialchars((string) $check['message'], ENT_QUOTES, 'UTF-8'); ?></span></div><?php endforeach; ?></div></div>
@@ -66,17 +111,6 @@ $scheduledInputValue = !empty($newsletter->scheduled_at)
 				<?php endforeach; ?>
 			</div></div>
 			<?php if ($data['excluded'] !== []) : ?><div class="card mb-3"><div class="card-header"><strong><?php echo Text::sprintf('COM_PUNGAMAIL_EXCLUDED_RECIPIENTS', count($data['excluded'])); ?></strong></div><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th><?php echo Text::_('COM_PUNGAMAIL_EMAIL'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_SOURCE'); ?></th><th><?php echo Text::_('COM_PUNGAMAIL_REASON'); ?></th></tr></thead><tbody><?php foreach ($data['excluded'] as $excluded) : ?><tr><td><code><?php echo htmlspecialchars((string) $excluded['email'], ENT_QUOTES, 'UTF-8'); ?></code></td><td><?php echo htmlspecialchars((string) $excluded['source'], ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo Text::_('COM_PUNGAMAIL_EXCLUSION_' . strtoupper((string) $excluded['reason'])); ?></td></tr><?php endforeach; ?></tbody></table></div></div><?php endif; ?>
-			<div class="d-flex gap-2">
-				<a class="btn btn-outline-secondary" href="<?php echo Route::_(\Punga\Component\PungaMail\Administrator\Service\AdministratorRoute::newsletter((int) $newsletter->id)); ?>"><?php echo Text::_('COM_PUNGAMAIL_BACK_TO_EDITOR'); ?></a>
-				<?php if ($recipients !== [] && $data['can_send']) : ?>
-				<form action="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.confirmQueue'); ?>" method="post" onsubmit="return confirm('<?php echo htmlspecialchars(Text::sprintf('COM_PUNGAMAIL_CONFIRM_QUEUE', count($recipients)), ENT_QUOTES, 'UTF-8'); ?>');">
-					<input type="hidden" name="id" value="<?php echo (int) $newsletter->id; ?>">
-					<button class="btn btn-success" type="submit"><?php echo Text::plural('COM_PUNGAMAIL_QUEUE_EMAILS', count($recipients)); ?></button>
-					<?php echo HTMLHelper::_('form.token'); ?>
-				</form>
-				<form action="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.schedule'); ?>" method="post"><input type="hidden" name="id" value="<?php echo (int) $newsletter->id; ?>"><div class="input-group"><input required class="form-control" type="datetime-local" name="scheduled_at" value="<?php echo htmlspecialchars($scheduledInputValue, ENT_QUOTES, 'UTF-8'); ?>" aria-label="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_SCHEDULE_AT'), ENT_QUOTES, 'UTF-8'); ?>"><button class="btn btn-outline-success" type="submit"><?php echo Text::_('COM_PUNGAMAIL_SCHEDULE_SEND'); ?></button></div><div class="form-text"><?php echo Text::sprintf('COM_PUNGAMAIL_SITE_TIMEZONE_HELP', $siteTimezone); ?></div><?php echo HTMLHelper::_('form.token'); ?></form>
-				<?php endif; ?>
-			</div>
 		</div>
 		<div class="col-12 col-xl-7">
 			<div class="card mb-3"><div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_HTML_PREVIEW'); ?></strong></div><div class="card-body p-0">

@@ -31,6 +31,19 @@ final class HtmlView extends BaseHtmlView
 
 		$this->data = $this->getModel()->getData();
 		ToolbarHelper::title(Text::_('COM_PUNGAMAIL_PREFLIGHT'), 'check');
+		ToolbarHelper::custom('newsletter.backToEditor', 'arrow-left', '', Text::_('COM_PUNGAMAIL_BACK_TO_EDITOR'), false);
+
+		if ($this->data['recipients'] !== [] && $this->data['can_send'])
+		{
+			ToolbarHelper::custom(
+				'newsletter.confirmQueue',
+				'mail',
+				'',
+				Text::plural('COM_PUNGAMAIL_QUEUE_EMAILS', count($this->data['recipients'])),
+				false
+			);
+		}
+
 		parent::display($tpl);
 	}
 }

@@ -125,6 +125,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.13.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.14.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.15.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.16.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/Permissions.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
@@ -332,6 +333,9 @@ def check_migration_chain() -> None:
 
     required_install_fragments = (
         "#__pungamail_templates",
+        "`archived` TINYINT UNSIGNED NOT NULL DEFAULT 0",
+        "`archived_at` DATETIME NULL",
+        "idx_pungamail_queue_archive",
         "#__pungamail_newsletter_sources",
         "`template_id` BIGINT UNSIGNED NULL",
         "`style_overrides` MEDIUMTEXT NULL",
@@ -3212,7 +3216,7 @@ def check_release_fix_0615() -> None:
             fail(f"0.6.15 USER_GUIDE is missing registered-router documentation {token!r}")
 
     tests = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
-    for token in ("Punga Mail 0.6.15 Live Acceptance Test Guide", "PM-121A", "Registered content-type canonical routing"):
+    for token in (f"Punga Mail {VERSION} Live Acceptance Test Guide", "PM-121A", "Registered content-type canonical routing"):
         if token not in tests:
             fail(f"0.6.15 TEST_GUIDE is missing registered-router acceptance coverage {token!r}")
 
@@ -3309,6 +3313,52 @@ def check_joomla_base_method_collisions() -> None:
         fail("Subscription view does not use the non-conflicting state accessor")
 
 
+
+def check_0616_delivery_ux() -> None:
+    """Verify the 0.6.16 delivery-history and mail-layout maintenance release."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    renderer = (admin / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    preflight_view = (admin / "src/View/Preflight/HtmlView.php").read_text(encoding="utf-8")
+    preflight_template = (admin / "tmpl/preflight/default.php").read_text(encoding="utf-8")
+    delivery_model = (admin / "src/Model/DeliveryModel.php").read_text(encoding="utf-8")
+    delivery_controller = (admin / "src/Controller/DeliveryController.php").read_text(encoding="utf-8")
+    delivery_template = (admin / "tmpl/delivery/default.php").read_text(encoding="utf-8")
+    queue_service = (admin / "src/Service/QueueService.php").read_text(encoding="utf-8")
+    migration = (admin / "sql/updates/mysql/0.6.16.sql").read_text(encoding="utf-8")
+
+    for token in ('width="100%"', 'bgcolor=', '-webkit-text-size-adjust:100%', 'padding:6px'):
+        if token not in renderer:
+            fail(f"0.6.16 mail renderer is missing mobile email-layout contract {token!r}")
+
+    for token in ("newsletter.backToEditor", "newsletter.confirmQueue"):
+        if token not in preflight_view:
+            fail(f"0.6.16 Preflight toolbar is missing {token!r}")
+
+    if 'name="adminForm"' not in preflight_template or "COM_PUNGAMAIL_CONFIRM_QUEUE" not in preflight_template:
+        fail("0.6.16 Preflight toolbar actions do not preserve Joomla form submission/queue confirmation")
+
+    for token in ("queue_archive", "q.archived", "archived"):
+        if token not in delivery_model:
+            fail(f"0.6.16 Delivery model is missing queue archive filter contract {token!r}")
+
+    for token in ("archiveQueue", "unarchiveQueue"):
+        if token not in delivery_controller:
+            fail(f"0.6.16 Delivery controller is missing {token!r}")
+
+    for token in ("delivery.archiveQueue", "delivery.unarchiveQueue", "COM_PUNGAMAIL_QUEUE_VISIBILITY"):
+        if token not in delivery_template:
+            fail(f"0.6.16 Delivery template is missing queue archive UI {token!r}")
+
+    for token in ("public function archive", "public function unarchive", "['sent', 'failed', 'cancelled', 'bounced']", "$newStatus === 'pending'", "archived_at"):
+        if token not in queue_service:
+            fail(f"0.6.16 QueueService is missing safe archive behavior {token!r}")
+
+    for token in ("ADD COLUMN `archived`", "ADD COLUMN `archived_at`", "idx_pungamail_queue_archive"):
+        if token not in migration:
+            fail(f"0.6.16 migration is missing {token!r}")
+
+
 def main() -> int:
     """Run all release checks.
 
@@ -3382,6 +3432,7 @@ def main() -> int:
     except RuntimeError as exc:
         print(f"[FAIL] {exc}", file=sys.stderr)
         return 1
+    check_0616_delivery_ux()
     print(f"[OK] Punga Mail {VERSION} release checks passed")
     return 0
 
