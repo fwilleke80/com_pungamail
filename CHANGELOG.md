@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.18 — 2026-09-12
+
+- Replaced free-text logo URL controls in global options, templates and newsletters with Joomla Media Manager image pickers.
+- Kept existing absolute/site-relative logo values compatible and normalize Joomla media metadata fragments before rendering mail URLs.
+- Added stable `pm-*` classes to the generated mail structure so Advanced custom CSS can target the heading, body, footer, browser link and logo reliably.
+- Documented custom-CSS selectors and solid-colour fallbacks for enhancements such as gradients.
+
+## 0.6.17 — 2026-09-11
+
+- Removed the non-actionable SPF/DKIM/DMARC disclaimer from the Delivery diagnostics card; DNS/provider configuration remains documented without occupying routine dashboard UI.
+
 ## 0.6.16 — 2026-09-11
 
 - Made the coloured mail heading use a table-based full-width email layout with redundant `bgcolor`/inline background styling so iOS Mail and other mobile clients carry the heading background across the complete newsletter content width.

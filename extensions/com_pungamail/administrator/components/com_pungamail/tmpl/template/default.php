@@ -14,6 +14,7 @@ use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Helper\MarkdownEditorHelper;
+use Punga\Component\PungaMail\Administrator\Helper\MediaFieldHelper;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
@@ -88,7 +89,12 @@ $styleFields = [
 						<?php foreach ($styleFields as $key => $label) : ?>
 							<div class="col-md-6">
 								<label class="form-label" for="pts-<?php echo $key; ?>"><?php echo Text::_($label); ?></label>
-								<input class="form-control" id="pts-<?php echo $key; ?>" name="style[<?php echo $key; ?>]" value="<?php echo htmlspecialchars((string) ($style[$key] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_INHERIT'), ENT_QUOTES, 'UTF-8'); ?>">
+								<?php if ($key === 'logo_url') : ?>
+									<?php echo MediaFieldHelper::imageInput('com_pungamail.template.logo', 'style', 'logo_url', (string) ($style['logo_url'] ?? ''), 'pts-logo_url'); ?>
+									<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_STYLE_LOGO_OVERRIDE_DESC'); ?></div>
+								<?php else : ?>
+									<input class="form-control" id="pts-<?php echo $key; ?>" name="style[<?php echo $key; ?>]" value="<?php echo htmlspecialchars((string) ($style[$key] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_INHERIT'), ENT_QUOTES, 'UTF-8'); ?>">
+								<?php endif; ?>
 							</div>
 						<?php endforeach; ?>
 						<div class="col-12">

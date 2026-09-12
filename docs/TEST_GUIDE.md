@@ -1,4 +1,4 @@
-# Punga Mail 0.6.16 Live Acceptance Test Guide
+# Punga Mail 0.6.18 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 

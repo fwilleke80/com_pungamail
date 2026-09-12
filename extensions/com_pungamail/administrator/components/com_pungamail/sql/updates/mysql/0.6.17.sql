@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.17 removes non-actionable diagnostics guidance; no database schema change is required.

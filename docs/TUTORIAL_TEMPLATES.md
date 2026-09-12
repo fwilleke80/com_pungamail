@@ -79,7 +79,7 @@ Leave all other fields blank. This preserves the inheritance chain:
 
 **Component Options → Template → Newsletter**
 
-Custom CSS is appended to the global CSS. Keep it simple and test in real mail clients.
+Custom CSS is appended to the global CSS. Stable structural selectors include `.pm-mail-heading`, `.pm-mail-heading-cell`, `.pm-mail-heading-title`, `.pm-mail-body`, and `.pm-mail-footer`. Keep rules simple and test in real mail clients; inline fallback styles may require `!important` when deliberately overridden.
 
 ## 5. Preview and save
 

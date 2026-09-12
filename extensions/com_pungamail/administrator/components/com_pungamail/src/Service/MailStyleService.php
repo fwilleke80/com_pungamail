@@ -232,6 +232,11 @@ final class MailStyleService
 	{
 		$value = trim($value);
 
+		if (str_contains($value, '#joomlaImage://'))
+		{
+			$value = strstr($value, '#', true) ?: '';
+		}
+
 		if ($value === '')
 		{
 			return '';

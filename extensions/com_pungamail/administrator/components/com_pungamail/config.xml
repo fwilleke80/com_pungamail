@@ -29,7 +29,7 @@
 		<field name="design_font_family" type="text" default="Arial, Helvetica, sans-serif" label="COM_PUNGAMAIL_STYLE_FONT_FAMILY" />
 		<field name="design_font_size" type="number" default="16" min="10" max="28" label="COM_PUNGAMAIL_STYLE_FONT_SIZE" />
 		<field name="design_content_padding" type="number" default="32" min="0" max="96" label="COM_PUNGAMAIL_STYLE_CONTENT_PADDING" />
-		<field name="design_logo_url" type="text" label="COM_PUNGAMAIL_STYLE_LOGO_URL" description="COM_PUNGAMAIL_STYLE_LOGO_URL_DESC" />
+		<field name="design_logo_url" type="media" types="images" preview="tooltip" label="COM_PUNGAMAIL_STYLE_LOGO_URL" description="COM_PUNGAMAIL_STYLE_LOGO_URL_DESC" />
 		<field name="design_logo_width" type="number" default="180" min="40" max="600" label="COM_PUNGAMAIL_STYLE_LOGO_WIDTH" />
 		<field name="design_footer_color" type="color" default="#666666" label="COM_PUNGAMAIL_STYLE_FOOTER_COLOR" />
 		<field name="mail_footer_reason" type="mailfooter" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" filter="raw" rows="6" label="COM_PUNGAMAIL_CONFIG_FOOTER_REASON" description="COM_PUNGAMAIL_CONFIG_FOOTER_REASON_DESC" />

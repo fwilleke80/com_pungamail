@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.18 improves logo selection and mail CSS targeting; no database schema change is required.

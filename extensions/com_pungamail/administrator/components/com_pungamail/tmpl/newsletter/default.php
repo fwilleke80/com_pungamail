@@ -8,6 +8,7 @@ use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Helper\MarkdownEditorHelper;
+use Punga\Component\PungaMail\Administrator\Helper\MediaFieldHelper;
 use Punga\Component\PungaMail\Administrator\Service\NewsletterRenderer;
 use Punga\Component\PungaMail\Administrator\Service\NewsletterRepository;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
@@ -365,7 +366,12 @@ if ($item !== null && !empty($item->scheduled_at))
 						<?php foreach ($styleFields as $styleKey => $labelKey) : ?>
 							<div class="col-md-6">
 								<label class="form-label" for="style-<?php echo $styleKey; ?>"><?php echo Text::_($labelKey); ?></label>
-								<input class="form-control" id="style-<?php echo $styleKey; ?>" name="style[<?php echo $styleKey; ?>]" value="<?php echo htmlspecialchars((string) ($style[$styleKey] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_INHERIT'), ENT_QUOTES, 'UTF-8'); ?>">
+								<?php if ($styleKey === 'logo_url') : ?>
+									<?php echo MediaFieldHelper::imageInput('com_pungamail.newsletter.logo', 'style', 'logo_url', (string) ($style['logo_url'] ?? ''), 'style-logo_url'); ?>
+									<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_STYLE_LOGO_OVERRIDE_DESC'); ?></div>
+								<?php else : ?>
+									<input class="form-control" id="style-<?php echo $styleKey; ?>" name="style[<?php echo $styleKey; ?>]" value="<?php echo htmlspecialchars((string) ($style[$styleKey] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_INHERIT'), ENT_QUOTES, 'UTF-8'); ?>">
+								<?php endif; ?>
 							</div>
 						<?php endforeach; ?>
 						<div class="col-12">

@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.16. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.18. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -157,7 +157,7 @@ A blank template or newsletter design field means “inherit.”
 | Font family | Email-safe CSS font list, for example `Arial, Helvetica, sans-serif`. |
 | Font size | Base text size in pixels. Default: 16; allowed range: 10–28. |
 | Content padding | Space inside the message panel in pixels. Default: 32; allowed range: 0–96. |
-| Logo URL | Optional absolute URL, root-relative path, or site-relative path to a publicly available logo. |
+| Logo image | Select an image with Joomla Media Manager. Existing absolute, root-relative and site-relative logo values remain supported. |
 | Logo width | Display width of the logo in pixels. Default: 180; allowed range: 40–600. |
 | Footer color | Color of the standard footer and subscription explanation. |
 | Footer reason | Markdown text explaining why the recipient received the message. Leave blank to use the translated frontend default. Joomla Website language overrides are honored. |
@@ -409,9 +409,9 @@ For a recipient linked to a Joomla user account, Punga Mail resolves the field v
 
 ### Template style overrides
 
-Every global design property can be overridden: content width, backgrounds, text/heading/link colors, font family and size, padding, logo URL and width, and footer color. Leave an override blank to inherit the global value.
+Every global design property can be overridden: content width, backgrounds, text/heading/link colors, font family and size, padding, logo image and width, and footer color. Leave an override blank to inherit the global value.
 
-Template custom CSS is added after the global custom CSS. Newsletter custom CSS can add another layer.
+Template custom CSS is added after the global custom CSS. Newsletter custom CSS can add another layer. Stable selectors include `.pm-mail-heading`, `.pm-mail-heading-cell`, `.pm-mail-heading-title`, `.pm-mail-body`, and `.pm-mail-footer`. Because Punga Mail keeps inline fallback styles for email-client compatibility, deliberate overrides may need `!important`. For example, a CSS gradient can enhance the mail heading while the configured solid heading colour remains the fallback in clients without gradient support.
 
 **Preview** renders the template. The editor follows Joomla's familiar main-content plus right-sidebar pattern: reusable subject/body live in **Mail content**, visual overrides live in **Design**, and template-level message behavior such as the mail heading, browser view and Reply-To lives in the right sidebar. Templates do not have an artificial Published/Unpublished state. Selected-content item formatting is managed centrally under **Content layouts**, not inside individual Templates or Newsletters. **Save**, **Save & Close**, and **Cancel** behave like standard Joomla editor actions.
 

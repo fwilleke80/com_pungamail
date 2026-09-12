@@ -387,19 +387,19 @@ final class NewsletterRenderer
 
 		$html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' . $headCss . '</head>';
 		$html .= '<body style="margin:0;padding:0;background:' . $outer . ';font-family:' . $font . ';font-size:' . $fontSize . 'px;color:' . $text . ';-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">';
-		$html .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;background:' . $outer . '"><tr><td align="center" style="padding:0">';
-		$html .= '<table role="presentation" width="' . $width . '" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:' . $width . 'px;border-collapse:collapse;background:' . $content . '"><tr><td style="padding:0">';
+		$html .= '<table class="pm-mail-outer" role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;background:' . $outer . '"><tr><td align="center" style="padding:0">';
+		$html .= '<table class="pm-mail-container" role="presentation" width="' . $width . '" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:' . $width . 'px;border-collapse:collapse;background:' . $content . '"><tr><td style="padding:0">';
 
 		if ($browserLink !== '')
 		{
-			$html .= '<div style="padding:6px ' . $padding . 'px 0">' . $browserLink . '</div>';
+			$html .= '<div class="pm-browser-link" style="padding:6px ' . $padding . 'px 0">' . $browserLink . '</div>';
 		}
 
 		if ($logoUrl !== '')
 		{
 			$logoTop = $browserLink !== '' ? 10 : $padding;
-			$html .= '<div style="padding:' . $logoTop . 'px ' . $padding . 'px 0">';
-			$html .= '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '" width="' . (int) $style['logo_width'] . '" style="display:block;max-width:100%;height:auto;border:0;margin:0">';
+			$html .= '<div class="pm-mail-logo" style="padding:' . $logoTop . 'px ' . $padding . 'px 0">';
+			$html .= '<img class="pm-mail-logo-image" src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '" width="' . (int) $style['logo_width'] . '" style="display:block;max-width:100%;height:auto;border:0;margin:0">';
 			$html .= '</div>';
 		}
 
@@ -408,15 +408,15 @@ final class NewsletterRenderer
 			$headingTop = $logoUrl !== '' ? 16 : ($browserLink !== '' ? 8 : 0);
 			$backgroundStyle = $headingBackground !== '' ? 'background:' . $headingBackground . ';background-color:' . $headingBackground . ';' : '';
 			$backgroundAttribute = $headingBackground !== '' ? ' bgcolor="' . $headingBackground . '"' : '';
-			$html .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"' . $backgroundAttribute . ' style="width:100%;border-collapse:collapse;margin-top:' . $headingTop . 'px;' . $backgroundStyle . '"><tr><td width="100%"' . $backgroundAttribute . ' style="width:100%;padding:16px ' . $padding . 'px;' . $backgroundStyle . '">';
-			$html .= '<h1 style="margin:0;color:' . $mailHeadingColor . ';line-height:1.2">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h1>';
+			$html .= '<table class="pm-mail-heading" role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"' . $backgroundAttribute . ' style="width:100%;border-collapse:collapse;margin-top:' . $headingTop . 'px;' . $backgroundStyle . '"><tr><td class="pm-mail-heading-cell" width="100%"' . $backgroundAttribute . ' style="width:100%;padding:16px ' . $padding . 'px;' . $backgroundStyle . '">';
+			$html .= '<h1 class="pm-mail-heading-title" style="margin:0;color:' . $mailHeadingColor . ';line-height:1.2">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h1>';
 			$html .= '</td></tr></table>';
 		}
 
 		$contentTop = $heading !== '' ? 28 : $padding;
-		$html .= '<div style="padding:' . $contentTop . 'px ' . $padding . 'px ' . $padding . 'px">';
-		$html .= '<main style="line-height:1.55">' . $bodyHtml . '</main>';
-		$html .= '<footer style="margin-top:36px;padding-top:18px;border-top:1px solid #dddddd;font-size:12px;color:' . $footer . '">';
+		$html .= '<div class="pm-mail-content" style="padding:' . $contentTop . 'px ' . $padding . 'px ' . $padding . 'px">';
+		$html .= '<main class="pm-mail-body" style="line-height:1.55">' . $bodyHtml . '</main>';
+		$html .= '<footer class="pm-mail-footer" style="margin-top:36px;padding-top:18px;border-top:1px solid #dddddd;font-size:12px;color:' . $footer . '">';
 		$html .= $footerHtml;
 		$html .= '<p style="margin:10px 0 0"><a style="color:' . $link . ';text-decoration:underline" href="' . self::UNSUBSCRIBE_PLACEHOLDER . '">' . htmlspecialchars($this->mailText->text('COM_PUNGAMAIL_MAIL_UNSUBSCRIBE'), ENT_QUOTES, 'UTF-8') . '</a></p>';
 		$html .= '</footer></div></td></tr></table></td></tr></table></body></html>';

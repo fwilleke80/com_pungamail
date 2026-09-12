@@ -126,11 +126,14 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.14.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.15.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.16.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.17.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.18.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/Permissions.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/MarkdownEditorHelper.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/MediaFieldHelper.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Helper/UnsavedChangesHelper.php",
     "extensions/plg_user_pungamail/src/Field/ChannelsField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/NewcontenttemplateField.php",
@@ -1689,7 +1692,7 @@ def check_release_ux_0400() -> None:
     if "whereIn($this->db->quoteName('filter_st.topic_id'), $topicIds)" in csv:
         fail("0.4.0 CSV export reintroduced nested whereIn positional bindings")
 
-    if "<table role=\"presentation\" width=\"100%\"" not in renderer or "padding:16px ' . $padding . 'px" not in renderer:
+    if "role=\"presentation\" width=\"100%\"" not in renderer or "padding:16px ' . $padding . 'px" not in renderer:
         fail("0.4.0 mail heading does not separate full-width background from padded heading text")
 
     for locale in ("en-GB", "de-DE"):
@@ -3359,6 +3362,22 @@ def check_0616_delivery_ux() -> None:
             fail(f"0.6.16 migration is missing {token!r}")
 
 
+
+def check_0617_diagnostics_cleanup() -> None:
+    """Verify the 0.6.17 diagnostics copy cleanup."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    delivery = (admin / "tmpl/delivery/default.php").read_text(encoding="utf-8")
+    english = (admin / "language/en-GB/com_pungamail.ini").read_text(encoding="utf-8")
+    german = (admin / "language/de-DE/com_pungamail.ini").read_text(encoding="utf-8")
+    marker = (admin / "sql/updates/mysql/0.6.17.sql").read_text(encoding="utf-8")
+
+    if "COM_PUNGAMAIL_DNS_GUIDANCE" in delivery or "COM_PUNGAMAIL_DNS_GUIDANCE=" in english or "COM_PUNGAMAIL_DNS_GUIDANCE=" in german:
+        fail("0.6.17 diagnostics cleanup still exposes the removed DNS disclaimer")
+
+    if any(token in marker.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.6.17 is a UI-copy cleanup; its version-marker migration must not change schema")
+
 def main() -> int:
     """Run all release checks.
 
@@ -3433,9 +3452,38 @@ def main() -> int:
         print(f"[FAIL] {exc}", file=sys.stderr)
         return 1
     check_0616_delivery_ux()
+    check_0617_diagnostics_cleanup()
+    check_v0618_media_and_css()
     print(f"[OK] Punga Mail {VERSION} release checks passed")
     return 0
 
+
+
+def check_v0618_media_and_css():
+    """Verify the 0.6.18 Media Manager logo fields and stable CSS hooks."""
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    config = (admin / "config.xml").read_text(encoding="utf-8")
+    style = (admin / "src/Service/MailStyleService.php").read_text(encoding="utf-8")
+    renderer = (admin / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    template = (admin / "tmpl/template/default.php").read_text(encoding="utf-8")
+    newsletter = (admin / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    marker = (admin / "sql/updates/mysql/0.6.18.sql").read_text(encoding="utf-8")
+
+    required = [
+        'name="design_logo_url" type="media"',
+        'types="images"',
+    ]
+    if not all(item in config for item in required):
+        fail("0.6.18 global logo option is not a Joomla image Media Manager field")
+    if "MediaFieldHelper::imageInput" not in template or "MediaFieldHelper::imageInput" not in newsletter:
+        fail("0.6.18 template/newsletter logo overrides do not use Joomla Media Manager")
+    if "#joomlaImage://" not in style:
+        fail("0.6.18 logo URL normalization does not handle Joomla media metadata")
+    for css_class in ["pm-mail-heading", "pm-mail-heading-cell", "pm-mail-heading-title", "pm-mail-body", "pm-mail-footer"]:
+        if css_class not in renderer:
+            fail(f"0.6.18 generated mail is missing stable CSS class {css_class}")
+    if any(token in marker.upper() for token in ["ALTER TABLE", "CREATE TABLE", "DROP TABLE"]):
+        fail("0.6.18 is a UI/rendering release; its version-marker migration must not change schema")
 
 if __name__ == "__main__":
     raise SystemExit(main())
