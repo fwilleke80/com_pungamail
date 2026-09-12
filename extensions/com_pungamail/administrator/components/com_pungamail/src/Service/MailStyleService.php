@@ -35,6 +35,7 @@ final class MailStyleService
 			'heading_color' => $headingColor,
 			'heading_background' => $this->optionalColor((string) $params->get('design_heading_background', '')),
 			'header_background_image' => $this->url((string) $params->get('design_header_background_image', '')),
+			'header_background_image_behavior' => $this->backgroundImageBehavior((string) $params->get('design_header_background_image_behavior', 'cover'), 'cover'),
 			'mail_heading_color' => $mailHeadingColor,
 			'link_color' => $this->color((string) $params->get('design_link_color', '#2457a6'), '#2457a6'),
 			'font_family' => $this->fontFamily((string) $params->get('design_font_family', 'Arial, Helvetica, sans-serif')),
@@ -264,6 +265,7 @@ final class MailStyleService
 			'browser_padding',
 			'heading_background',
 			'header_background_image',
+			'header_background_image_behavior',
 			'mail_heading_color',
 			'header_alignment',
 			'header_padding',
@@ -357,6 +359,12 @@ final class MailStyleService
 	}
 
 	/** @return string */
+	private function backgroundImageBehavior(string $value, string $fallback): string
+	{
+		return in_array($value, ['cover', 'contain', 'tile', 'tile_x', 'tile_y', 'original'], true) ? $value : $fallback;
+	}
+
+	/** @return string */
 	private function footerReason(string $value): string
 	{
 		return trim(str_replace("\0", '', $value));
@@ -427,6 +435,7 @@ final class MailStyleService
 			'heading_background' => strtolower(trim((string) $value)) === 'none' ? '' : $this->optionalColor((string) $value, (string) $fallback),
 			'browser_alignment', 'header_alignment', 'footer_alignment' => $this->alignment((string) $value, (string) $fallback),
 			'logo_position' => $this->logoPosition((string) $value, (string) $fallback),
+			'header_background_image_behavior' => $this->backgroundImageBehavior((string) $value, (string) $fallback),
 			'footer_divider' => (int) $value === 0 ? 0 : 1,
 			'font_family' => $this->fontFamily((string) $value),
 			'logo_url', 'header_background_image', 'footer_background_image' => $this->url((string) $value),

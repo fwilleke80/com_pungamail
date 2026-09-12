@@ -1,4 +1,4 @@
-# Punga Mail 0.6.19 Live Acceptance Test Guide
+# Punga Mail 0.6.20 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -1944,3 +1944,16 @@ Do not approve the release for production until all applicable items below are t
 4. At Newsletter level choose **No background image** for the Footer and preview again.
 
 **Expected:** The logo appears inside the Header region even with no heading text. Header/Footer images render where supported, solid colours remain usable fallbacks, Footer text/links remain readable, and the Newsletter-level **No background image** suppresses the inherited Footer image.
+
+
+### PM-301 — Header background image display modes
+
+**Steps:**
+
+1. In Component Options → Layout → Header select a Header background image and test each Background image display mode.
+2. Override only the display mode in a Template, leaving the image itself inherited.
+3. Override the display mode again in a Newsletter, then clear the Newsletter override.
+4. Preview the resulting message in at least one webmail client and one native mail client where practical.
+
+**Expected:** The control is labelled Header background image rather than Header image. Cover and Contain use centred non-repeating backgrounds; Tile repeats both directions; horizontal/vertical modes repeat only on the selected axis; Original size does not repeat. Template and Newsletter values inherit independently from their parent level, and the configured Header background colour remains available as fallback.
+

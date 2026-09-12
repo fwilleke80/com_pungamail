@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.20 — 2026-09-12
+
+- Renamed the ambiguous Header image control to **Header background image** (German: **Header-Hintergrundbild**) and the Footer equivalent to **Footer background image**.
+- Added an independently inheritable **Background image display** setting for the Header at Component → Template → Newsletter level.
+- Header background images can now **Cover**, **Contain**, **Tile**, **Tile horizontally**, **Tile vertically**, or render at **Original size without repeating**.
+- Kept the solid Header background colour and legacy email `background` attribute as compatibility fallbacks for mail clients with limited CSS background support.
+- Added 0.6.20 regression coverage and a no-schema-change migration marker.
+
 ## 0.6.19 — 2026-09-12
 
 - Reworked mail presentation into a dedicated hierarchical **Mail Layout** system: Component Options provide defaults, Templates override individual values, and Newsletters override them again only where explicitly set.

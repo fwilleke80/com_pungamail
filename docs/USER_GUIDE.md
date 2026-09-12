@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.19. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.20. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 

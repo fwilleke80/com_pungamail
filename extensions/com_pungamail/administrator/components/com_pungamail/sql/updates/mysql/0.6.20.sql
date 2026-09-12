@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.20 adds Header background-image display controls; no database schema change is required.

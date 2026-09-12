@@ -98,7 +98,7 @@ $renderSelect = static function (string $key, string $label, array $options) use
 		</div>
 		<?php $renderText('heading_background', 'COM_PUNGAMAIL_STYLE_HEADING_BACKGROUND', 'COM_PUNGAMAIL_LAYOUT_COLOR_INHERIT_HINT'); ?>
 		<div class="col-md-6">
-			<label class="form-label" for="<?php echo $prefix; ?>-header-background-image-mode"><?php echo Text::_('COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE'); ?></label>
+			<label class="form-label" for="<?php echo $prefix; ?>-header-background-image-mode"><?php echo Text::_('COM_PUNGAMAIL_LAYOUT_HEADER_BACKGROUND_IMAGE'); ?></label>
 			<select class="form-select" id="<?php echo $prefix; ?>-header-background-image-mode" name="style[header_background_image_mode]">
 				<option value="inherit" <?php echo $headerBackgroundImageMode === 'inherit' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_INHERIT'); ?></option>
 				<option value="custom" <?php echo $headerBackgroundImageMode === 'custom' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_LAYOUT_USE_IMAGE'); ?></option>
@@ -110,6 +110,7 @@ $renderSelect = static function (string $key, string $label, array $options) use
 			<?php echo MediaFieldHelper::imageInput('com_pungamail.' . $prefix . '.header-background', 'style', 'header_background_image', (string) ($style['header_background_image'] ?? ''), $prefix . '-header-background-image'); ?>
 			<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_OVERRIDE_HELP'); ?></div>
 		</div>
+		<?php $renderSelect('header_background_image_behavior', 'COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_BEHAVIOR', ['cover' => 'COM_PUNGAMAIL_LAYOUT_BG_COVER', 'contain' => 'COM_PUNGAMAIL_LAYOUT_BG_CONTAIN', 'tile' => 'COM_PUNGAMAIL_LAYOUT_BG_TILE', 'tile_x' => 'COM_PUNGAMAIL_LAYOUT_BG_TILE_X', 'tile_y' => 'COM_PUNGAMAIL_LAYOUT_BG_TILE_Y', 'original' => 'COM_PUNGAMAIL_LAYOUT_BG_ORIGINAL']); ?>
 		<?php $renderText('mail_heading_color', 'COM_PUNGAMAIL_STYLE_MAIL_HEADING_COLOR'); ?>
 		<?php $renderSelect('header_alignment', 'COM_PUNGAMAIL_LAYOUT_ALIGNMENT', ['left' => 'COM_PUNGAMAIL_LAYOUT_LEFT', 'center' => 'COM_PUNGAMAIL_LAYOUT_CENTER', 'right' => 'COM_PUNGAMAIL_LAYOUT_RIGHT']); ?>
 		<?php $renderText('header_padding', 'COM_PUNGAMAIL_LAYOUT_PADDING'); ?>
@@ -150,7 +151,7 @@ $renderSelect = static function (string $key, string $label, array $options) use
 	<div class="card-body"><div class="row g-3">
 		<?php $renderText('footer_background', 'COM_PUNGAMAIL_LAYOUT_BACKGROUND'); ?>
 		<div class="col-md-6">
-			<label class="form-label" for="<?php echo $prefix; ?>-footer-background-image-mode"><?php echo Text::_('COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE'); ?></label>
+			<label class="form-label" for="<?php echo $prefix; ?>-footer-background-image-mode"><?php echo Text::_('COM_PUNGAMAIL_LAYOUT_FOOTER_BACKGROUND_IMAGE'); ?></label>
 			<select class="form-select" id="<?php echo $prefix; ?>-footer-background-image-mode" name="style[footer_background_image_mode]">
 				<option value="inherit" <?php echo $footerBackgroundImageMode === 'inherit' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_INHERIT'); ?></option>
 				<option value="custom" <?php echo $footerBackgroundImageMode === 'custom' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_LAYOUT_USE_IMAGE'); ?></option>

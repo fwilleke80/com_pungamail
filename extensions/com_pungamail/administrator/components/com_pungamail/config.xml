@@ -30,7 +30,8 @@
 		<field name="layout_header_heading" type="spacer" label="COM_PUNGAMAIL_LAYOUT_HEADER" hr="true" />
 		<field name="mail_heading" type="text" default="{site_name}" label="COM_PUNGAMAIL_MAIL_BODY_HEADING" description="COM_PUNGAMAIL_MAIL_BODY_HEADING_GLOBAL_DESC" />
 		<field name="design_heading_background" type="color" format="hex" default="" label="COM_PUNGAMAIL_STYLE_HEADING_BACKGROUND" description="COM_PUNGAMAIL_STYLE_HEADING_BACKGROUND_DESC" />
-		<field name="design_header_background_image" type="media" types="images" preview="tooltip" label="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE" description="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_DESC" />
+		<field name="design_header_background_image" type="media" types="images" preview="tooltip" label="COM_PUNGAMAIL_LAYOUT_HEADER_BACKGROUND_IMAGE" description="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_DESC" />
+		<field name="design_header_background_image_behavior" type="list" default="cover" label="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_BEHAVIOR" description="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_BEHAVIOR_DESC"><option value="cover">COM_PUNGAMAIL_LAYOUT_BG_COVER</option><option value="contain">COM_PUNGAMAIL_LAYOUT_BG_CONTAIN</option><option value="tile">COM_PUNGAMAIL_LAYOUT_BG_TILE</option><option value="tile_x">COM_PUNGAMAIL_LAYOUT_BG_TILE_X</option><option value="tile_y">COM_PUNGAMAIL_LAYOUT_BG_TILE_Y</option><option value="original">COM_PUNGAMAIL_LAYOUT_BG_ORIGINAL</option></field>
 		<field name="design_mail_heading_color" type="color" format="hex" default="" label="COM_PUNGAMAIL_STYLE_MAIL_HEADING_COLOR" description="COM_PUNGAMAIL_STYLE_MAIL_HEADING_COLOR_DESC" />
 		<field name="design_header_alignment" type="list" default="left" label="COM_PUNGAMAIL_LAYOUT_ALIGNMENT"><option value="left">COM_PUNGAMAIL_LAYOUT_LEFT</option><option value="center">COM_PUNGAMAIL_LAYOUT_CENTER</option><option value="right">COM_PUNGAMAIL_LAYOUT_RIGHT</option></field>
 		<field name="design_header_padding" type="number" default="20" min="0" max="96" label="COM_PUNGAMAIL_LAYOUT_PADDING" />
@@ -50,7 +51,7 @@
 
 		<field name="layout_footer_heading" type="spacer" label="COM_PUNGAMAIL_LAYOUT_FOOTER" hr="true" />
 		<field name="design_footer_background" type="color" default="#ffffff" label="COM_PUNGAMAIL_LAYOUT_BACKGROUND" />
-		<field name="design_footer_background_image" type="media" types="images" preview="tooltip" label="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE" description="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_DESC" />
+		<field name="design_footer_background_image" type="media" types="images" preview="tooltip" label="COM_PUNGAMAIL_LAYOUT_FOOTER_BACKGROUND_IMAGE" description="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_DESC" />
 		<field name="design_footer_color" type="color" default="#666666" label="COM_PUNGAMAIL_STYLE_FOOTER_COLOR" />
 		<field name="design_footer_link_color" type="color" default="#2457a6" label="COM_PUNGAMAIL_LAYOUT_LINK_COLOR" />
 		<field name="design_footer_alignment" type="list" default="left" label="COM_PUNGAMAIL_LAYOUT_ALIGNMENT"><option value="left">COM_PUNGAMAIL_LAYOUT_LEFT</option><option value="center">COM_PUNGAMAIL_LAYOUT_CENTER</option><option value="right">COM_PUNGAMAIL_LAYOUT_RIGHT</option></field>

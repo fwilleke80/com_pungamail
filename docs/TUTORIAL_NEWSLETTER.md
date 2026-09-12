@@ -123,7 +123,7 @@ Use **Custom** if replies should go somewhere other than the inherited setting. 
 
 Leave a style field blank to inherit from the template or Component Options. Override only the properties this newsletter needs.
 
-The **Layout** tab is inherited from the selected Template, which in turn inherits Component Options. Override only the individual settings needed for this Newsletter. The Page, Browser link bar, Header, Content and Footer regions have their own controls; Header/Footer background images use Joomla Media Manager and retain a solid colour fallback. Custom CSS remains the final optional enhancement layer because mail clients vary.
+The **Layout** tab is inherited from the selected Template, which in turn inherits Component Options. Override only the individual settings needed for this Newsletter. The Page, Browser link bar, Header, Content and Footer regions have their own controls; Header/Footer background images use Joomla Media Manager and retain a solid colour fallback. The Header background image can independently cover, contain, tile horizontally/vertically, tile in both directions, or remain at original size. Custom CSS remains the final optional enhancement layer because mail clients vary.
 
 ## 7. Select recipients
 

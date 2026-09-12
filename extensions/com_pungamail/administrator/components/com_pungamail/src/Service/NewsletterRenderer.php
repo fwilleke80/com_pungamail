@@ -386,6 +386,7 @@ final class NewsletterRenderer
 		$browserPadding = (int) ($style['browser_padding'] ?? 6);
 		$headingBackground = htmlspecialchars((string) ($style['heading_background'] ?? ''), ENT_QUOTES, 'UTF-8');
 		$headerBackgroundImage = htmlspecialchars((string) ($style['header_background_image'] ?? ''), ENT_QUOTES, 'UTF-8');
+		$headerBackgroundImageBehavior = (string) ($style['header_background_image_behavior'] ?? 'cover');
 		$mailHeadingColor = htmlspecialchars((string) ($style['mail_heading_color'] ?? $style['heading_color']), ENT_QUOTES, 'UTF-8');
 		$headerAlignment = $this->alignment((string) ($style['header_alignment'] ?? 'left'));
 		$headerPadding = (int) ($style['header_padding'] ?? 20);
@@ -417,7 +418,7 @@ final class NewsletterRenderer
 			$backgroundStyle = $headingBackground !== '' ? 'background-color:' . $headingBackground . ';' : '';
 			$backgroundAttribute = $headingBackground !== '' ? ' bgcolor="' . $headingBackground . '"' : '';
 			$backgroundImageStyle = $headerBackgroundImage !== ''
-				? 'background-image:url(&quot;' . $headerBackgroundImage . '&quot;);background-repeat:no-repeat;background-position:center center;background-size:cover;'
+				? 'background-image:url(&quot;' . $headerBackgroundImage . '&quot;);' . $this->backgroundImageStyle($headerBackgroundImageBehavior)
 				: '';
 			$backgroundImageAttribute = $headerBackgroundImage !== '' ? ' background="' . $headerBackgroundImage . '"' : '';
 			$imageMargin = match ($headerAlignment)
@@ -458,6 +459,27 @@ final class NewsletterRenderer
 		$html .= '</td></tr></table></td></tr></table></body></html>';
 
 		return $html;
+	}
+
+
+	/**
+	 * Returns conservative CSS for a header background-image display mode.
+	 *
+	 * @param string $behavior Selected display behavior.
+	 *
+	 * @return string CSS declarations.
+	 */
+	private function backgroundImageStyle(string $behavior): string
+	{
+		return match ($behavior)
+		{
+			'contain' => 'background-repeat:no-repeat;background-position:center center;background-size:contain;',
+			'tile' => 'background-repeat:repeat;background-position:left top;background-size:auto;',
+			'tile_x' => 'background-repeat:repeat-x;background-position:left top;background-size:auto;',
+			'tile_y' => 'background-repeat:repeat-y;background-position:left top;background-size:auto;',
+			'original' => 'background-repeat:no-repeat;background-position:left top;background-size:auto;',
+			default => 'background-repeat:no-repeat;background-position:center center;background-size:cover;',
+		};
 	}
 
 	/** @return string */

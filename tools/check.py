@@ -129,6 +129,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.17.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.18.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.19.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.20.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/Permissions.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
@@ -3461,6 +3462,7 @@ def main() -> int:
     check_0617_diagnostics_cleanup()
     check_v0618_media_and_css()
     check_v0619_mail_layout()
+    check_v0620_header_background_modes()
     print(f"[OK] Punga Mail {VERSION} release checks passed")
     return 0
 
@@ -3581,6 +3583,80 @@ def check_v0619_mail_layout() -> None:
         ):
             if values.get(key, "").strip() == "":
                 fail(f"0.6.19 is missing {locale} Layout UI copy: {key}")
+
+
+def check_v0620_header_background_modes() -> None:
+    """Verify the 0.6.20 Header background-image display controls."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    config = (admin / "config.xml").read_text(encoding="utf-8")
+    layout = (admin / "layouts/pungamail/mail_layout_overrides.php").read_text(encoding="utf-8")
+    styles = (admin / "src/Service/MailStyleService.php").read_text(encoding="utf-8")
+    renderer = (admin / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    renderer_test = (ROOT / "tools/test_newsletter_renderer.php").read_text(encoding="utf-8")
+    marker_sql = (admin / "sql/updates/mysql/0.6.20.sql").read_text(encoding="utf-8")
+
+    for token in (
+        'label="COM_PUNGAMAIL_LAYOUT_HEADER_BACKGROUND_IMAGE"',
+        'name="design_header_background_image_behavior"',
+        'value="cover"',
+        'value="contain"',
+        'value="tile"',
+        'value="tile_x"',
+        'value="tile_y"',
+        'value="original"',
+    ):
+        if token not in config:
+            fail(f"0.6.20 Header background config is missing {token!r}")
+
+    for token in (
+        "header_background_image_behavior",
+        "COM_PUNGAMAIL_LAYOUT_HEADER_BACKGROUND_IMAGE",
+        "COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_BEHAVIOR",
+        "COM_PUNGAMAIL_LAYOUT_BG_TILE_X",
+    ):
+        if token not in layout:
+            fail(f"0.6.20 shared Layout editor is missing {token!r}")
+
+    for token in (
+        "design_header_background_image_behavior",
+        "header_background_image_behavior",
+        "backgroundImageBehavior",
+        "'cover', 'contain', 'tile', 'tile_x', 'tile_y', 'original'",
+    ):
+        if token not in styles:
+            fail(f"0.6.20 per-field Header background behavior inheritance is missing {token!r}")
+
+    for token in (
+        "$headerBackgroundImageBehavior",
+        "backgroundImageStyle",
+        "background-repeat:repeat;",
+        "background-repeat:repeat-x;",
+        "background-repeat:repeat-y;",
+        "background-size:contain;",
+        "background-size:cover;",
+    ):
+        if token not in renderer:
+            fail(f"0.6.20 Header background renderer is missing {token!r}")
+
+    if "Header background image display behavior was not rendered." not in renderer_test:
+        fail("0.6.20 renderer regression coverage does not exercise Header background display behavior")
+
+    if any(token in marker_sql.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.6.20 is a UI/rendering release; its version-marker migration must not change schema")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_LAYOUT_HEADER_BACKGROUND_IMAGE",
+            "COM_PUNGAMAIL_LAYOUT_FOOTER_BACKGROUND_IMAGE",
+            "COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_BEHAVIOR",
+            "COM_PUNGAMAIL_LAYOUT_BG_COVER",
+            "COM_PUNGAMAIL_LAYOUT_BG_TILE",
+            "COM_PUNGAMAIL_LAYOUT_BG_ORIGINAL",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.6.20 is missing {locale} Header background UI copy: {key}")
 
 if __name__ == "__main__":
     raise SystemExit(main())

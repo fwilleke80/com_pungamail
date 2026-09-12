@@ -287,6 +287,7 @@ namespace
 		'heading_background' => '#ffeecc',
 		'header_background_image_mode' => 'custom',
 		'header_background_image' => 'images/header-bg.jpg',
+		'header_background_image_behavior' => 'tile_x',
 		'mail_heading_color' => '#123456',
 		'logo_mode' => 'custom',
 		'logo_url' => 'images/logo.png',
@@ -332,6 +333,11 @@ namespace
 	if (!str_contains($pluginResult['html'], 'background="https://site.example/images/header-bg.jpg"') || !str_contains($pluginResult['html'], 'background="https://site.example/images/footer-bg.jpg"'))
 	{
 		failNewsletterRendererTest('Header/footer background images were not normalized and emitted with email-compatible background attributes.');
+	}
+
+	if (!str_contains($pluginResult['html'], 'background-repeat:repeat-x;background-position:left top;background-size:auto;'))
+	{
+		failNewsletterRendererTest('Header background image display behavior was not rendered.');
 	}
 
 	$headerStart = strpos($pluginResult['html'], '<table class="pm-mail-heading"');
