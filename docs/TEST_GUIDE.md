@@ -1,4 +1,4 @@
-# Punga Mail 0.6.18 Live Acceptance Test Guide
+# Punga Mail 0.6.19 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -1922,3 +1922,25 @@ Do not approve the release for production until all applicable items below are t
 - [Import / Export tutorial](TUTORIAL_IMPORT_EXPORT.md)
 - [Concept and design notes](CONCEPT.md)
 - [Database notes](DATABASE.md)
+
+### PM-299 — Hierarchical mail layout inheritance
+
+**Steps:**
+
+1. Configure distinct Component Layout defaults for Header, Content and Footer.
+2. Create a Template that overrides only Header alignment and Footer background image.
+3. Create a Newsletter from that Template and override only Footer background colour.
+4. Change a non-overridden Template value after the Newsletter exists, then preview the Newsletter again.
+
+**Expected:** Each Newsletter setting inherits Template → Component independently. The Newsletter-specific Footer colour stays fixed while untouched values follow later Template changes. Selecting/applying the Template never copies inherited layout values into Newsletter overrides.
+
+### PM-300 — Header/logo and background-image rendering
+
+**Steps:**
+
+1. Select a Header logo and Header background image with Joomla Media Manager. Set the mail heading to none.
+2. Configure a Footer background colour, Footer background image, text colour and link colour.
+3. Preview and send a controlled test message to representative desktop and mobile clients.
+4. At Newsletter level choose **No background image** for the Footer and preview again.
+
+**Expected:** The logo appears inside the Header region even with no heading text. Header/Footer images render where supported, solid colours remain usable fallbacks, Footer text/links remain readable, and the Newsletter-level **No background image** suppresses the inherited Footer image.

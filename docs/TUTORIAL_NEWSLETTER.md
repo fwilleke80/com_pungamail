@@ -119,11 +119,11 @@ Enable this if the email should contain “View this newsletter in your browser.
 
 Use **Custom** if replies should go somewhere other than the inherited setting. Enter a valid address. Choose **None** if this newsletter deliberately should not have a Reply-To address.
 
-## 6. Adjust the design, if necessary
+## 6. Adjust the layout, if necessary
 
 Leave a style field blank to inherit from the template or Component Options. Override only the properties this newsletter needs.
 
-The available properties cover width, backgrounds, text/content-heading/link colors, an optional full-width mail-heading background and independent mail-heading text color, font, base size, padding, logo, and footer color. Custom CSS is optional and should be treated as an enhancement because mail clients vary.
+The **Layout** tab is inherited from the selected Template, which in turn inherits Component Options. Override only the individual settings needed for this Newsletter. The Page, Browser link bar, Header, Content and Footer regions have their own controls; Header/Footer background images use Joomla Media Manager and retain a solid colour fallback. Custom CSS remains the final optional enhancement layer because mail clients vary.
 
 ## 7. Select recipients
 

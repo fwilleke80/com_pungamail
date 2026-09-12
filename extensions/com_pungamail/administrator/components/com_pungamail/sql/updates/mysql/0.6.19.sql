@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.19 adds the hierarchical Mail Layout editor and renderer controls; no database schema change is required.

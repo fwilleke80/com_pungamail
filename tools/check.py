@@ -128,6 +128,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.16.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.17.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.18.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.19.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/Permissions.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
@@ -807,7 +808,8 @@ def check_mail_language_placement() -> None:
         fail(f"Website mail catalog is missing subscriber-facing keys: {sorted(keys - site_keys)}")
 
     renderer = (ROOT / "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
-    if "mail_footer_reason" not in renderer or "MailTextService" not in renderer:
+    styles = (ROOT / "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/MailStyleService.php").read_text(encoding="utf-8")
+    if "footer_reason" not in renderer or "mail_footer_reason" not in styles or "MailTextService" not in renderer:
         fail("Newsletter renderer does not use configurable frontend-language footer copy")
 
 
@@ -1374,7 +1376,7 @@ def check_newsletter_editor_ux_0310() -> None:
         ("pm-settings", "Settings tab"),
         ("pm-mail-content", "Mail content tab"),
         ("pm-content-selection", "Content selection tab"),
-        ("pm-design", "Design tab"),
+        ("pm-layout", "Layout tab"),
         ("uitab.endTabSet", "closed Joomla tab set"),
     ):
         if token not in newsletter:
@@ -1408,7 +1410,7 @@ def check_newsletter_editor_ux_0310() -> None:
             "COM_PUNGAMAIL_TAB_SETTINGS",
             "COM_PUNGAMAIL_TAB_MAIL_CONTENT",
             "COM_PUNGAMAIL_TAB_CONTENT_SELECTION",
-            "COM_PUNGAMAIL_TAB_DESIGN",
+            "COM_PUNGAMAIL_TAB_LAYOUT",
             "COM_PUNGAMAIL_NEW_CONTENT_ITEM_TEMPLATE_PLACEHOLDER_HELP",
         ):
             if values.get(key, "").strip() == "":
@@ -1439,6 +1441,7 @@ def check_release_ux_0312() -> None:
     admin_root = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
     newsletter = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
     template = (admin_root / "tmpl/template/default.php").read_text(encoding="utf-8")
+    layout_overrides = (admin_root / "layouts/pungamail/mail_layout_overrides.php").read_text(encoding="utf-8")
     renderer = (admin_root / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
     markdown = (admin_root / "src/Service/MarkdownRenderer.php").read_text(encoding="utf-8")
     styles = (admin_root / "src/Service/MailStyleService.php").read_text(encoding="utf-8")
@@ -1502,7 +1505,7 @@ def check_release_ux_0313() -> None:
     for token in (
         "HTMLHelper::_('uitab.startTabSet', 'pm-template-tabs'",
         "'pm-template-mail-content'",
-        "'pm-template-design'",
+        "'pm-template-layout'",
         'class="col-12 col-xl-3"',
         "COM_PUNGAMAIL_TEMPLATE_SETTINGS",
     ):
@@ -1510,7 +1513,7 @@ def check_release_ux_0313() -> None:
             fail(f"Template editor layout is missing: {token}")
 
     if template.count("HTMLHelper::_('uitab.addTab', 'pm-template-tabs'") != 2:
-        fail("Template editor must contain the Mail content and Design Joomla tabs")
+        fail("Template editor must contain the Mail content and Layout Joomla tabs")
 
     recurrence_tokens = (
         'name="recurrence_value"',
@@ -1613,6 +1616,7 @@ def check_release_ux_0400() -> None:
     resolver = (admin_root / "src/Service/RecipientResolver.php").read_text(encoding="utf-8")
     newsletter = (admin_root / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
     template = (admin_root / "tmpl/template/default.php").read_text(encoding="utf-8")
+    layout_overrides = (admin_root / "layouts/pungamail/mail_layout_overrides.php").read_text(encoding="utf-8")
     renderer = (admin_root / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
     csv = (admin_root / "src/Service/CsvService.php").read_text(encoding="utf-8")
     markdown = (admin_root / "src/Helper/MarkdownEditorHelper.php").read_text(encoding="utf-8")
@@ -1669,9 +1673,11 @@ def check_release_ux_0400() -> None:
 
     if 'class="col-12 col-xl-3"' not in template or "COM_PUNGAMAIL_TEMPLATE_SETTINGS" not in template:
         fail("Template message settings are not grouped into the Joomla-style sidebar")
-    for token in ('name="heading_mode"', 'name="browser_view"', 'name="reply_to_mode"'):
-        if token not in template:
-            fail(f"Template settings sidebar is missing {token!r}")
+    if 'name="reply_to_mode"' not in template:
+        fail("Template settings sidebar is missing the Reply-To override")
+    for token in ('name="heading_mode"', 'name="browser_view"'):
+        if token not in layout_overrides:
+            fail(f"Template Layout tab is missing {token!r}")
 
     for token in ("pm-dashboard-value", "COM_PUNGAMAIL_DASHBOARD_ATTENTION", "COM_PUNGAMAIL_QUICK_ACTIONS", "COM_PUNGAMAIL_DASHBOARD_RECENT_ACTIVITY", "COM_PUNGAMAIL_DASHBOARD_DELIVERY_30_DAYS", "COM_PUNGAMAIL_DASHBOARD_AUTOMATIC"):
         if token not in dashboard:
@@ -1692,7 +1698,7 @@ def check_release_ux_0400() -> None:
     if "whereIn($this->db->quoteName('filter_st.topic_id'), $topicIds)" in csv:
         fail("0.4.0 CSV export reintroduced nested whereIn positional bindings")
 
-    if "role=\"presentation\" width=\"100%\"" not in renderer or "padding:16px ' . $padding . 'px" not in renderer:
+    if "role=\"presentation\" width=\"100%\"" not in renderer or "class=\"pm-mail-heading-cell\"" not in renderer or "padding:' . $headerPadding . 'px" not in renderer:
         fail("0.4.0 mail heading does not separate full-width background from padded heading text")
 
     for locale in ("en-GB", "de-DE"):
@@ -3330,7 +3336,7 @@ def check_0616_delivery_ux() -> None:
     queue_service = (admin / "src/Service/QueueService.php").read_text(encoding="utf-8")
     migration = (admin / "sql/updates/mysql/0.6.16.sql").read_text(encoding="utf-8")
 
-    for token in ('width="100%"', 'bgcolor=', '-webkit-text-size-adjust:100%', 'padding:6px'):
+    for token in ('width="100%"', 'bgcolor=', '-webkit-text-size-adjust:100%', 'pm-browser-link', '$browserPadding'):
         if token not in renderer:
             fail(f"0.6.16 mail renderer is missing mobile email-layout contract {token!r}")
 
@@ -3454,6 +3460,7 @@ def main() -> int:
     check_0616_delivery_ux()
     check_0617_diagnostics_cleanup()
     check_v0618_media_and_css()
+    check_v0619_mail_layout()
     print(f"[OK] Punga Mail {VERSION} release checks passed")
     return 0
 
@@ -3467,6 +3474,7 @@ def check_v0618_media_and_css():
     renderer = (admin / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
     template = (admin / "tmpl/template/default.php").read_text(encoding="utf-8")
     newsletter = (admin / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    layout_overrides = (admin / "layouts/pungamail/mail_layout_overrides.php").read_text(encoding="utf-8")
     marker = (admin / "sql/updates/mysql/0.6.18.sql").read_text(encoding="utf-8")
 
     required = [
@@ -3475,8 +3483,8 @@ def check_v0618_media_and_css():
     ]
     if not all(item in config for item in required):
         fail("0.6.18 global logo option is not a Joomla image Media Manager field")
-    if "MediaFieldHelper::imageInput" not in template or "MediaFieldHelper::imageInput" not in newsletter:
-        fail("0.6.18 template/newsletter logo overrides do not use Joomla Media Manager")
+    if "MediaFieldHelper::imageInput" not in layout_overrides or "pungamail.mail_layout_overrides" not in template or "pungamail.mail_layout_overrides" not in newsletter:
+        fail("0.6.18 template/newsletter logo overrides do not use the shared Joomla Media Manager layout")
     if "#joomlaImage://" not in style:
         fail("0.6.18 logo URL normalization does not handle Joomla media metadata")
     for css_class in ["pm-mail-heading", "pm-mail-heading-cell", "pm-mail-heading-title", "pm-mail-body", "pm-mail-footer"]:
@@ -3484,6 +3492,95 @@ def check_v0618_media_and_css():
             fail(f"0.6.18 generated mail is missing stable CSS class {css_class}")
     if any(token in marker.upper() for token in ["ALTER TABLE", "CREATE TABLE", "DROP TABLE"]):
         fail("0.6.18 is a UI/rendering release; its version-marker migration must not change schema")
+
+
+def check_v0619_mail_layout() -> None:
+    """Verify the 0.6.19 hierarchical Mail Layout release."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    config = (admin / "config.xml").read_text(encoding="utf-8")
+    layout = (admin / "layouts/pungamail/mail_layout_overrides.php").read_text(encoding="utf-8")
+    styles = (admin / "src/Service/MailStyleService.php").read_text(encoding="utf-8")
+    renderer = (admin / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    newsletter_controller = (admin / "src/Controller/NewsletterController.php").read_text(encoding="utf-8")
+    renderer_test = (ROOT / "tools/test_newsletter_renderer.php").read_text(encoding="utf-8")
+    marker_sql = (admin / "sql/updates/mysql/0.6.19.sql").read_text(encoding="utf-8")
+
+    for token in (
+        '<fieldset name="layout"',
+        'name="design_header_background_image" type="media"',
+        'name="design_footer_background_image" type="media"',
+        'name="design_footer_link_color"',
+        'name="design_browser_background"',
+        'name="design_header_alignment"',
+        'name="design_footer_alignment"',
+    ):
+        if token not in config:
+            fail(f"0.6.19 Component Mail Layout is missing {token!r}")
+
+    for token in (
+        "COM_PUNGAMAIL_LAYOUT_PAGE",
+        "COM_PUNGAMAIL_LAYOUT_BROWSER_BAR",
+        "COM_PUNGAMAIL_LAYOUT_HEADER",
+        "COM_PUNGAMAIL_LAYOUT_CONTENT",
+        "COM_PUNGAMAIL_LAYOUT_FOOTER",
+        "COM_PUNGAMAIL_LAYOUT_ADVANCED",
+        "header_background_image_mode",
+        "footer_background_image_mode",
+        "MediaFieldHelper::imageInput",
+    ):
+        if token not in layout:
+            fail(f"0.6.19 shared Template/Newsletter Layout editor is missing {token!r}")
+
+    for token in (
+        "header_background_image",
+        "footer_background_image",
+        "footer_link_color",
+        "footer_reason_mode",
+        "logo_mode",
+        "encodeOverrides",
+        "array_key_exists($key . '_mode', $overrides)",
+    ):
+        if token not in styles:
+            fail(f"0.6.19 per-field layout inheritance is missing {token!r}")
+
+    for token in (
+        'class="pm-mail-heading"',
+        'class="pm-mail-logo-image"',
+        '$headerBackgroundImage',
+        '$footerBackgroundImage',
+        '$footerLinkColor',
+        'background-image:url(&quot;',
+        ' background="',
+    ):
+        if token not in renderer:
+            fail(f"0.6.19 renderer is missing layout/background-image contract {token!r}")
+
+    if "$data['style_overrides'] = $template->style_overrides" in newsletter_controller:
+        fail("0.6.19 Apply Template still freezes Template layout overrides into the Newsletter")
+
+    for token in (
+        "Logo is not rendered inside the mail header region",
+        "Header/footer background images were not normalized",
+        "Per-field Component/Template/Newsletter layout inheritance is incorrect",
+    ):
+        if token not in renderer_test:
+            fail(f"0.6.19 renderer regression coverage is missing {token!r}")
+
+    if any(token in marker_sql.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.6.19 is a layout/rendering release; its version-marker migration must not change schema")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_CONFIG_LAYOUT",
+            "COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE",
+            "COM_PUNGAMAIL_LAYOUT_USE_IMAGE",
+            "COM_PUNGAMAIL_LAYOUT_NO_IMAGE",
+            "COM_PUNGAMAIL_TAB_LAYOUT",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.6.19 is missing {locale} Layout UI copy: {key}")
 
 if __name__ == "__main__":
     raise SystemExit(main())

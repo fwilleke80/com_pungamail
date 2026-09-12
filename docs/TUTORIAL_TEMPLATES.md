@@ -2,9 +2,9 @@
 
 Templates make recurring newsletters faster and more consistent. A template stores a default subject, Markdown body, message options, and visual overrides.
 
-## 1. Set the global design first
+## 1. Set the global mail layout first
 
-Go to **Components → Punga Mail → Options → Mail design**.
+Go to **Components → Punga Mail → Options → Mail Layout**.
 
 Set the design that should be acceptable for most mail:
 
@@ -18,7 +18,7 @@ Set the design that should be acceptable for most mail:
 - footer explanation;
 - optional custom CSS.
 
-Templates should override only what is different. Blank template fields inherit the global design.
+Templates should override only what is different. Each ordinary blank field inherits the Component value; image controls additionally provide **No image** when a Template must explicitly suppress a parent image.
 
 ## 2. Create a template
 
@@ -73,13 +73,13 @@ Choose Inherit, Custom, or None. With Custom, enter a valid email and optional d
 
 ## 4. Add only necessary style overrides
 
-Override individual properties only when this template needs a distinct presentation—for example, an Events template may use a different link color and logo.
+Open the **Layout** tab and override individual properties only when this Template needs a distinct presentation—for example, an Events Template may use a different Header image, logo, Content link colour, or Footer background. The regions are Page, Browser link bar, Header, Content, Footer, and Advanced CSS.
 
 Leave all other fields blank. This preserves the inheritance chain:
 
 **Component Options → Template → Newsletter**
 
-Custom CSS is appended to the global CSS. Stable structural selectors include `.pm-mail-heading`, `.pm-mail-heading-cell`, `.pm-mail-heading-title`, `.pm-mail-body`, and `.pm-mail-footer`. Keep rules simple and test in real mail clients; inline fallback styles may require `!important` when deliberately overridden.
+Custom CSS is appended to the Component CSS. Stable structural selectors include `.pm-mail-heading`, `.pm-mail-heading-cell`, `.pm-mail-heading-title`, `.pm-mail-body`, and `.pm-mail-footer`. Keep rules simple and test in real mail clients; inline fallback styles may require `!important` when deliberately overridden.
 
 ## 5. Preview and save
 

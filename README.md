@@ -10,6 +10,7 @@ It is designed for websites that want to manage newsletters directly inside Joom
 - Archive old newsletters without trashing them, while retaining delivery history and sent snapshots.
 - Write mail content in **Markdown** with a formatting toolbar, placeholders and preview.
 - Use reusable **Templates** for newsletter content and design.
+- Configure the complete mail **Layout** hierarchically from Component defaults → Template overrides → Newsletter overrides, including browser bar, header/logo, content and footer styling.
 - Let subscribers choose **Channels** so they receive only the newsletters they are interested in.
 - Restrict Channels to registered users or selected Joomla user groups when needed.
 - Add new Joomla content to newsletters with **`{new_content}`**, including selected/available item management, drag-and-drop ordering, and central per-content-type layouts that can use fields discovered from registered source tables.

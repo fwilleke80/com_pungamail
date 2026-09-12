@@ -12,14 +12,14 @@ use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Uri\Uri;
 
 /**
- * Resolves and applies the layered Punga Mail email design.
+ * Resolves and applies the layered Punga Mail email layout.
  */
 final class MailStyleService
 {
 	/**
-	 * Returns the component-level base style.
+	 * Returns the component-level base layout.
 	 *
-	 * @return array<string,string|int> Style values.
+	 * @return array<string,string|int> Layout values.
 	 */
 	public function defaults(): array
 	{
@@ -34,14 +34,32 @@ final class MailStyleService
 			'text_color' => $this->color((string) $params->get('design_text_color', '#222222'), '#222222'),
 			'heading_color' => $headingColor,
 			'heading_background' => $this->optionalColor((string) $params->get('design_heading_background', '')),
+			'header_background_image' => $this->url((string) $params->get('design_header_background_image', '')),
 			'mail_heading_color' => $mailHeadingColor,
 			'link_color' => $this->color((string) $params->get('design_link_color', '#2457a6'), '#2457a6'),
 			'font_family' => $this->fontFamily((string) $params->get('design_font_family', 'Arial, Helvetica, sans-serif')),
 			'font_size' => $this->integer($params->get('design_font_size', 16), 10, 28, 16),
 			'content_padding' => $this->integer($params->get('design_content_padding', 32), 0, 96, 32),
+			'browser_background' => $this->color((string) $params->get('design_browser_background', '#ffffff'), '#ffffff'),
+			'browser_link_color' => $this->color((string) $params->get('design_browser_link_color', '#666666'), '#666666'),
+			'browser_alignment' => $this->alignment((string) $params->get('design_browser_alignment', 'center'), 'center'),
+			'browser_padding' => $this->integer($params->get('design_browser_padding', 6), 0, 48, 6),
+			'header_alignment' => $this->alignment((string) $params->get('design_header_alignment', 'left'), 'left'),
+			'header_padding' => $this->integer($params->get('design_header_padding', 20), 0, 96, 20),
+			'header_gap' => $this->integer($params->get('design_header_gap', 12), 0, 48, 12),
 			'logo_url' => $this->url((string) $params->get('design_logo_url', '')),
 			'logo_width' => $this->integer($params->get('design_logo_width', 180), 40, 600, 180),
+			'logo_position' => $this->logoPosition((string) $params->get('design_logo_position', 'above'), 'above'),
+			'footer_background' => $this->color((string) $params->get('design_footer_background', '#ffffff'), '#ffffff'),
+			'footer_background_image' => $this->url((string) $params->get('design_footer_background_image', '')),
 			'footer_color' => $this->color((string) $params->get('design_footer_color', '#666666'), '#666666'),
+			'footer_link_color' => $this->color((string) $params->get('design_footer_link_color', '#2457a6'), '#2457a6'),
+			'footer_alignment' => $this->alignment((string) $params->get('design_footer_alignment', 'left'), 'left'),
+			'footer_padding' => $this->integer($params->get('design_footer_padding', 24), 0, 96, 24),
+			'footer_divider' => (int) $params->get('design_footer_divider', 1) === 1 ? 1 : 0,
+			'footer_divider_color' => $this->color((string) $params->get('design_footer_divider_color', '#dddddd'), '#dddddd'),
+			'footer_reason_mode' => 'custom',
+			'footer_reason' => trim((string) $params->get('mail_footer_reason', '')),
 			'custom_css' => $this->css((string) $params->get('design_custom_css', '')),
 		];
 	}
@@ -54,7 +72,7 @@ final class MailStyleService
 	 * @param string|null $templateCss     Template custom CSS.
 	 * @param string|null $newsletterCss   Newsletter custom CSS.
 	 *
-	 * @return array<string,string|int> Effective style.
+	 * @return array<string,string|int> Effective layout.
 	 */
 	public function resolve(?string $templateJson, ?string $newsletterJson, ?string $templateCss, ?string $newsletterCss): array
 	{
@@ -62,8 +80,61 @@ final class MailStyleService
 
 		foreach ([$this->decode($templateJson), $this->decode($newsletterJson)] as $overrides)
 		{
+			$logoMode = (string) ($overrides['logo_mode'] ?? '');
+
+			if ($logoMode === 'none')
+			{
+				$style['logo_url'] = '';
+			}
+			elseif ($logoMode === 'custom')
+			{
+				$style['logo_url'] = $this->url((string) ($overrides['logo_url'] ?? ''));
+			}
+
+			foreach (['header_background_image', 'footer_background_image'] as $imageKey)
+			{
+				$imageMode = (string) ($overrides[$imageKey . '_mode'] ?? '');
+
+				if ($imageMode === 'none')
+				{
+					$style[$imageKey] = '';
+				}
+				elseif ($imageMode === 'custom')
+				{
+					$style[$imageKey] = $this->url((string) ($overrides[$imageKey] ?? ''));
+				}
+			}
+
+			$footerMode = (string) ($overrides['footer_reason_mode'] ?? 'inherit');
+
+			if ($footerMode === 'none')
+			{
+				$style['footer_reason_mode'] = 'none';
+				$style['footer_reason'] = '';
+			}
+			elseif ($footerMode === 'custom')
+			{
+				$style['footer_reason_mode'] = 'custom';
+				$style['footer_reason'] = $this->footerReason((string) ($overrides['footer_reason'] ?? ''));
+			}
+
 			foreach ($overrides as $key => $value)
 			{
+				if (in_array($key, ['logo_mode', 'header_background_image_mode', 'footer_background_image_mode', 'footer_reason_mode', 'footer_reason'], true))
+				{
+					continue;
+				}
+
+				if ($key === 'logo_url' && $logoMode !== '')
+				{
+					continue;
+				}
+
+				if (in_array($key, ['header_background_image', 'footer_background_image'], true) && array_key_exists($key . '_mode', $overrides))
+				{
+					continue;
+				}
+
 				if ($value === '' || $value === null)
 				{
 					continue;
@@ -84,7 +155,10 @@ final class MailStyleService
 	}
 
 	/**
-	 * Encodes editor style overrides, dropping empty inherited values.
+	 * Encodes editor layout overrides, dropping inherited values.
+	 *
+	 * Empty ordinary fields mean "inherit". Logo and footer-content modes have
+	 * explicit inherit/custom/none states because an empty value is meaningful.
 	 *
 	 * @param array<string,mixed> $input Raw editor values.
 	 *
@@ -93,9 +167,61 @@ final class MailStyleService
 	public function encodeOverrides(array $input): ?string
 	{
 		$result = [];
+		$logoModeProvided = array_key_exists('logo_mode', $input);
+		$logoMode = (string) ($input['logo_mode'] ?? 'inherit');
+
+		if ($logoModeProvided && $logoMode === 'none')
+		{
+			$result['logo_mode'] = 'none';
+		}
+		elseif ($logoModeProvided && $logoMode === 'custom')
+		{
+			$result['logo_mode'] = 'custom';
+			$result['logo_url'] = trim((string) ($input['logo_url'] ?? ''));
+		}
+
+		foreach (['header_background_image', 'footer_background_image'] as $imageKey)
+		{
+			$modeKey = $imageKey . '_mode';
+			$imageModeProvided = array_key_exists($modeKey, $input);
+			$imageMode = (string) ($input[$modeKey] ?? 'inherit');
+
+			if ($imageModeProvided && $imageMode === 'none')
+			{
+				$result[$modeKey] = 'none';
+			}
+			elseif ($imageModeProvided && $imageMode === 'custom')
+			{
+				$result[$modeKey] = 'custom';
+				$result[$imageKey] = trim((string) ($input[$imageKey] ?? ''));
+			}
+		}
+
+		$footerModeProvided = array_key_exists('footer_reason_mode', $input);
+		$footerMode = (string) ($input['footer_reason_mode'] ?? 'inherit');
+
+		if ($footerModeProvided && $footerMode === 'none')
+		{
+			$result['footer_reason_mode'] = 'none';
+		}
+		elseif ($footerModeProvided && $footerMode === 'custom')
+		{
+			$result['footer_reason_mode'] = 'custom';
+			$result['footer_reason'] = $this->footerReason((string) ($input['footer_reason'] ?? ''));
+		}
 
 		foreach ($this->overrideKeys() as $key)
 		{
+			if ($key === 'logo_url' && $logoModeProvided)
+			{
+				continue;
+			}
+
+			if (in_array($key, ['header_background_image', 'footer_background_image'], true) && array_key_exists($key . '_mode', $input))
+			{
+				continue;
+			}
+
 			$value = trim((string) ($input[$key] ?? ''));
 
 			if ($value !== '')
@@ -132,25 +258,41 @@ final class MailStyleService
 		return [
 			'content_width',
 			'outer_background',
+			'browser_background',
+			'browser_link_color',
+			'browser_alignment',
+			'browser_padding',
+			'heading_background',
+			'header_background_image',
+			'mail_heading_color',
+			'header_alignment',
+			'header_padding',
+			'header_gap',
+			'logo_url',
+			'logo_width',
+			'logo_position',
 			'content_background',
 			'text_color',
 			'heading_color',
-			'heading_background',
-			'mail_heading_color',
 			'link_color',
 			'font_family',
 			'font_size',
 			'content_padding',
-			'logo_url',
-			'logo_width',
+			'footer_background',
+			'footer_background_image',
 			'footer_color',
+			'footer_link_color',
+			'footer_alignment',
+			'footer_padding',
+			'footer_divider',
+			'footer_divider_color',
 		];
 	}
 
 	/**
 	 * Adds conservative inline styles to the Markdown fragment.
 	 *
-	 * @param string                  $html  HTML fragment.
+	 * @param string                    $html  HTML fragment.
 	 * @param array<string,string|int> $style Effective style.
 	 *
 	 * @return string Styled fragment.
@@ -200,6 +342,24 @@ final class MailStyleService
 		$value = trim($value);
 
 		return preg_match('/^#[0-9a-fA-F]{6}$/', $value) === 1 ? strtolower($value) : $fallback;
+	}
+
+	/** @return string */
+	private function alignment(string $value, string $fallback): string
+	{
+		return in_array($value, ['left', 'center', 'right'], true) ? $value : $fallback;
+	}
+
+	/** @return string */
+	private function logoPosition(string $value, string $fallback): string
+	{
+		return in_array($value, ['above', 'below'], true) ? $value : $fallback;
+	}
+
+	/** @return string */
+	private function footerReason(string $value): string
+	{
+		return trim(str_replace("\0", '', $value));
 	}
 
 	/**
@@ -258,11 +418,18 @@ final class MailStyleService
 			'content_width' => $this->integer($value, 320, 1200, (int) $fallback),
 			'font_size' => $this->integer($value, 10, 28, (int) $fallback),
 			'content_padding' => $this->integer($value, 0, 96, (int) $fallback),
+			'browser_padding' => $this->integer($value, 0, 48, (int) $fallback),
+			'header_padding' => $this->integer($value, 0, 96, (int) $fallback),
+			'header_gap' => $this->integer($value, 0, 48, (int) $fallback),
 			'logo_width' => $this->integer($value, 40, 600, (int) $fallback),
-			'outer_background', 'content_background', 'text_color', 'heading_color', 'mail_heading_color', 'link_color', 'footer_color' => $this->color((string) $value, (string) $fallback),
+			'footer_padding' => $this->integer($value, 0, 96, (int) $fallback),
+			'outer_background', 'content_background', 'text_color', 'heading_color', 'mail_heading_color', 'link_color', 'footer_color', 'footer_link_color', 'browser_background', 'browser_link_color', 'footer_background', 'footer_divider_color' => $this->color((string) $value, (string) $fallback),
 			'heading_background' => strtolower(trim((string) $value)) === 'none' ? '' : $this->optionalColor((string) $value, (string) $fallback),
+			'browser_alignment', 'header_alignment', 'footer_alignment' => $this->alignment((string) $value, (string) $fallback),
+			'logo_position' => $this->logoPosition((string) $value, (string) $fallback),
+			'footer_divider' => (int) $value === 0 ? 0 : 1,
 			'font_family' => $this->fontFamily((string) $value),
-			'logo_url' => $this->url((string) $value),
+			'logo_url', 'header_background_image', 'footer_background_image' => $this->url((string) $value),
 			default => (string) $fallback,
 		};
 	}

@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.6.18 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.6.19 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -137,3 +137,4 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 - `0.6.16.sql` — adds `archived` and `archived_at` to send-queue rows plus an archive/filter index; archive metadata never changes the delivery status.
 - `0.6.17.sql` — version marker for the diagnostics-copy cleanup; no schema change.
 - `0.6.18.sql` — version marker for Joomla Media Manager logo fields and stable custom-CSS mail selectors; no schema change.
+- `0.6.19.sql` — version marker for the hierarchical Mail Layout editor, header/footer regions, and background-image styling; no schema change.

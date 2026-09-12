@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.19 — 2026-09-12
+
+- Reworked mail presentation into a dedicated hierarchical **Mail Layout** system: Component Options provide defaults, Templates override individual values, and Newsletters override them again only where explicitly set.
+- Added structured layout regions for **Page**, **Browser link bar**, **Header**, **Content**, **Footer**, and **Advanced CSS**.
+- Moved the logo inside the Header region so a header can be logo-only, heading-only, or contain both; added logo position, alignment, gap, and padding controls.
+- Added optional Header and Footer background images selected with Joomla Media Manager. Background colours remain as compatibility fallbacks for clients that do not render background images.
+- Expanded Footer styling with background colour/image, text colour, link colour, alignment, padding, divider visibility/colour, and inherited/custom/hidden footer reason text.
+- Made Template and Newsletter image overrides explicitly support **Inherit**, **Use selected image**, and **No background image**, so child layers can deliberately suppress a parent image.
+- Made the Browser link bar independently styleable with background, link colour, alignment, and compact padding.
+- Fixed **Apply Template** so selecting a Template no longer copies Template layout/message override values into the Newsletter; inherited Newsletter values remain live and continue following later Template changes.
+- Added stable full-width region markup and email-safe legacy background attributes while retaining conservative inline colour fallbacks.
+- Added 0.6.19 regression coverage and a no-schema-change migration marker.
+
 ## 0.6.18 — 2026-09-12
 
 - Replaced free-text logo URL controls in global options, templates and newsletters with Joomla Media Manager image pickers.

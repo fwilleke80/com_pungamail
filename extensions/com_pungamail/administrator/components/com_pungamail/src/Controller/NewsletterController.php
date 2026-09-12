@@ -96,15 +96,10 @@ final class NewsletterController extends BaseController
 			$data['subject'] = (string) $template->subject;
 			$data['body'] = (string) $template->body_markdown;
 			$data['template_id'] = (int) $template->id;
-			$data['style_overrides'] = $template->style_overrides !== null ? (string) $template->style_overrides : null;
-			$data['custom_css'] = (string) ($template->custom_css ?? '');
-			$data['heading_mode'] = (string) ($template->heading_mode ?? 'inherit');
-			$data['mail_heading'] = (string) ($template->mail_heading ?? '');
-			$data['browser_view'] = (int) ($template->browser_view ?? -1);
-			$data['reply_to_mode'] = (string) ($template->reply_to_mode ?? 'inherit');
-			$data['reply_to_email'] = (string) ($template->reply_to_email ?? '');
-			$data['reply_to_name'] = (string) ($template->reply_to_name ?? '');
-			// Keep this empty so the newsletter inherits the selected Template's item layout.
+			// Keep newsletter-level layout/message overrides exactly as entered. Selecting
+			// a Template changes the parent layer; inherited values must therefore stay
+			// inherited instead of being copied into frozen newsletter overrides.
+			// Keep the selected-content layout empty so it likewise inherits its Template.
 
 			if ($data['title'] === '')
 			{

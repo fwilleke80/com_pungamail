@@ -283,7 +283,19 @@ namespace
 
 
 	$pluginNewsletter = clone $newsletter;
-	$pluginNewsletter->style_overrides = json_encode(['heading_background' => '#ffeecc', 'mail_heading_color' => '#123456']);
+	$pluginNewsletter->style_overrides = json_encode([
+		'heading_background' => '#ffeecc',
+		'header_background_image_mode' => 'custom',
+		'header_background_image' => 'images/header-bg.jpg',
+		'mail_heading_color' => '#123456',
+		'logo_mode' => 'custom',
+		'logo_url' => 'images/logo.png',
+		'logo_width' => '140',
+		'footer_background' => '#f7f7f7',
+		'footer_background_image_mode' => 'custom',
+		'footer_background_image' => 'images/footer-bg.jpg',
+		'footer_link_color' => '#654321',
+	]);
 	$pluginItems = [
 		(object) [
 			'source_key' => 'com_example.item',
@@ -307,7 +319,7 @@ namespace
 		failNewsletterRendererTest('Excerpt plugin sanitization removed ordinary brace text or readable paired-plugin content.');
 	}
 
-	if (!str_contains($pluginResult['html'], 'width:100%') || !str_contains($pluginResult['html'], 'background:#ffeecc'))
+	if (!str_contains($pluginResult['html'], 'width:100%') || !str_contains($pluginResult['html'], 'background-color:#ffeecc'))
 	{
 		failNewsletterRendererTest('Mail heading is not a full-width block with the configured background colour.');
 	}
@@ -315,6 +327,46 @@ namespace
 	if (!str_contains($pluginResult['html'], 'color:#123456'))
 	{
 		failNewsletterRendererTest('Mail heading does not use its independently configured text colour.');
+	}
+
+	if (!str_contains($pluginResult['html'], 'background="https://site.example/images/header-bg.jpg"') || !str_contains($pluginResult['html'], 'background="https://site.example/images/footer-bg.jpg"'))
+	{
+		failNewsletterRendererTest('Header/footer background images were not normalized and emitted with email-compatible background attributes.');
+	}
+
+	$headerStart = strpos($pluginResult['html'], '<table class="pm-mail-heading"');
+	$headerEnd = $headerStart !== false ? strpos($pluginResult['html'], '</table>', $headerStart) : false;
+	$logoPosition = strpos($pluginResult['html'], 'class="pm-mail-logo-image"');
+
+	if ($headerStart === false || $headerEnd === false || $logoPosition === false || $logoPosition < $headerStart || $logoPosition > $headerEnd)
+	{
+		failNewsletterRendererTest('Logo is not rendered inside the mail header region.');
+	}
+
+	if (!str_contains($pluginResult['html'], 'color:#654321'))
+	{
+		failNewsletterRendererTest('Footer-specific link colour was not applied.');
+	}
+
+	$styles = new MailStyleService();
+	$inherited = $styles->resolve(
+		json_encode([
+			'header_alignment' => 'center',
+			'footer_background' => '#111111',
+			'footer_background_image_mode' => 'custom',
+			'footer_background_image' => 'images/template-footer.jpg',
+		]),
+		json_encode([
+			'footer_background' => '#222222',
+			'footer_background_image_mode' => 'none',
+		]),
+		null,
+		null
+	);
+
+	if ($inherited['header_alignment'] !== 'center' || $inherited['footer_background'] !== '#222222' || $inherited['footer_background_image'] !== '')
+	{
+		failNewsletterRendererTest('Per-field Component/Template/Newsletter layout inheritance is incorrect.');
 	}
 
 	fwrite(STDOUT, "[OK] Newsletter renderer new-content/recipient regression test passed\n");

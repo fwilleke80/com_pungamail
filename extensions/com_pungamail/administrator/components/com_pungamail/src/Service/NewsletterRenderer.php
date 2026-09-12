@@ -147,7 +147,7 @@ final class NewsletterRenderer
 		$textSeparator = $itemTextBlock !== '' ? "\n\n" . $itemTextBlock . "\n\n" : "\n\n";
 		$bodyText = implode($textSeparator, $textParts);
 		$bodyHtml = $this->styles->styleFragment($bodyHtml, $style);
-		$footerMarkdown = $this->footerMarkdown();
+		$footerMarkdown = $this->footerMarkdown($style);
 		$footerHtml = $this->styleFooterFragment($this->markdown->toHtml($footerMarkdown, Uri::root()), $style);
 		$footerText = trim($this->markdown->toText($footerMarkdown, Uri::root()));
 		$html = $this->wrapHtml($bodyHtml, $footerHtml, $heading, $browserView, $style);
@@ -373,55 +373,97 @@ final class NewsletterRenderer
 		$content = htmlspecialchars((string) $style['content_background'], ENT_QUOTES, 'UTF-8');
 		$text = htmlspecialchars((string) $style['text_color'], ENT_QUOTES, 'UTF-8');
 		$link = htmlspecialchars((string) $style['link_color'], ENT_QUOTES, 'UTF-8');
-		$footer = htmlspecialchars((string) $style['footer_color'], ENT_QUOTES, 'UTF-8');
-		$headingBackground = htmlspecialchars((string) ($style['heading_background'] ?? ''), ENT_QUOTES, 'UTF-8');
-		$mailHeadingColor = htmlspecialchars((string) ($style['mail_heading_color'] ?? $style['heading_color']), ENT_QUOTES, 'UTF-8');
 		$font = htmlspecialchars((string) $style['font_family'], ENT_QUOTES, 'UTF-8');
 		$customCss = trim((string) ($style['custom_css'] ?? ''));
 		$headCss = $customCss !== '' ? '<style>' . $customCss . '</style>' : '';
 		$siteName = (string) Factory::getApplication()->get('sitename');
 		$logoUrl = (string) ($style['logo_url'] ?? '');
-		$browserLink = $browserView
-			? '<p style="margin:0;text-align:center;font-size:12px;line-height:1.3"><a style="color:' . $link . ';text-decoration:underline" href="' . self::BROWSER_PLACEHOLDER . '">' . htmlspecialchars($this->mailText->text('COM_PUNGAMAIL_MAIL_VIEW_BROWSER'), ENT_QUOTES, 'UTF-8') . '</a></p>'
-			: '';
+		$logoWidth = (int) ($style['logo_width'] ?? 180);
+		$logoPosition = (string) ($style['logo_position'] ?? 'above');
+		$browserBackground = htmlspecialchars((string) ($style['browser_background'] ?? $content), ENT_QUOTES, 'UTF-8');
+		$browserLinkColor = htmlspecialchars((string) ($style['browser_link_color'] ?? $link), ENT_QUOTES, 'UTF-8');
+		$browserAlignment = $this->alignment((string) ($style['browser_alignment'] ?? 'center'));
+		$browserPadding = (int) ($style['browser_padding'] ?? 6);
+		$headingBackground = htmlspecialchars((string) ($style['heading_background'] ?? ''), ENT_QUOTES, 'UTF-8');
+		$headerBackgroundImage = htmlspecialchars((string) ($style['header_background_image'] ?? ''), ENT_QUOTES, 'UTF-8');
+		$mailHeadingColor = htmlspecialchars((string) ($style['mail_heading_color'] ?? $style['heading_color']), ENT_QUOTES, 'UTF-8');
+		$headerAlignment = $this->alignment((string) ($style['header_alignment'] ?? 'left'));
+		$headerPadding = (int) ($style['header_padding'] ?? 20);
+		$headerGap = (int) ($style['header_gap'] ?? 12);
+		$footerBackground = htmlspecialchars((string) ($style['footer_background'] ?? $content), ENT_QUOTES, 'UTF-8');
+		$footerBackgroundImage = htmlspecialchars((string) ($style['footer_background_image'] ?? ''), ENT_QUOTES, 'UTF-8');
+		$footerColor = htmlspecialchars((string) ($style['footer_color'] ?? '#666666'), ENT_QUOTES, 'UTF-8');
+		$footerLinkColor = htmlspecialchars((string) ($style['footer_link_color'] ?? $link), ENT_QUOTES, 'UTF-8');
+		$footerAlignment = $this->alignment((string) ($style['footer_alignment'] ?? 'left'));
+		$footerPadding = (int) ($style['footer_padding'] ?? 24);
+		$footerDivider = (int) ($style['footer_divider'] ?? 1) === 1;
+		$footerDividerColor = htmlspecialchars((string) ($style['footer_divider_color'] ?? '#dddddd'), ENT_QUOTES, 'UTF-8');
+		$headerPresent = $heading !== '' || $logoUrl !== '';
 
 		$html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' . $headCss . '</head>';
 		$html .= '<body style="margin:0;padding:0;background:' . $outer . ';font-family:' . $font . ';font-size:' . $fontSize . 'px;color:' . $text . ';-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">';
 		$html .= '<table class="pm-mail-outer" role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;background:' . $outer . '"><tr><td align="center" style="padding:0">';
 		$html .= '<table class="pm-mail-container" role="presentation" width="' . $width . '" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:' . $width . 'px;border-collapse:collapse;background:' . $content . '"><tr><td style="padding:0">';
 
-		if ($browserLink !== '')
+		if ($browserView)
 		{
-			$html .= '<div class="pm-browser-link" style="padding:6px ' . $padding . 'px 0">' . $browserLink . '</div>';
-		}
-
-		if ($logoUrl !== '')
-		{
-			$logoTop = $browserLink !== '' ? 10 : $padding;
-			$html .= '<div class="pm-mail-logo" style="padding:' . $logoTop . 'px ' . $padding . 'px 0">';
-			$html .= '<img class="pm-mail-logo-image" src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '" width="' . (int) $style['logo_width'] . '" style="display:block;max-width:100%;height:auto;border:0;margin:0">';
-			$html .= '</div>';
-		}
-
-		if ($heading !== '')
-		{
-			$headingTop = $logoUrl !== '' ? 16 : ($browserLink !== '' ? 8 : 0);
-			$backgroundStyle = $headingBackground !== '' ? 'background:' . $headingBackground . ';background-color:' . $headingBackground . ';' : '';
-			$backgroundAttribute = $headingBackground !== '' ? ' bgcolor="' . $headingBackground . '"' : '';
-			$html .= '<table class="pm-mail-heading" role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"' . $backgroundAttribute . ' style="width:100%;border-collapse:collapse;margin-top:' . $headingTop . 'px;' . $backgroundStyle . '"><tr><td class="pm-mail-heading-cell" width="100%"' . $backgroundAttribute . ' style="width:100%;padding:16px ' . $padding . 'px;' . $backgroundStyle . '">';
-			$html .= '<h1 class="pm-mail-heading-title" style="margin:0;color:' . $mailHeadingColor . ';line-height:1.2">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h1>';
+			$html .= '<table class="pm-browser-link" role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="' . $browserBackground . '" style="width:100%;border-collapse:collapse;background:' . $browserBackground . ';background-color:' . $browserBackground . '"><tr><td align="' . $browserAlignment . '" style="padding:' . $browserPadding . 'px ' . $padding . 'px;text-align:' . $browserAlignment . '">';
+			$html .= '<a class="pm-browser-link-anchor" style="color:' . $browserLinkColor . ';text-decoration:underline;font-size:12px;line-height:1.3" href="' . self::BROWSER_PLACEHOLDER . '">' . htmlspecialchars($this->mailText->text('COM_PUNGAMAIL_MAIL_VIEW_BROWSER'), ENT_QUOTES, 'UTF-8') . '</a>';
 			$html .= '</td></tr></table>';
 		}
 
-		$contentTop = $heading !== '' ? 28 : $padding;
-		$html .= '<div class="pm-mail-content" style="padding:' . $contentTop . 'px ' . $padding . 'px ' . $padding . 'px">';
+		if ($headerPresent)
+		{
+			$backgroundStyle = $headingBackground !== '' ? 'background-color:' . $headingBackground . ';' : '';
+			$backgroundAttribute = $headingBackground !== '' ? ' bgcolor="' . $headingBackground . '"' : '';
+			$backgroundImageStyle = $headerBackgroundImage !== ''
+				? 'background-image:url(&quot;' . $headerBackgroundImage . '&quot;);background-repeat:no-repeat;background-position:center center;background-size:cover;'
+				: '';
+			$backgroundImageAttribute = $headerBackgroundImage !== '' ? ' background="' . $headerBackgroundImage . '"' : '';
+			$imageMargin = match ($headerAlignment)
+			{
+				'center' => '0 auto',
+				'right' => '0 0 0 auto',
+				default => '0 auto 0 0',
+			};
+			$logoHtml = $logoUrl !== ''
+				? '<img class="pm-mail-logo-image" src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '" width="' . $logoWidth . '" style="display:block;max-width:100%;height:auto;border:0;margin:' . $imageMargin . '">'
+				: '';
+			$headingHtml = $heading !== ''
+				? '<h1 class="pm-mail-heading-title" style="margin:0;color:' . $mailHeadingColor . ';line-height:1.2;text-align:' . $headerAlignment . '">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h1>'
+				: '';
+			$gapHtml = $logoHtml !== '' && $headingHtml !== '' ? '<div class="pm-mail-heading-gap" style="height:' . $headerGap . 'px;line-height:' . $headerGap . 'px;font-size:1px">&nbsp;</div>' : '';
+			$headerContent = $logoPosition === 'below'
+				? $headingHtml . $gapHtml . $logoHtml
+				: $logoHtml . $gapHtml . $headingHtml;
+
+			$html .= '<table class="pm-mail-heading" role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"' . $backgroundAttribute . $backgroundImageAttribute . ' style="width:100%;border-collapse:collapse;' . $backgroundStyle . $backgroundImageStyle . '"><tr><td class="pm-mail-heading-cell" width="100%" align="' . $headerAlignment . '"' . $backgroundAttribute . $backgroundImageAttribute . ' style="width:100%;padding:' . $headerPadding . 'px;text-align:' . $headerAlignment . ';' . $backgroundStyle . $backgroundImageStyle . '">';
+			$html .= '<div class="pm-mail-logo">' . $headerContent . '</div>';
+			$html .= '</td></tr></table>';
+		}
+
+		$html .= '<div class="pm-mail-content" style="padding:' . $padding . 'px;background:' . $content . ';background-color:' . $content . '">';
 		$html .= '<main class="pm-mail-body" style="line-height:1.55">' . $bodyHtml . '</main>';
-		$html .= '<footer class="pm-mail-footer" style="margin-top:36px;padding-top:18px;border-top:1px solid #dddddd;font-size:12px;color:' . $footer . '">';
+		$html .= '</div>';
+
+		$dividerStyle = $footerDivider ? 'border-top:1px solid ' . $footerDividerColor . ';' : '';
+		$footerBackgroundImageStyle = $footerBackgroundImage !== ''
+			? 'background-image:url(&quot;' . $footerBackgroundImage . '&quot;);background-repeat:no-repeat;background-position:center center;background-size:cover;'
+			: '';
+		$footerBackgroundImageAttribute = $footerBackgroundImage !== '' ? ' background="' . $footerBackgroundImage . '"' : '';
+		$html .= '<table class="pm-mail-footer" role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="' . $footerBackground . '"' . $footerBackgroundImageAttribute . ' style="width:100%;border-collapse:collapse;background-color:' . $footerBackground . ';' . $footerBackgroundImageStyle . '"><tr><td align="' . $footerAlignment . '"' . $footerBackgroundImageAttribute . ' style="padding:' . $footerPadding . 'px;text-align:' . $footerAlignment . ';font-size:12px;color:' . $footerColor . ';background-color:' . $footerBackground . ';' . $footerBackgroundImageStyle . $dividerStyle . '">';
 		$html .= $footerHtml;
-		$html .= '<p style="margin:10px 0 0"><a style="color:' . $link . ';text-decoration:underline" href="' . self::UNSUBSCRIBE_PLACEHOLDER . '">' . htmlspecialchars($this->mailText->text('COM_PUNGAMAIL_MAIL_UNSUBSCRIBE'), ENT_QUOTES, 'UTF-8') . '</a></p>';
-		$html .= '</footer></div></td></tr></table></td></tr></table></body></html>';
+		$html .= '<p style="margin:10px 0 0"><a style="color:' . $footerLinkColor . ';text-decoration:underline" href="' . self::UNSUBSCRIBE_PLACEHOLDER . '">' . htmlspecialchars($this->mailText->text('COM_PUNGAMAIL_MAIL_UNSUBSCRIBE'), ENT_QUOTES, 'UTF-8') . '</a></p>';
+		$html .= '</td></tr></table>';
+		$html .= '</td></tr></table></td></tr></table></body></html>';
 
 		return $html;
+	}
+
+	/** @return string */
+	private function alignment(string $value): string
+	{
+		return in_array($value, ['left', 'center', 'right'], true) ? $value : 'left';
 	}
 
 	/**
@@ -429,10 +471,14 @@ final class NewsletterRenderer
 	 *
 	 * @return string Markdown footer text.
 	 */
-	private function footerMarkdown(): string
+	private function footerMarkdown(array $style): string
 	{
-		$params = ComponentHelper::getParams('com_pungamail');
-		$value = trim((string) $params->get('mail_footer_reason', ''));
+		if ((string) ($style['footer_reason_mode'] ?? 'custom') === 'none')
+		{
+			return '';
+		}
+
+		$value = trim((string) ($style['footer_reason'] ?? ''));
 
 		return $value !== '' ? $value : $this->mailText->text('COM_PUNGAMAIL_MAIL_FOOTER_REASON');
 	}
@@ -447,7 +493,7 @@ final class NewsletterRenderer
 	 */
 	private function styleFooterFragment(string $html, array $style): string
 	{
-		$link = htmlspecialchars((string) $style['link_color'], ENT_QUOTES, 'UTF-8');
+		$link = htmlspecialchars((string) ($style['footer_link_color'] ?? $style['link_color']), ENT_QUOTES, 'UTF-8');
 		$replacements = [
 			'<p>' => '<p style="margin:0 0 10px">',
 			'<ul>' => '<ul style="margin:0 0 10px;padding-left:20px">',
