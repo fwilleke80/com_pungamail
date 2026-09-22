@@ -55,7 +55,7 @@ final class NewsletterRenderer
 	 *
 	 * @return array{subject:string,html:string,text:string,items:array<int,array<string,mixed>>}
 	 */
-	public function render(object $newsletter, array $items): array
+	public function render(object $newsletter, array $items, bool $includeTrustedTracking = true): array
 	{
 		$template = isset($newsletter->template_id) && (int) $newsletter->template_id > 0
 			? $this->templates->find((int) $newsletter->template_id)
@@ -165,7 +165,7 @@ final class NewsletterRenderer
 		}
 
 		$text .= $this->mailText->text('COM_PUNGAMAIL_MAIL_UNSUBSCRIBE') . ': ' . self::UNSUBSCRIBE_PLACEHOLDER . "\n";
-		$tracked = $this->campaignTracking !== null ? $this->campaignTracking->apply($html, $text, $newsletter) : ['html' => $html, 'text' => $text];
+		$tracked = $this->campaignTracking !== null ? $this->campaignTracking->apply($html, $text, $newsletter, $includeTrustedTracking) : ['html' => $html, 'text' => $text];
 
 		return [
 			'subject' => str_replace(self::DATE_PLACEHOLDER, $date, (string) $newsletter->subject),

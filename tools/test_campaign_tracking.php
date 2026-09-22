@@ -130,6 +130,16 @@ namespace
 		throw new RuntimeException('Tracked internal URL lost its fragment.');
 	}
 
+	$preview = $service->apply($html, $text, $newsletter, false);
+	if (!str_contains($preview['html'], 'utm_source=newsletter'))
+	{
+		throw new RuntimeException('Preview/test tracking must retain visible UTM parameters.');
+	}
+	if (str_contains($preview['html'], 'pm_track='))
+	{
+		throw new RuntimeException('Preview/test tracking must not emit trusted pm_track tokens.');
+	}
+
 	ComponentHelper::$values['campaign_tracking_scope'] = 'internal';
 	$internalOnly = $service->apply($html, $text, $newsletter);
 	if (!str_contains($internalOnly['html'], 'outside.example/path">Outside'))

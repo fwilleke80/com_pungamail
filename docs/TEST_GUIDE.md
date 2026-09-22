@@ -1,4 +1,4 @@
-# Punga Mail 0.6.29 Live Acceptance Test Guide
+# Punga Mail 0.6.31 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -1553,7 +1553,19 @@ Keep the global queue paused except where a test explicitly says to resume it.
 5. Repeat after corrupting `pm_track`.
 6. Inspect an external tagged URL when scope is **All links**.
 
-**Expected:** A valid internal request dispatches exactly one trusted event containing `newsletter_id`, `link_index`, UTM values, URL/path and UTC timestamp. The payload contains no subscriber ID, email address or recipient identity. Altered UTM values or an invalid token dispatch no trusted event. External links can contain UTM parameters but have no `pm_track` token.
+**Expected:** A valid internal request dispatches exactly one trusted event containing `newsletter_id`, `link_index`, UTM values, URL/path and UTC timestamp. The payload contains no subscriber ID, email address or recipient identity. Altered UTM values or an invalid token dispatch no trusted event. Newly generated `pm_track` values use the compact `2.<newsletter>.<link>.<signature>` form and are dramatically shorter than the 0.6.27–0.6.29 token while remaining HMAC-authenticated. External links can contain UTM parameters but have no `pm_track` token.
+
+
+### PM-220A — Compact campaign token and legacy compatibility
+
+**Steps:**
+
+1. Generate/preview a tracked Newsletter and inspect one internal URL.
+2. Confirm `pm_track` begins with `2.` and remains short even when `utm_campaign`/`utm_content` are long.
+3. Change one visible UTM value without changing `pm_track` and load the URL.
+4. Open a controlled internal link from a Newsletter sent by Punga Mail 0.6.27–0.6.29, if available.
+
+**Expected:** The compact token authenticates the visible UTM parameters rather than duplicating them. Changing any authenticated UTM value invalidates the visit. Older long-form tokens remain accepted so already-sent Newsletter links continue to record trusted clicks.
 
 ## K. Delivery, bounce handling, and mail health
 
@@ -2075,3 +2087,13 @@ The following checks cover the generic registered-content filter UI introduced i
 6. After a successful real run, verify the stored previous cutoff takes precedence over the first-run setting.
 
 **Expected:** First-run scope is explicit and configurable; established automations continue from their stored cutoff; ACL exclusions are diagnostic rather than opaque.
+
+### Preview and test-message campaign tagging
+
+1. Enable campaign tracking and configure recognizable UTM values.
+2. Open a normal Newsletter Preview and an Automatic Newsletter Preview.
+3. Send one normal Newsletter test message and one Automatic Newsletter test message.
+4. Inspect an internal tracked URL in each case.
+5. Queue/send a real Newsletter and inspect the frozen/sent URL.
+
+**Expected:** Preview and test URLs contain the configured UTM parameters but no `pm_track`. The real frozen/sent Newsletter contains the same UTM attribution plus a compact authenticated `pm_track` token. Clicking preview/test URLs therefore cannot create trusted Punga Mail campaign-click statistics.

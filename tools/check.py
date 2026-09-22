@@ -3489,6 +3489,8 @@ def main() -> int:
     check_v0627_campaign_and_content_fixes()
     check_v0628_statistics_and_source_diagnostics()
     check_v0629_validation_and_first_run_cutoff()
+    check_v0630_compact_campaign_tokens()
+    check_v0631_preview_tracking_and_statistics_copy()
     print(f"[OK] Punga Mail {VERSION} release checks passed")
     return 0
 
@@ -4116,8 +4118,6 @@ def check_v0629_validation_and_first_run_cutoff() -> None:
     install = (admin / "sql/install.mysql.sql").read_text(encoding="utf-8")
     migration = (admin / "sql/updates/mysql/0.6.29.sql").read_text(encoding="utf-8")
 
-    if '<version>0.6.29</version>' not in manifest:
-        fail("0.6.29 component manifest version is missing")
     for token in ("com_pungamail.edit.newsletter.data", "AdministratorRoute::newsletter($id)"):
         if token not in newsletter_controller:
             fail(f"0.6.29 Newsletter failed-save restoration is missing {token!r}")
@@ -4140,6 +4140,81 @@ def check_v0629_validation_and_first_run_cutoff() -> None:
     result = subprocess.run(["php", str(ROOT / "tools/test_digest_schedule.php")], cwd=ROOT, text=True, capture_output=True)
     if result.returncode != 0:
         fail("0.6.29 first-run cutoff regression failed: " + (result.stderr or result.stdout).strip())
+
+
+def check_v0630_compact_campaign_tokens() -> None:
+    """Verify compact campaign-token generation and backwards-compatible validation."""
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    token = (admin / "src/Service/TokenService.php").read_text(encoding="utf-8")
+    statistics = (admin / "src/Service/StatisticsService.php").read_text(encoding="utf-8")
+    plugin = (ROOT / "extensions/plg_system_pungamailcampaign/src/Extension/PungaMailCampaign.php").read_text(encoding="utf-8")
+    migration = (admin / "sql/updates/mysql/0.6.30.sql").read_text(encoding="utf-8")
+    concept = (ROOT / "docs/CONCEPT.md").read_text(encoding="utf-8")
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+
+    for expected in (
+        "pungamail-campaign-v2|",
+        "return '2.'",
+        "substr(hash_hmac('sha256'",
+        "validateCompactCampaignToken",
+        "validateLegacyCampaignToken",
+        "normalizeCampaignUtm",
+    ):
+        if expected not in token:
+            fail(f"0.6.30 compact campaign token implementation is missing {expected!r}")
+    if "0, 16" not in token:
+        fail("0.6.30 campaign HMAC is not truncated to the intended 128 bits")
+    if "validateCampaignToken($token, $utm)" not in plugin:
+        fail("0.6.30 campaign system plugin does not authenticate visible UTM values")
+    if "validateCampaignToken($token, $utm)" not in statistics:
+        fail("0.6.30 Statistics click map does not validate compact tokens with visible UTM values")
+    if "no schema change required" not in migration.lower():
+        fail("0.6.30 migration marker must document that no schema change is required")
+    for contents, label in ((concept, "CONCEPT"), (guide, "USER_GUIDE"), (test_guide, "TEST_GUIDE")):
+        if "compact" not in contents.lower() or "HMAC" not in contents:
+            fail(f"0.6.30 {label} does not document compact authenticated campaign tokens")
+
+    result = subprocess.run(["php", str(ROOT / "tools/test_campaign_token.php")], cwd=ROOT, text=True, capture_output=True)
+    if result.returncode != 0:
+        fail("0.6.30 compact campaign-token regression failed: " + (result.stderr or result.stdout).strip())
+    result = subprocess.run(["php", str(ROOT / "tools/test_campaign_tracking.php")], cwd=ROOT, text=True, capture_output=True)
+    if result.returncode != 0:
+        fail("0.6.30 campaign URL regression failed: " + (result.stderr or result.stdout).strip())
+
+
+def check_v0631_preview_tracking_and_statistics_copy() -> None:
+    """Verify preview/test tracking isolation and Statistics copy cleanup."""
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    renderer = (admin / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    tracking = (admin / "src/Service/CampaignTrackingService.php").read_text(encoding="utf-8")
+    preview = (admin / "src/Model/PreviewModel.php").read_text(encoding="utf-8")
+    newsletter_controller = (admin / "src/Controller/NewsletterController.php").read_text(encoding="utf-8")
+    digest_service = (admin / "src/Service/DigestService.php").read_text(encoding="utf-8")
+    preflight = (admin / "src/Service/PreflightService.php").read_text(encoding="utf-8")
+    stats_tmpl = (admin / "tmpl/statistics/default.php").read_text(encoding="utf-8")
+    migration = (admin / "sql/updates/mysql/0.6.31.sql").read_text(encoding="utf-8")
+
+    if "bool $includeTrustedTracking = true" not in renderer:
+        fail("0.6.31 renderer does not expose trusted-tracking control")
+    if "bool $includeTrustedToken = true" not in tracking or "$includeTrustedToken && $internal" not in tracking:
+        fail("0.6.31 campaign tracker does not gate pm_track generation")
+    if "render($newsletter, $repo->getItems($id), false)" not in preview:
+        fail("0.6.31 Newsletter Preview still emits trusted pm_track tokens")
+    if "render($newsletter, $repo->getItems($id), false)" not in newsletter_controller:
+        fail("0.6.31 Newsletter test send still emits trusted pm_track tokens")
+    if digest_service.count("render($newsletter, $this->selectionObjects($items), false)") < 2:
+        fail("0.6.31 Automatic Newsletter preview/test paths do not both suppress pm_track")
+    if "render($newsletter, $items);" not in preflight:
+        fail("0.6.31 real queue/preflight path must retain trusted pm_track generation")
+    if "COM_PUNGAMAIL_STATISTICS_PRIVACY_TITLE" in stats_tmpl or "COM_PUNGAMAIL_STATISTICS_PRIVACY_DESC" in stats_tmpl:
+        fail("0.6.31 Statistics privacy note is still rendered")
+    if "no schema change required" not in migration.lower():
+        fail("0.6.31 migration marker must document that no schema change is required")
+
+    result = subprocess.run(["php", str(ROOT / "tools/test_campaign_tracking.php")], cwd=ROOT, text=True, capture_output=True)
+    if result.returncode != 0:
+        fail("0.6.31 preview/test campaign URL regression failed: " + (result.stderr or result.stdout).strip())
 
 if __name__ == "__main__":
     raise SystemExit(main())

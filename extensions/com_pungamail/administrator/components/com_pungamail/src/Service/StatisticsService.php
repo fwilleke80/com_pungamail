@@ -507,7 +507,12 @@ final class StatisticsService
 			{
 				continue;
 			}
-			$data = $this->tokens->validateCampaignToken($token);
+			$utm = [];
+			foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_id', 'utm_content'] as $name)
+			{
+				$utm[$name] = (string) ($vars[$name] ?? '');
+			}
+			$data = $this->tokens->validateCampaignToken($token, $utm);
 			if ($data === null || (int) ($data['newsletter_id'] ?? 0) !== (int) $newsletter->id)
 			{
 				continue;

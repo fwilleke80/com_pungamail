@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <extension type="plugin" group="system" method="upgrade">
 	<name>PLG_SYSTEM_PUNGAMAILCAMPAIGN</name>
-	<version>0.6.29</version>
+	<version>0.6.31</version>
 	<creationDate>2026-09-22</creationDate>
 	<author>Punga</author>
 	<license>MIT License</license>

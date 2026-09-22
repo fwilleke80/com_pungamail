@@ -44,11 +44,6 @@ $dailyBars = static function (array $rows) use ($esc, $number): string {
 };
 ?>
 <div class="container-fluid">
-	<div class="alert alert-info">
-		<strong><?php echo Text::_('COM_PUNGAMAIL_STATISTICS_PRIVACY_TITLE'); ?></strong>
-		<?php echo Text::_('COM_PUNGAMAIL_STATISTICS_PRIVACY_DESC'); ?>
-	</div>
-
 <?php if ($this->report !== null) : ?>
 	<?php
 	$newsletter = $this->report['newsletter'];

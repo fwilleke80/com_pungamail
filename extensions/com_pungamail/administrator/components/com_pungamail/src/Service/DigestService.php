@@ -144,7 +144,7 @@ final class DigestService
 
 		$message = $this->message($digest, $prepared['template'], $now);
 		$newsletter = $this->transientNewsletter($digest, $prepared['template'], $message['subject'], $message['body_markdown']);
-		$rendered = $this->renderer->render($newsletter, $this->selectionObjects($items));
+		$rendered = $this->renderer->render($newsletter, $this->selectionObjects($items), false);
 		$personalized = $this->renderer->personalize($rendered['subject'], $rendered['html'], $rendered['text'], $recipientName, $userId);
 		$replyTo = $this->mailConfiguration->replyTo($prepared['template'], $newsletter);
 		$this->mail->sendTest($email, $personalized['subject'], $personalized['html'], $personalized['text'], $replyTo['email'], $replyTo['name']);
@@ -173,7 +173,7 @@ final class DigestService
 		$items = $contentSelection['items'];
 		$message = $this->message($digest, $prepared['template'], $now);
 		$newsletter = $this->transientNewsletter($digest, $prepared['template'], $message['subject'], $message['body_markdown']);
-		$rendered = $this->renderer->render($newsletter, $this->selectionObjects($items));
+		$rendered = $this->renderer->render($newsletter, $this->selectionObjects($items), false);
 
 		if ($recipientName !== '')
 		{

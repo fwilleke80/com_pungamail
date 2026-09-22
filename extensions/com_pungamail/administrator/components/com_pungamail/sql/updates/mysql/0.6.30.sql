@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.30 shortens trusted campaign tokens; no schema change required.

@@ -45,16 +45,25 @@ final class PungaMailCampaign extends CMSPlugin implements SubscriberInterface
 			return;
 		}
 
-		$data = ServiceFactory::tokens()->validateCampaignToken($token);
+		$utm = [];
+		foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_id', 'utm_content'] as $name)
+		{
+			$utm[$name] = $input->getString($name);
+		}
+
+		$data = ServiceFactory::tokens()->validateCampaignToken($token, $utm);
 
 		if ($data === null)
 		{
 			return;
 		}
 
-		foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_id', 'utm_content'] as $name)
+		// Legacy long-form tokens carry their own UTM payload. Keep checking the
+		// visible values so already-sent 0.6.27-0.6.29 links retain the same
+		// tamper protection as compact v2 links.
+		foreach ($utm as $name => $value)
 		{
-			if ($input->getString($name) !== (string) $data[$name])
+			if ($value !== (string) $data[$name])
 			{
 				return;
 			}

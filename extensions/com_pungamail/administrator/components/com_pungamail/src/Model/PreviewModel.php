@@ -34,7 +34,7 @@ final class PreviewModel extends BaseDatabaseModel
 		}
 
 		$renderer = ServiceFactory::renderer();
-		$rendered = $renderer->render($newsletter, $repo->getItems($id));
+		$rendered = $renderer->render($newsletter, $repo->getItems($id), false);
 		$identity = Factory::getApplication()->getIdentity();
 		$personalized = $renderer->personalize(
 			$rendered['subject'],

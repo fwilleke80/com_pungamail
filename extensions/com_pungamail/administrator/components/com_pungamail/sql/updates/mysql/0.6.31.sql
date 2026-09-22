@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.31 separates preview/test campaign tagging from trusted click tokens; no schema change required.

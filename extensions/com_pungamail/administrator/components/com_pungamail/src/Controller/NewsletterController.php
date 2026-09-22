@@ -171,7 +171,7 @@ final class NewsletterController extends BaseController
 			$repo = ServiceFactory::newsletters();
 			$newsletter = $repo->find($id);
 			$renderer = ServiceFactory::renderer();
-			$rendered = $renderer->render($newsletter, $repo->getItems($id));
+			$rendered = $renderer->render($newsletter, $repo->getItems($id), false);
 			$identity = Factory::getApplication()->getIdentity();
 			$email = (string) $identity->email;
 

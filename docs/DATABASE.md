@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.6.29 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.6.31 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -56,7 +56,12 @@ Additional Joomla user groups selected as recipients.
 
 `#__pungamail_digest_filters` stores generic per-source field/operator/value rules introduced in 0.6.24. Filters reference a registered content source and database field without coupling Punga Mail to a particular component. All rules for one source use AND semantics. Legacy category-ID restrictions were migrated to `catid IN (...)` rules.
 
-Campaign visit events do not require a tracking database table in Punga Mail. Internal URLs carry a signed token; the system plugin validates it and dispatches `onPungaMailCampaignVisit` for optional consumers such as Punga Analytics.
+Internal URLs carry a compact authenticated token; the system plugin validates it against the visible UTM parameters before recording the click and dispatching `onPungaMailCampaignVisit` for optional consumers such as Punga Analytics. Since 0.6.30 newly generated tokens keep only Newsletter/link identity plus a 128-bit truncated HMAC-SHA256 signature; the validator still accepts the older long token format from 0.6.27–0.6.29. Validated click rows are stored in `#__pungamail_campaign_clicks` as described below; recipient identity is not stored.
+
+## `#__pungamail_campaign_clicks`
+
+Stores validated internal campaign visits for the Statistics page. Rows identify the Newsletter and link index plus the effective campaign/link attribution and timestamp. Likely automated mail-security traffic is classified separately. The table deliberately stores no subscriber ID, email address, IP address, or raw user agent.
+
 
 ## `#__pungamail_send_queue`
 

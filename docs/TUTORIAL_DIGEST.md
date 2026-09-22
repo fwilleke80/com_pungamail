@@ -101,9 +101,9 @@ Overlapping rolling windows can include the same item more than once. Choose thi
 
 ## 6. Configure campaign tracking, if wanted
 
-The Automatic Newsletter inherits campaign settings from **Punga Mail Options → Campaign tracking**. Leave **Tracked links** on **Inherit** to use those defaults, or override this Automatic Newsletter with **Disabled**, **Internal links only**, or **All links**. Individual `utm_source`, `utm_medium`, `utm_campaign`, `utm_id`, and `utm_content` fields can also be overridden; leave a field empty to inherit it.
+The Automatic Newsletter inherits campaign settings from **Punga Mail Options → Campaign tracking**. Leave **Tracked links** on **Inherit** to use those defaults, or override this Automatic Newsletter with **Disabled**, **Internal links only**, or **All links**. Individual `utm_source`, `utm_medium`, `utm_campaign`, `utm_id`, and `utm_content` fields can also be overridden; leave a field empty to inherit it. Automatic Newsletter Preview and test sends retain those UTM values but intentionally omit `pm_track`; the trusted token appears only after a real Newsletter row is generated and frozen for delivery.
 
-Internal tagged links additionally carry a signed Punga Mail token used by the site's system plugin to dispatch trusted `onPungaMailCampaignVisit` events. External links receive ordinary UTM parameters only when **All links** is selected. No subscriber identity is placed in the URL.
+Internal tagged links additionally carry a compact authenticated Punga Mail token used by the site's system plugin to dispatch trusted `onPungaMailCampaignVisit` events. External links receive ordinary UTM parameters only when **All links** is selected. No subscriber identity is placed in the URL.
 
 ## 7. Set the schedule
 

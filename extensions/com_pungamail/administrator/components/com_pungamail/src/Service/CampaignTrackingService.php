@@ -28,7 +28,7 @@ final class CampaignTrackingService
 	 *
 	 * @return array{html:string,text:string}
 	 */
-	public function apply(string $html, string $text, object $newsletter): array
+	public function apply(string $html, string $text, object $newsletter, bool $includeTrustedToken = true): array
 	{
 		$settings = $this->settings($newsletter);
 
@@ -41,10 +41,10 @@ final class CampaignTrackingService
 		$linkIndex = 0;
 		$htmlResult = preg_replace_callback(
 			'/\bhref=("|\')(.*?)\1/i',
-			function (array $match) use (&$map, &$linkIndex, $newsletter, $settings): string
+			function (array $match) use (&$map, &$linkIndex, $newsletter, $settings, $includeTrustedToken): string
 			{
 				$decoded = html_entity_decode((string) $match[2], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-				$tracked = $this->trackedUrl($decoded, $newsletter, $settings, $linkIndex, $map);
+				$tracked = $this->trackedUrl($decoded, $newsletter, $settings, $linkIndex, $map, $includeTrustedToken);
 				return 'href=' . $match[1] . htmlspecialchars($tracked, ENT_QUOTES | ENT_HTML5, 'UTF-8') . $match[1];
 			},
 			$html
@@ -53,11 +53,11 @@ final class CampaignTrackingService
 
 		$textResult = preg_replace_callback(
 			'~https?://[^\s<>]+~i',
-			function (array $match) use (&$map, &$linkIndex, $newsletter, $settings): string
+			function (array $match) use (&$map, &$linkIndex, $newsletter, $settings, $includeTrustedToken): string
 			{
 				$url = rtrim((string) $match[0], ".,;:!?)\"]'");
 				$suffix = substr((string) $match[0], strlen($url));
-				return $this->trackedUrl($url, $newsletter, $settings, $linkIndex, $map) . $suffix;
+				return $this->trackedUrl($url, $newsletter, $settings, $linkIndex, $map, $includeTrustedToken) . $suffix;
 			},
 			$text
 		);
@@ -99,7 +99,7 @@ final class CampaignTrackingService
 	}
 
 	/** @return string */
-	private function trackedUrl(string $url, object $newsletter, array $settings, int &$linkIndex, array &$map): string
+	private function trackedUrl(string $url, object $newsletter, array $settings, int &$linkIndex, array &$map, bool $includeTrustedToken): string
 	{
 		if (isset($map[$url]))
 		{
@@ -141,7 +141,7 @@ final class CampaignTrackingService
 			}
 		}
 
-		if ($internal && (int) ($newsletter->id ?? 0) > 0)
+		if ($includeTrustedToken && $internal && (int) ($newsletter->id ?? 0) > 0)
 		{
 			$uri->setVar('pm_track', $this->tokens->createCampaignToken((int) $newsletter->id, $linkIndex, $utm));
 		}
