@@ -29,6 +29,7 @@ final class NewsletterController extends BaseController
 	public function add(): void
 	{
 		$this->requirePermission('core.create');
+		$this->clearSubmittedData();
 		$this->setRedirect(Route::_(AdministratorRoute::newsletter(), false));
 	}
 
@@ -52,7 +53,8 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_(AdministratorRoute::newsletters(), false), ErrorMessage::sanitize($e), 'error');
+			$id = max(0, (int) Factory::getApplication()->getInput()->getInt('id', 0));
+			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -61,6 +63,7 @@ final class NewsletterController extends BaseController
 	{
 		$this->requireManage();
 		$this->requireToken();
+		$this->clearSubmittedData();
 		$this->checkin(Factory::getApplication()->getInput()->getInt('id'));
 		$this->setRedirect(Route::_(AdministratorRoute::newsletters(), false));
 	}
@@ -81,18 +84,20 @@ final class NewsletterController extends BaseController
 		$this->requireEditForInput();
 		$this->requireToken();
 		$input = Factory::getApplication()->getInput();
+		$data = $this->readInput();
+		$id = max(0, (int) ($data['id'] ?? 0));
+		$this->rememberSubmittedData($data);
 		$templateId = $input->post->getInt('template_id');
 		$template = ServiceFactory::templates()->find($templateId);
 
 		if ($template === null || (int) $template->state !== 1)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), Text::_('COM_PUNGAMAIL_ERROR_TEMPLATE_NOT_FOUND'), 'error');
+			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), Text::_('COM_PUNGAMAIL_ERROR_TEMPLATE_NOT_FOUND'), 'error');
 			return;
 		}
 
 		try
 		{
-			$data = $this->readInput();
 			$data['subject'] = (string) $template->subject;
 			$data['body'] = (string) $template->body_markdown;
 			$data['template_id'] = (int) $template->id;
@@ -107,11 +112,12 @@ final class NewsletterController extends BaseController
 			}
 
 			$id = $this->saveData($data, false);
+			$this->clearSubmittedData();
 			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id) . '&tab=pm-mail-content', false), Text::_('COM_PUNGAMAIL_TEMPLATE_APPLIED'));
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
+			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -128,7 +134,8 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
+			$id = max(0, (int) Factory::getApplication()->getInput()->getInt('id', 0));
+			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -146,7 +153,8 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
+			$id = max(0, (int) Factory::getApplication()->getInput()->getInt('id', 0));
+			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -186,7 +194,8 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
+			$id = max(0, (int) Factory::getApplication()->getInput()->getInt('id', 0));
+			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
@@ -254,7 +263,7 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$return = $fromEditor && $id > 0 ? AdministratorRoute::newsletter($id) : AdministratorRoute::preflight($id);
+			$return = $fromEditor ? AdministratorRoute::newsletter($id) : AdministratorRoute::preflight($id);
 			$this->setRedirect(Route::_($return, false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
@@ -293,7 +302,7 @@ final class NewsletterController extends BaseController
 		}
 		catch (\Throwable $e)
 		{
-			$return = $fromEditor && $id > 0 ? AdministratorRoute::newsletter($id) : AdministratorRoute::newsletters();
+			$return = $fromEditor ? AdministratorRoute::newsletter($id) : AdministratorRoute::newsletters();
 			$this->setRedirect(Route::_($return, false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
@@ -368,22 +377,31 @@ final class NewsletterController extends BaseController
 	{
 		$this->requireEditForInput();
 		$this->requireToken();
+		$data = $this->readInput();
+		$id = max(0, (int) ($data['id'] ?? 0));
 
 		try
 		{
-			$id = $this->saveData($this->readInput(), $validateRequired);
+			$this->rememberSubmittedData($data);
+			$id = $this->saveData($data, $validateRequired);
+			$this->clearSubmittedData();
 			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), Text::_($messageKey));
 		}
 		catch (\Throwable $e)
 		{
-			$this->setRedirect(Route::_('index.php?option=com_pungamail&view=newsletters', false), ErrorMessage::sanitize($e), 'error');
+			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), ErrorMessage::sanitize($e), 'error');
 		}
 	}
 
 	/** @return int */
 	private function saveFromInput(): int
 	{
-		return $this->saveData($this->readInput(), true);
+		$data = $this->readInput();
+		$this->rememberSubmittedData($data);
+		$id = $this->saveData($data, true);
+		$this->clearSubmittedData();
+
+		return $id;
 	}
 
 	/** @return array<string,mixed> */
@@ -439,6 +457,13 @@ final class NewsletterController extends BaseController
 			'reply_to_mode' => $input->post->getCmd('reply_to_mode', 'inherit'),
 			'reply_to_email' => trim($input->post->getString('reply_to_email')),
 			'reply_to_name' => trim($input->post->getString('reply_to_name')),
+			'campaign_scope' => $input->post->getCmd('campaign_scope', 'inherit'),
+			'utm_source' => trim($input->post->getString('utm_source')),
+			'utm_medium' => trim($input->post->getString('utm_medium')),
+			'utm_campaign' => trim($input->post->getString('utm_campaign')),
+			'utm_id' => trim($input->post->getString('utm_id')),
+			'utm_content' => trim($input->post->getString('utm_content')),
+			'scheduled_at_input' => trim($input->post->getString('scheduled_at')),
 		];
 	}
 
@@ -484,11 +509,29 @@ final class NewsletterController extends BaseController
 				'reply_to_mode' => $data['reply_to_mode'],
 				'reply_to_email' => $data['reply_to_email'],
 				'reply_to_name' => $data['reply_to_name'],
+				'campaign_scope' => $data['campaign_scope'],
+				'utm_source' => $data['utm_source'],
+				'utm_medium' => $data['utm_medium'],
+				'utm_campaign' => $data['utm_campaign'],
+				'utm_id' => $data['utm_id'],
+				'utm_content' => $data['utm_content'],
 			]
 		);
 		ServiceFactory::checkouts()->checkout('newsletter', $id, $userId);
 
 		return $id;
+	}
+
+	/** @param array<string,mixed> $data @return void */
+	private function rememberSubmittedData(array $data): void
+	{
+		Factory::getApplication()->setUserState('com_pungamail.edit.newsletter.data', $data);
+	}
+
+	/** @return void */
+	private function clearSubmittedData(): void
+	{
+		Factory::getApplication()->setUserState('com_pungamail.edit.newsletter.data', null);
 	}
 
 	/** @return void */

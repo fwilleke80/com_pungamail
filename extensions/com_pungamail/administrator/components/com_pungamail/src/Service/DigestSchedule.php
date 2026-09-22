@@ -108,6 +108,51 @@ final class DigestSchedule
 	}
 
 	/**
+	 * Resolves the initial lower content cutoff before an Automatic Newsletter has
+	 * completed its first successful run.
+	 *
+	 * @param string $sqlDate           Current UTC SQL date/time.
+	 * @param string $mode              recurrence, lookback or all.
+	 * @param int    $lookbackHours     Custom look-back duration.
+	 * @param int    $recurrenceValue   Configured recurrence value.
+	 * @param string $recurrenceUnit    Configured recurrence unit.
+	 * @param int    $recurrenceMinutes Legacy recurrence interval.
+	 *
+	 * @return string UTC SQL lower bound.
+	 */
+	public static function initialCutoff(
+		string $sqlDate,
+		string $mode,
+		int $lookbackHours,
+		int $recurrenceValue,
+		string $recurrenceUnit,
+		int $recurrenceMinutes = 10080
+	): string
+	{
+		if ($mode === 'all')
+		{
+			return '1000-01-01 00:00:00';
+		}
+
+		if ($mode === 'lookback')
+		{
+			$date = new DateTimeImmutable($sqlDate, new DateTimeZone('UTC'));
+
+			return $date->modify('-' . max(1, $lookbackHours) . ' hours')->format('Y-m-d H:i:s');
+		}
+
+		if ($recurrenceUnit === 'legacy')
+		{
+			$date = new DateTimeImmutable($sqlDate, new DateTimeZone('UTC'));
+
+			return $date->modify('-' . max(15, $recurrenceMinutes) . ' minutes')->format('Y-m-d H:i:s');
+		}
+
+		// Recurrence mode preserves the existing DigestSchedule::subtract calendar semantics.
+		return self::subtract($sqlDate, $recurrenceValue, $recurrenceUnit);
+	}
+
+	/**
 	 * Moves backwards by one recurrence interval for the initial content cutoff.
 	 *
 	 * @param string $sqlDate UTC SQL date/time.

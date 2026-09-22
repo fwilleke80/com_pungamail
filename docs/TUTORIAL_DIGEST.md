@@ -52,7 +52,7 @@ For a Channel-only Automatic Newsletter, plan to clear **All globally subscribed
 
 ## 3. Create the digest
 
-Go to **Components → Punga Mail → Automatic Newsletters** and select **New**.
+Go to **Components → Punga Mail → Newsletters**, open the **Automatic Newsletters** tab, and select **New**.
 
 Under **Basics**:
 
@@ -77,23 +77,21 @@ If the field is empty, the template subject is used.
 
 Under **Digest content**, check one or more registered Joomla content types. Punga Mail displays the translated component label when Joomla provides one for the current administrator language.
 
-To limit one source to categories, enter comma-separated numeric category IDs beside that source, for example:
+Each selected source has its own **Filters** area. Choose a field, an operator and a value. Punga Mail discovers the source table and SQL column type generically, so this works with Joomla Articles, Weblinks, calendar extensions and other registered content types without Punga Mail-specific integrations. For example, a Joomla category can be selected by its friendly name, while a calendar extension may expose a `calendar_id` relation that Punga Mail can resolve to labels when the related table follows conventional Joomla/database naming.
 
-```text
-4, 12, 19
-```
+The field picker shows the detected data type. Text fields offer text comparisons such as **contains**; numeric/date fields offer ordered comparisons; booleans use equality choices. Numeric single values use number-only controls, `DATE` uses Joomla's date picker, `DATETIME`/`TIMESTAMP` use Joomla's date/time picker, and `TIME` uses the native time control. All rules for one source use AND semantics.
 
-Leave the field blank for all categories from that source. Category filtering is available only where the registered content exposes a category ID.
-
-The maximum matching set is intentionally generous; the access and cutoff rules are applied before the newsletter is generated.
+Choose **Preview matching content** on a source to see what the current cutoff, audience/access rules and filters match before generating or sending anything. The maximum matching set is intentionally generous; access and cutoff rules are applied before the newsletter is generated.
 
 ## 5. Choose a cutoff rule
 
 ### Since last
 
-Use **Since last** for a normal “what is new” digest. After a successful run, the next run starts from the preceding successful cutoff. This prevents routine repetition. On the very first run there is no previous cutoff, so Punga Mail looks back by one configured recurrence interval. An every-2-month Automatic Newsletter therefore initially considers eligible content from the previous 2 calendar months, not the entire site.
+Use **Since last** for a normal “what is new” digest. After a successful run, the next run starts from the preceding successful cutoff. This prevents routine repetition.
 
-On the first run, Punga Mail looks back one recurrence interval. If a weekly Automatic Newsletter’s first run is scheduled for Friday, it normally finds the previous week’s matching content. If you instead choose **Content from a recent time period**, the separate **Look back … days** field appears and controls that fixed window.
+Before the first successful run there is no stored cutoff, so the editor exposes a separate **Before the first successful run** choice. The default is **One recurrence interval before the first run**; an every-2-month Automatic Newsletter therefore initially considers the previous 2 calendar months. You can instead choose **A custom recent period** and enter the number of days, or **All available matching content** when the first newsletter should establish a complete baseline. This first-run setting stops mattering as soon as a successful run stores the normal previous cutoff.
+
+If you instead choose **Content from a recent time period**, the separate **Look back … days** field controls a fixed rolling window on every run.
 
 ### Rolling
 
@@ -101,7 +99,13 @@ Use **Content from a recent time period** when each Automatic Newsletter should 
 
 Overlapping rolling windows can include the same item more than once. Choose this only when repetition is intentional.
 
-## 6. Set the schedule
+## 6. Configure campaign tracking, if wanted
+
+The Automatic Newsletter inherits campaign settings from **Punga Mail Options → Campaign tracking**. Leave **Tracked links** on **Inherit** to use those defaults, or override this Automatic Newsletter with **Disabled**, **Internal links only**, or **All links**. Individual `utm_source`, `utm_medium`, `utm_campaign`, `utm_id`, and `utm_content` fields can also be overridden; leave a field empty to inherit it.
+
+Internal tagged links additionally carry a signed Punga Mail token used by the site's system plugin to dispatch trusted `onPungaMailCampaignVisit` events. External links receive ordinary UTM parameters only when **All links** is selected. No subscriber identity is placed in the URL.
+
+## 7. Set the schedule
 
 Enter:
 
@@ -121,7 +125,7 @@ Month intervals use calendar-month arithmetic. A newsletter anchored near the en
 
 The task’s own frequency should be shorter than the Automatic Newsletter recurrence. Running the task every 5 or 15 minutes is normally enough.
 
-## 7. Keep Create draft selected
+## 8. Keep Create draft selected
 
 Choose **Create draft** for initial testing. When due, Punga Mail creates a normal editable newsletter and records it in digest history, but sends nothing.
 
@@ -129,7 +133,7 @@ For **Empty digest**, choose **Skip**. This records “no content” and creates
 
 The alternative **Create draft** creates a draft even with no matching content. It is useful only when an administrator intends to add manual content. An empty run stops at Draft even if the digest is otherwise configured for automatic sending.
 
-## 8. Select recipients
+## 9. Select recipients
 
 Use the same audience rules as a normal newsletter:
 
@@ -140,7 +144,7 @@ Use the same audience rules as a normal newsletter:
 
 Addresses are deduplicated. Unsubscribed, invalid, and suppressed addresses are excluded.
 
-## 9. Understand the access-permission rule
+## 10. Understand the access-permission rule
 
 Punga Mail does not assume that email bypasses website access rules.
 
@@ -158,13 +162,17 @@ If you need both, create two digest definitions with appropriately separated aud
 
 Access exclusions are recorded in the run details. If all matching items are excluded and Empty digest is Skip, the run is recorded as no content and sends nothing.
 
-## 10. Save and enable the digest
+**Preview matching content** explains a zero result instead of only showing “0”: it distinguishes no source rows, no currently published/eligible rows, published rows that are all older than the current cutoff, source-filter exclusions, and recipient-access exclusions. Access exclusions list the affected item and required Joomla viewing-access level, so you can tell whether the result is a genuine ACL mismatch. This is useful for legacy sources such as Weblinks: having many records does not mean they are new for the current Automatic Newsletter cutoff.
+
+Punga Mail only offers registered content types with enough metadata for safe public newsletter content, including an access mapping. Administrative/private records such as Joomla Users are therefore not offered merely because Joomla has a registered content type for them.
+
+## 11. Save and enable the Automatic Newsletter
 
 Select **Save & Close**. On the Digests list, select the digest and choose **Enable** if it is not already enabled.
 
 Only enabled definitions are processed. Saving a digest does not run it immediately.
 
-## 11. Create the Scheduled Task
+## 12. Create the Scheduled Task
 
 Go to **System → Scheduled Tasks**:
 
@@ -177,7 +185,7 @@ The Punga Mail Dashboard warns when an enabled digest exists without this task.
 
 Draft-mode digests need only this task. Automatic-send digests also need **Punga Mail — Send pending newsletters**.
 
-## 12. Review draft runs
+## 13. Review draft runs
 
 After the first due time:
 
@@ -187,9 +195,9 @@ After the first due time:
 4. run Preview, test mail, and Preflight;
 5. queue or schedule it manually if correct.
 
-Repeat this for several cycles. Pay attention to cutoff boundaries, category IDs, content ordering, access exclusions, empty runs, and the actual audience.
+Repeat this for several cycles. Pay attention to cutoff boundaries, source filters, content ordering, access exclusions, empty runs, and the actual audience.
 
-## 13. Switch to automatic sending, if appropriate
+## 14. Switch to automatic sending, if appropriate
 
 Open the digest and change **Digest mode** to **Create and send automatically**.
 
@@ -209,7 +217,7 @@ Before switching, confirm:
 - the digest and send-queue tasks are both healthy;
 - bounce processing and suppression are operating.
 
-## 14. Read digest history
+## 15. Read Automatic Newsletter history
 
 Each run records:
 
@@ -247,8 +255,10 @@ The minimum threshold is evaluated before the maximum limit. For a rolling **Sin
 The **Next run** control includes both a calendar and a 24-hour time picker. Enter the date and time as they should occur in the Joomla site timezone shown below the field. Punga Mail converts that value to UTC for storage and task processing, then converts it back to the configured Joomla timezone wherever the schedule is shown in the editor, Automatic Newsletters list and Dashboard.
 
 
-## 9. Test the next run
+## Preview and test the next run
 
-Open the Automatic Newsletter and choose **Send test automatic newsletter**. Punga Mail saves the current definition and sends the currently logged-in administrator a test built through the same selection/rendering path as the real run. The test does not create run history, create a Newsletter record, queue subscribers, advance the cutoff, or move the next-run date.
+Open the Automatic Newsletter and choose **Preview** to render the complete next would-be message in the browser. Preview uses the same cutoff, source filters, access checks, ordering/limits, template/layout inheritance and renderer as a real run, but sends nothing and does not create a Newsletter/run-history/queue record or advance the cutoff/next-run schedule.
+
+Choose **Send test automatic newsletter** to send the same simulation to the currently logged-in administrator. Punga Mail saves the current definition and sends the currently logged-in administrator a test built through the same selection/rendering path as the real run. The test does not create run history, create a Newsletter record, queue subscribers, advance the cutoff, or move the next-run date.
 
 If no matching content exists, or the configured minimum item count has not yet been reached, Punga Mail reports that the real run would currently be skipped instead of sending a misleading empty test.

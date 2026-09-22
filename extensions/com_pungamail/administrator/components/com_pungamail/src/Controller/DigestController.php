@@ -107,6 +107,25 @@ final class DigestController extends BaseController
 	}
 
 	/** @return void */
+	public function preview(): void
+	{
+		$this->guard(true);
+		$app = Factory::getApplication();
+		$id = max(0, (int) $app->getInput()->getInt('id', 0));
+
+		try
+		{
+			$id = $this->saveData($id, $this->readInput());
+			$app->setUserState('com_pungamail.edit.digest.data', null);
+			$this->setRedirect(Route::_(AdministratorRoute::digestPreview($id), false));
+		}
+		catch (\Throwable $e)
+		{
+			$this->setRedirect(Route::_(AdministratorRoute::digest($id), false), ErrorMessage::sanitize($e), 'error');
+		}
+	}
+
+	/** @return void */
 	public function previewSource(): void
 	{
 		$this->guard(true);
@@ -201,6 +220,8 @@ final class DigestController extends BaseController
 			'next_run_at' => $this->utcDate($input->post->getString('next_run_at')),
 			'cutoff_mode' => $input->post->getCmd('cutoff_mode', 'since_last'),
 			'rolling_hours' => max(1, $input->post->getInt('rolling_days', 7)) * 24,
+			'first_run_cutoff_mode' => $input->post->getCmd('first_run_cutoff_mode', 'recurrence'),
+			'first_run_lookback_hours' => max(1, $input->post->getInt('first_run_lookback_days', 7)) * 24,
 			'include_subscribers' => $input->post->getInt('include_subscribers', 0),
 			'generation_mode' => $input->post->getCmd('generation_mode', 'draft'),
 			'empty_action' => $input->post->getCmd('empty_action', 'skip'),
@@ -213,6 +234,12 @@ final class DigestController extends BaseController
 			'categories' => $categories,
 			'filters' => $filters,
 			'confirm_auto_send' => $input->post->getInt('confirm_auto_send', 0),
+			'campaign_scope' => $input->post->getCmd('campaign_scope', 'inherit'),
+			'utm_source' => trim($input->post->getString('utm_source')),
+			'utm_medium' => trim($input->post->getString('utm_medium')),
+			'utm_campaign' => trim($input->post->getString('utm_campaign')),
+			'utm_id' => trim($input->post->getString('utm_id')),
+			'utm_content' => trim($input->post->getString('utm_content')),
 		];
 	}
 

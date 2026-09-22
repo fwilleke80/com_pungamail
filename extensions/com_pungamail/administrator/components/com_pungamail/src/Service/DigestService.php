@@ -11,6 +11,7 @@ namespace Punga\Component\PungaMail\Administrator\Service;
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Date\Date;
 use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\Uri\Uri;
 
 /** Generates access-safe recurring newsletters from registered Joomla content. */
@@ -142,13 +143,57 @@ final class DigestService
 		}
 
 		$message = $this->message($digest, $prepared['template'], $now);
-		$newsletter = $this->transientNewsletter($prepared['template'], $message['subject'], $message['body_markdown']);
+		$newsletter = $this->transientNewsletter($digest, $prepared['template'], $message['subject'], $message['body_markdown']);
 		$rendered = $this->renderer->render($newsletter, $this->selectionObjects($items));
 		$personalized = $this->renderer->personalize($rendered['subject'], $rendered['html'], $rendered['text'], $recipientName, $userId);
 		$replyTo = $this->mailConfiguration->replyTo($prepared['template'], $newsletter);
 		$this->mail->sendTest($email, $personalized['subject'], $personalized['html'], $personalized['text'], $replyTo['email'], $replyTo['name']);
 
 		return $result;
+	}
+
+	/**
+	 * Renders a browser preview of the next Automatic Newsletter without creating
+	 * run history, queue rows, or a newsletter record.
+	 *
+	 * @return array{status:string,item_count:int,available_count:int,minimum_items:int,blocked_count:int,cutoff:string,rendered:array{subject:string,html:string,text:string,items:array<int,array<string,mixed>>}}
+	 */
+	public function preview(int $digestId, string $recipientName = '', ?int $userId = null): array
+	{
+		$digest = $this->digests->find($digestId);
+
+		if ($digest === null)
+		{
+			throw new \RuntimeException('The Automatic Newsletter could not be found.');
+		}
+
+		$now = new Date('now', 'UTC');
+		$prepared = $this->prepare($digest, $now);
+		$contentSelection = $prepared['content_selection'];
+		$items = $contentSelection['items'];
+		$message = $this->message($digest, $prepared['template'], $now);
+		$newsletter = $this->transientNewsletter($digest, $prepared['template'], $message['subject'], $message['body_markdown']);
+		$rendered = $this->renderer->render($newsletter, $this->selectionObjects($items));
+
+		if ($recipientName !== '')
+		{
+			$personalized = $this->renderer->personalize($rendered['subject'], $rendered['html'], $rendered['text'], $recipientName, $userId);
+			$rendered['subject'] = $personalized['subject'];
+			$rendered['html'] = $personalized['html'];
+			$rendered['text'] = $personalized['text'];
+		}
+
+		$status = $contentSelection['below_minimum'] ? 'below_minimum' : (($items === [] && (string) $digest->empty_action === 'skip') ? 'no_content' : 'ready');
+
+		return [
+			'status' => $status,
+			'item_count' => count($items),
+			'available_count' => $contentSelection['available_count'],
+			'minimum_items' => $contentSelection['minimum_items'],
+			'blocked_count' => $prepared['blocked_count'],
+			'cutoff' => $prepared['cutoff'],
+			'rendered' => $rendered,
+		];
 	}
 
 	/**
@@ -171,8 +216,11 @@ final class DigestService
 
 		$now = new Date('now', 'UTC');
 		$cutoff = $this->cutoff($digest, $now);
-		$items = $this->contentTypes->getItems([$sourceKey], $cutoff, 1000);
-		$items = DigestContentFilter::apply($items, DigestContentFilter::normalize($filters));
+		$normalizedFilters = DigestContentFilter::normalize($filters);
+		$rawCount = $this->contentTypes->getSourceRowCount($sourceKey);
+		$currentItems = $this->contentTypes->getItems([$sourceKey], null, 1000);
+		$newItems = $this->contentTypes->getItems([$sourceKey], $cutoff, 1000);
+		$filteredItems = DigestContentFilter::apply($newItems, $normalizedFilters);
 		$audience = (object) ['include_subscribers' => (int) ($digest->include_subscribers ?? 0)];
 		$recipientReport = $this->recipients->resolveWithReport(
 			$audience,
@@ -180,15 +228,38 @@ final class DigestService
 			array_values(array_unique(array_filter(array_map('intval', $topicIds)))),
 			false
 		);
-		$access = $this->contentTypes->filterForRecipients($items, $recipientReport['recipients']);
+		$access = $this->contentTypes->filterForRecipients($filteredItems, $recipientReport['recipients']);
 		$items = $access['items'];
 
 		usort($items, static fn (object $a, object $b): int => strcmp((string) $b->published, (string) $a->published));
 
 		return [
 			'count' => count($items),
+			'raw_count' => $rawCount,
+			'published_count' => count($currentItems),
+			'new_count' => count($newItems),
+			'filtered_count' => count($filteredItems),
 			'blocked_count' => count($access['violations']),
+			'blocked_items' => array_map(static function (array $violation): array
+			{
+				$reason = (string) ($violation['reason'] ?? 'view_level');
+				$required = $reason === 'category_unpublished'
+					? Text::_('COM_PUNGAMAIL_ACCESS_CATEGORY_UNPUBLISHED')
+					: implode(', ', array_filter(array_map('strval', (array) ($violation['required_level_titles'] ?? []))));
+
+				if ($reason === 'access_metadata_unavailable')
+				{
+					$required = Text::_('COM_PUNGAMAIL_ACCESS_METADATA_UNAVAILABLE');
+				}
+
+				return [
+					'title' => (string) ($violation['title'] ?? ''),
+					'required' => $required !== '' ? $required : Text::_('COM_PUNGAMAIL_ACCESS_UNKNOWN'),
+					'blocked_count' => count((array) ($violation['blocked_user_ids'] ?? [])),
+				];
+			}, array_slice($access['violations'], 0, 10)),
 			'cutoff' => $cutoff,
+			'cutoff_display' => $this->cutoffDisplay($digest, $cutoff),
 			'items' => array_map(fn (object $item): array => [
 				'title' => (string) ($item->title ?? ''),
 				'published' => trim((string) ($item->published ?? '')) !== ''
@@ -256,6 +327,12 @@ final class DigestService
 				'reply_to_mode' => (string) ($prepared['template']->reply_to_mode ?? 'inherit'),
 				'reply_to_email' => (string) ($prepared['template']->reply_to_email ?? ''),
 				'reply_to_name' => (string) ($prepared['template']->reply_to_name ?? ''),
+				'campaign_scope' => (string) ($digest->campaign_scope ?? 'inherit'),
+				'utm_source' => (string) ($digest->utm_source ?? ''),
+				'utm_medium' => (string) ($digest->utm_medium ?? ''),
+				'utm_campaign' => (string) ($digest->utm_campaign ?? ''),
+				'utm_id' => (string) ($digest->utm_id ?? ''),
+				'utm_content' => (string) ($digest->utm_content ?? ''),
 			]
 		);
 
@@ -376,9 +453,11 @@ final class DigestService
 	}
 
 	/** @return object */
-	private function transientNewsletter(object $template, string $subject, string $bodyMarkdown): object
+	private function transientNewsletter(object $digest, object $template, string $subject, string $bodyMarkdown): object
 	{
 		return (object) [
+			'id' => 0,
+			'title' => (string) ($digest->title ?? $subject),
 			'subject' => $subject,
 			'body_markdown' => $bodyMarkdown,
 			'template_id' => (int) $template->id,
@@ -390,7 +469,26 @@ final class DigestService
 			'reply_to_mode' => (string) ($template->reply_to_mode ?? 'inherit'),
 			'reply_to_email' => (string) ($template->reply_to_email ?? ''),
 			'reply_to_name' => (string) ($template->reply_to_name ?? ''),
+			'campaign_scope' => (string) ($digest->campaign_scope ?? 'inherit'),
+			'utm_source' => (string) ($digest->utm_source ?? ''),
+			'utm_medium' => (string) ($digest->utm_medium ?? ''),
+			'utm_campaign' => (string) ($digest->utm_campaign ?? ''),
+			'utm_id' => (string) ($digest->utm_id ?? ''),
+			'utm_content' => (string) ($digest->utm_content ?? ''),
 		];
+	}
+
+	/** @return string */
+	private function cutoffDisplay(object $digest, string $cutoff): string
+	{
+		if (empty($digest->last_cutoff_at)
+			&& (string) ($digest->cutoff_mode ?? 'since_last') === 'since_last'
+			&& (string) ($digest->first_run_cutoff_mode ?? 'recurrence') === 'all')
+		{
+			return Text::_('COM_PUNGAMAIL_FIRST_RUN_ALL_AVAILABLE');
+		}
+
+		return $this->siteDate->formatDateTime(new Date($cutoff, 'UTC'));
 	}
 
 	/** @return string */
@@ -409,19 +507,15 @@ final class DigestService
 			return (string) $digest->last_cutoff_at;
 		}
 
-		if ((string) ($digest->recurrence_unit ?? '') === 'legacy')
-		{
-			$date = clone $now;
-			$date->modify('-' . max(15, (int) ($digest->recurrence_minutes ?? 10080)) . ' minutes');
-
-			return $date->toSql();
-		}
-
-		return DigestSchedule::subtract(
+		return DigestSchedule::initialCutoff(
 			$now->toSql(),
-			DigestSchedule::normalizeValue((int) ($digest->recurrence_value ?? 1)),
-			DigestSchedule::normalizeUnit((string) ($digest->recurrence_unit ?? DigestSchedule::UNIT_WEEKS))
+			(string) ($digest->first_run_cutoff_mode ?? 'recurrence'),
+			(int) ($digest->first_run_lookback_hours ?? 168),
+			(int) ($digest->recurrence_value ?? 1),
+			(string) ($digest->recurrence_unit ?? DigestSchedule::UNIT_WEEKS),
+			(int) ($digest->recurrence_minutes ?? 10080)
 		);
+
 	}
 
 	/**

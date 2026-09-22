@@ -90,6 +90,7 @@ final class DigestRepository
 
 		$generationMode = in_array((string) ($data['generation_mode'] ?? 'draft'), ['draft', 'auto'], true) ? (string) $data['generation_mode'] : 'draft';
 		$cutoffMode = in_array((string) ($data['cutoff_mode'] ?? 'since_last'), ['since_last', 'rolling'], true) ? (string) $data['cutoff_mode'] : 'since_last';
+		$firstRunCutoffMode = in_array((string) ($data['first_run_cutoff_mode'] ?? 'recurrence'), ['recurrence', 'lookback', 'all'], true) ? (string) $data['first_run_cutoff_mode'] : 'recurrence';
 		$emptyAction = in_array((string) ($data['empty_action'] ?? 'skip'), ['skip', 'create_draft'], true) ? (string) $data['empty_action'] : 'skip';
 		$contentOrder = in_array((string) ($data['content_order'] ?? 'newest'), ['newest', 'oldest'], true) ? (string) $data['content_order'] : 'newest';
 		$maxItems = max(0, min(1000, (int) ($data['max_items'] ?? 0)));
@@ -123,12 +124,20 @@ final class DigestRepository
 			'next_run_at' => $nextRun,
 			'cutoff_mode' => $cutoffMode,
 			'rolling_hours' => max(1, min(8760, (int) ($data['rolling_hours'] ?? 168))),
+			'first_run_cutoff_mode' => $firstRunCutoffMode,
+			'first_run_lookback_hours' => max(1, min(87600, (int) ($data['first_run_lookback_hours'] ?? 168))),
 			'include_subscribers' => (int) ($data['include_subscribers'] ?? 0) === 1 ? 1 : 0,
 			'generation_mode' => $generationMode,
 			'empty_action' => $emptyAction,
 			'content_order' => $contentOrder,
 			'max_items' => $maxItems,
 			'minimum_items' => $minimumItems,
+			'campaign_scope' => in_array((string) ($data['campaign_scope'] ?? 'inherit'), ['inherit', 'disabled', 'internal', 'all'], true) ? (string) ($data['campaign_scope'] ?? 'inherit') : 'inherit',
+			'utm_source' => trim((string) ($data['utm_source'] ?? '')),
+			'utm_medium' => trim((string) ($data['utm_medium'] ?? '')),
+			'utm_campaign' => trim((string) ($data['utm_campaign'] ?? '')),
+			'utm_id' => trim((string) ($data['utm_id'] ?? '')),
+			'utm_content' => trim((string) ($data['utm_content'] ?? '')),
 		];
 		$this->db->transactionStart();
 
@@ -156,12 +165,20 @@ final class DigestRepository
 				$recurrenceAnchorDay = $values['recurrence_anchor_day'];
 				$cutoff = (string) $values['cutoff_mode'];
 				$rollingHours = (int) $values['rolling_hours'];
+				$firstRunMode = (string) $values['first_run_cutoff_mode'];
+				$firstRunLookbackHours = (int) $values['first_run_lookback_hours'];
 				$includeSubscribers = (int) $values['include_subscribers'];
 				$mode = (string) $values['generation_mode'];
 				$empty = (string) $values['empty_action'];
 				$contentOrder = (string) $values['content_order'];
 				$maxItems = (int) $values['max_items'];
 				$minimumItems = (int) $values['minimum_items'];
+				$campaignScope = (string) $values['campaign_scope'];
+				$utmSource = (string) $values['utm_source'];
+				$utmMedium = (string) $values['utm_medium'];
+				$utmCampaign = (string) $values['utm_campaign'];
+				$utmId = (string) $values['utm_id'];
+				$utmContent = (string) $values['utm_content'];
 				$update = $this->db->getQuery(true)
 					->update($this->db->quoteName('#__pungamail_digests'))
 					->set($this->db->quoteName('title') . ' = :title')
@@ -174,12 +191,20 @@ final class DigestRepository
 					->set($this->db->quoteName('next_run_at') . ' = :nextRun')
 					->set($this->db->quoteName('cutoff_mode') . ' = :cutoffMode')
 					->set($this->db->quoteName('rolling_hours') . ' = :rollingHours')
+					->set($this->db->quoteName('first_run_cutoff_mode') . ' = :firstRunMode')
+					->set($this->db->quoteName('first_run_lookback_hours') . ' = :firstRunLookbackHours')
 					->set($this->db->quoteName('include_subscribers') . ' = :includeSubscribers')
 					->set($this->db->quoteName('generation_mode') . ' = :generationMode')
 					->set($this->db->quoteName('empty_action') . ' = :emptyAction')
 					->set($this->db->quoteName('content_order') . ' = :contentOrder')
 					->set($this->db->quoteName('max_items') . ' = :maxItems')
 					->set($this->db->quoteName('minimum_items') . ' = :minimumItems')
+					->set($this->db->quoteName('campaign_scope') . ' = :campaignScope')
+					->set($this->db->quoteName('utm_source') . ($utmSource === '' ? ' = NULL' : ' = :utmSource'))
+					->set($this->db->quoteName('utm_medium') . ($utmMedium === '' ? ' = NULL' : ' = :utmMedium'))
+					->set($this->db->quoteName('utm_campaign') . ($utmCampaign === '' ? ' = NULL' : ' = :utmCampaign'))
+					->set($this->db->quoteName('utm_id') . ($utmId === '' ? ' = NULL' : ' = :utmId'))
+					->set($this->db->quoteName('utm_content') . ($utmContent === '' ? ' = NULL' : ' = :utmContent'))
 					->set($this->db->quoteName('modified') . ' = :modified')
 					->where($this->db->quoteName('id') . ' = :id')
 					->bind(':title', $title)
@@ -191,18 +216,35 @@ final class DigestRepository
 					->bind(':nextRun', $nextRun)
 					->bind(':cutoffMode', $cutoff)
 					->bind(':rollingHours', $rollingHours, ParameterType::INTEGER)
+					->bind(':firstRunMode', $firstRunMode)
+					->bind(':firstRunLookbackHours', $firstRunLookbackHours, ParameterType::INTEGER)
 					->bind(':includeSubscribers', $includeSubscribers, ParameterType::INTEGER)
 					->bind(':generationMode', $mode)
 					->bind(':emptyAction', $empty)
 					->bind(':contentOrder', $contentOrder)
 					->bind(':maxItems', $maxItems, ParameterType::INTEGER)
 					->bind(':minimumItems', $minimumItems, ParameterType::INTEGER)
+					->bind(':campaignScope', $campaignScope)
 					->bind(':modified', $now)
 					->bind(':id', $id, ParameterType::INTEGER);
 
 				if ($recurrenceAnchorDay !== null)
 				{
 					$update->bind(':recurrenceAnchorDay', $recurrenceAnchorDay, ParameterType::INTEGER);
+				}
+
+				foreach ([
+					':utmSource' => $utmSource,
+					':utmMedium' => $utmMedium,
+					':utmCampaign' => $utmCampaign,
+					':utmId' => $utmId,
+					':utmContent' => $utmContent,
+				] as $placeholder => $value)
+				{
+					if ($value !== '')
+					{
+						$update->bind($placeholder, $value);
+					}
 				}
 
 				$this->db->setQuery($update)->execute();

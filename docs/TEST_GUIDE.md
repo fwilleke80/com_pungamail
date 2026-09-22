@@ -1,4 +1,4 @@
-# Punga Mail 0.6.26 Live Acceptance Test Guide
+# Punga Mail 0.6.29 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -75,7 +75,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 4. Open **System → Manage → Extensions** and search for `Punga Mail`.
 5. Open **Components → Punga Mail**.
 
-**Expected:** The package installs without SQL/prepared-statement errors. The component, signup module, user plugin, and task plugin are installed. Required plugins are enabled. The Dashboard opens without an unknown-column or migration error.
+**Expected:** The package installs without SQL/prepared-statement errors. The component, signup module, user plugin, task plugin, and **System - Punga Mail Campaign Tracking** plugin are installed. Required plugins are enabled. The Dashboard opens without an unknown-column or migration error.
 
 ### PM-002 — Update from an older installation
 
@@ -120,19 +120,20 @@ Keep the global queue paused except where a test explicitly says to resume it.
 **Steps:**
 
 1. Open **Components → Punga Mail**.
-2. Verify the sidebar contains: **Dashboard**, **Newsletters**, **Automatic Newsletters**, **Audience**, **Design**, **Delivery**, and **Tools**.
-3. Open **Audience** and switch between **Subscribers** and **Channels**.
-4. Open **Design** and switch between **Templates** and **Content layouts**.
-5. Open **Tools** and verify Import / Export is available.
-6. Open an editor from Audience and Design, then Save & Close or Cancel.
+2. Verify the sidebar contains: **Dashboard**, **Newsletters**, **Audience**, **Design**, **Delivery**, and **Tools**; there is no separate first-level Automatic Newsletters item.
+3. Open **Newsletters** and switch between **Newsletters** and **Automatic Newsletters** tabs.
+4. Open **Audience** and switch between **Subscribers** and **Channels**.
+5. Open **Design** and switch between **Templates** and **Content layouts**.
+6. Open **Tools** and verify Import / Export is available.
+7. Open editors from Newsletters, Audience and Design, then Save & Close or Cancel.
 
-**Expected:** No old child section appears as an unnecessary first-level sidebar item. Audience/Design tabs work, their parent sidebar entry remains active, and editor actions return to the correct grouped section rather than Dashboard. No untranslated key, PHP warning, 404, or collapsed/wrong sidebar state appears.
+**Expected:** No old child section appears as an unnecessary first-level sidebar item. Newsletters/Automatic Newsletters, Audience, and Design tabs work, their parent sidebar entry remains active, and editor actions return to the correct grouped section rather than Dashboard. No untranslated key, PHP warning, 404, or collapsed/wrong sidebar state appears.
 
 ### PM-006 — Options toolbar consistency
 
 **Steps:**
 
-1. Open Dashboard, Newsletters, Automatic Newsletters, Audience, Design, Delivery, and Tools.
+1. Open Dashboard, Newsletters (including the Automatic Newsletters tab), Audience, Design, Delivery, and Tools.
 2. Inspect the Joomla toolbar on each main section.
 
 **Expected:** Main backend sections provide a consistent **Options** action where component options are applicable. Clicking it opens **Punga Mail: Options**.
@@ -1508,7 +1509,75 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 ---
 
+### PM-217 — Automatic Newsletter browser Preview
+
+**Steps:**
+
+1. Open an Automatic Newsletter with controlled matching content and filters.
+2. Change a harmless definition field, then select **Preview**.
+3. Inspect the browser-rendered subject, HTML, plain text, selected items and cutoff.
+4. Return to the editor and inspect run history, generated Newsletter rows, queue rows, cutoff and next-run values.
+
+**Expected:** Preview uses the same candidate-selection, filters, access checks, ordering/limits, Template/Layout inheritance and renderer as the real run. It sends no mail, creates no run-history/Newsletter/queue record and does not advance cutoff or next-run state. Save/Save & Close/Cancel remain grouped left in the editor toolbar; Preview and Send test automatic newsletter are on the right.
+
+### PM-218 — Registered-content null mappings and legacy zero publication dates
+
+**Steps:**
+
+1. Enable Joomla **User** as an Automatic Newsletter content source and choose **Preview matching content** without filters.
+2. Confirm the request completes without SQL errors such as `Unknown column 'null'`.
+3. Enable a Weblink content type containing older records whose `publish_up` is empty/zero while `created` is valid.
+4. Choose **Preview matching content** with a cutoff that should include controlled Weblinks by creation date.
+
+**Expected:** Joomla registry mapping value `"null"` is treated as no column, not as SQL identifier `null`. A missing publication-start mapping falls back to creation time where available. Legacy zero publication-start values do not incorrectly exclude otherwise eligible Weblinks, and zero publication-end values mean no end date.
+
+### PM-219 — Campaign tracking defaults and per-message overrides
+
+**Steps:**
+
+1. Under **Options → Campaign tracking**, set controlled values for `utm_source`, `utm_medium`, `utm_campaign`, `utm_id` and `utm_content` and choose **Internal links only**.
+2. Create a Newsletter containing one internal and one external HTTP(S) link; leave its campaign settings on **Inherit** and Preview/test it.
+3. Override the Newsletter to **All links** and override only `utm_source`; Preview/test again.
+4. Repeat with an Automatic Newsletter and generate a real controlled draft.
+
+**Expected:** Inherited component defaults are applied. Under Internal links only, only internal links are tagged. Under All links, both internal and external links receive UTM parameters. The one overridden value changes while empty per-message fields inherit the remaining component defaults. Generated Automatic Newsletters preserve the automation's campaign settings.
+
+### PM-220 — Trusted internal campaign visit event
+
+**Steps:**
+
+1. With tracking enabled, generate a real Newsletter so its internal links contain UTM parameters and `pm_track`.
+2. Click a controlled internal tagged link while an event-observer/debug plugin listens for `onPungaMailCampaignVisit`.
+3. Record the event payload.
+4. Repeat after changing one UTM parameter in the URL without regenerating the token.
+5. Repeat after corrupting `pm_track`.
+6. Inspect an external tagged URL when scope is **All links**.
+
+**Expected:** A valid internal request dispatches exactly one trusted event containing `newsletter_id`, `link_index`, UTM values, URL/path and UTC timestamp. The payload contains no subscriber ID, email address or recipient identity. Altered UTM values or an invalid token dispatch no trusted event. External links can contain UTM parameters but have no `pm_track` token.
+
 ## K. Delivery, bounce handling, and mail health
+
+### PM-221 — Automatic Newsletter zero-result diagnostics
+
+1. Preview a registered content source whose table has rows but whose rows are older than the current Automatic Newsletter cutoff.
+2. Preview a source with current rows after adding a filter that excludes them all.
+
+**Expected:** The preview distinguishes no source rows, no currently published/eligible rows, no rows newer than the displayed cutoff, source-filter exclusions, and access exclusions. A registered type without a safe public access mapping, such as Joomla User, is not offered as newsletter content.
+
+### PM-222 — Punga Mail Statistics and click map
+
+1. Send a controlled Newsletter with internal campaign tracking enabled and click two tagged internal links.
+2. Open **Punga Mail → Statistics**, then the Newsletter's **View report**.
+3. If practical, make one request with a clearly bot-like user agent.
+
+**Expected:** Trusted clicks appear in overview/detail, clicked links are ranked, the frozen-message click map has badges, and bot/scanner-like requests are separate. No open-rate or unique-clicker metric is claimed.
+
+### PM-223 — Punga Analytics bridge
+
+1. Define Punga Analytics custom event `mail.click` with source component `com_pungamail`, recording enabled, and ranking/trend/time presentation enabled.
+2. Follow a valid internal Punga Mail campaign link.
+
+**Expected:** Punga Analytics records `mail.click` with Newsletter+link item identity/title. No `onPungaMailCampaignVisit` configuration is needed because Punga Mail emits `onPungaAnalyticsRecord`.
 
 ### PM-230 — Delivery page overview and diagnostics
 
@@ -1986,6 +2055,8 @@ Do not approve the release for production until all applicable items below are t
 
 ## Automatic Newsletter source filters
 
+The following checks cover the generic registered-content filter UI introduced in 0.6.24 and its type-aware controls.
+
 1. Edit an Automatic Newsletter and select two registered content types.
 2. Add a filter to each source and verify the available field labels/operators are source-specific.
 3. Where a source exposes a Joomla category, verify category titles are selectable rather than requiring numeric IDs.
@@ -1993,3 +2064,14 @@ Do not approve the release for production until all applicable items below are t
 5. Click **Preview matching content** and verify the count/list changes when filter values change without first saving.
 6. Send a test Automatic Newsletter and verify only items matching all rules for their source are included.
 7. Upgrade a site that previously used Category IDs and verify the equivalent category restriction remains active after migration.
+
+### Automatic Newsletter first-run cutoff and ACL diagnostics
+
+1. Create a new Automatic Newsletter using **Content since the previous automatic newsletter**.
+2. Verify **Before the first successful run** offers recurrence interval, custom look-back days, and all available matching content.
+3. Preview a source under each mode and confirm the displayed cutoff/matching set changes accordingly.
+4. Use content whose Joomla viewing access is not available to one intended recipient.
+5. Verify **Preview matching content** names the blocked item and its required viewing-access level.
+6. After a successful real run, verify the stored previous cutoff takes precedence over the first-run setting.
+
+**Expected:** First-run scope is explicit and configurable; established automations continue from their stored cutoff; ACL exclusions are diagnostic rather than opaque.

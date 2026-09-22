@@ -41,7 +41,8 @@ final class NewsletterRenderer
 		private readonly MailConfigurationService $mailConfiguration,
 		private readonly ContentLayoutRepository $contentLayouts,
 		private readonly UserFieldService $userFields,
-		private readonly SiteDateService $siteDate
+		private readonly SiteDateService $siteDate,
+		private readonly ?CampaignTrackingService $campaignTracking = null
 	)
 	{
 	}
@@ -164,11 +165,12 @@ final class NewsletterRenderer
 		}
 
 		$text .= $this->mailText->text('COM_PUNGAMAIL_MAIL_UNSUBSCRIBE') . ': ' . self::UNSUBSCRIBE_PLACEHOLDER . "\n";
+		$tracked = $this->campaignTracking !== null ? $this->campaignTracking->apply($html, $text, $newsletter) : ['html' => $html, 'text' => $text];
 
 		return [
 			'subject' => str_replace(self::DATE_PLACEHOLDER, $date, (string) $newsletter->subject),
-			'html' => $html,
-			'text' => $text,
+			'html' => $tracked['html'],
+			'text' => $tracked['text'],
 			'items' => $snapshots,
 		];
 	}
@@ -247,6 +249,7 @@ final class NewsletterRenderer
 			'template_id' => (int) $template->id,
 			'style_overrides' => null,
 			'custom_css' => null,
+			'campaign_scope' => CampaignTrackingService::SCOPE_DISABLED,
 		];
 
 		return $this->render($newsletter, []);

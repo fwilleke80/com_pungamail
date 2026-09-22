@@ -11,6 +11,7 @@ defined('_JEXEC') or die;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 
 $section = (string) ($displayData['section'] ?? '');
 $active = (string) ($displayData['active'] ?? '');
@@ -29,6 +30,17 @@ elseif ($section === 'design')
 		'templates' => [Text::_('COM_PUNGAMAIL_SUBMENU_TEMPLATES'), AdministratorRoute::templates()],
 		'contentlayouts' => [Text::_('COM_PUNGAMAIL_SUBMENU_CONTENT_LAYOUTS'), AdministratorRoute::contentLayouts()],
 	];
+}
+elseif ($section === 'newsletters')
+{
+	$items = [
+		'newsletters' => [Text::_('COM_PUNGAMAIL_NEWSLETTERS'), AdministratorRoute::newsletters()],
+	];
+
+	if (Permissions::can(Permissions::MANAGE_AUTOMATIC))
+	{
+		$items['digests'] = [Text::_('COM_PUNGAMAIL_DIGESTS'), AdministratorRoute::digests()];
+	}
 }
 
 if ($items === [])

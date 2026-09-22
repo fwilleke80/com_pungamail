@@ -70,6 +70,8 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/MailStyleService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/MailTextService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/SiteDateService.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/CampaignTrackingService.php",
+    "extensions/plg_system_pungamailcampaign/src/Extension/PungaMailCampaign.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MailfooterField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/BouncemailboxField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/OutgoingmailField.php",
@@ -137,10 +139,13 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.24.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.25.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.26.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.27.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestContentFilter.php",
     "tools/test_filter_field_types.php",
     "tools/test_digest_filters.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/Permissions.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/View/Statistics/HtmlView.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/tmpl/statistics/default.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MarkdownField.php",
@@ -293,6 +298,7 @@ def check_xml() -> None:
         ROOT / "extensions/mod_pungamail_signup/mod_pungamail_signup.xml",
         ROOT / "extensions/plg_user_pungamail/pungamail.xml",
         ROOT / "extensions/plg_task_pungamail/pungamail.xml",
+        ROOT / "extensions/plg_system_pungamailcampaign/pungamailcampaign.xml",
     }
 
     for path in sorted(ROOT.rglob("*.xml")):
@@ -633,7 +639,7 @@ def check_administrator_sidebar_routes() -> None:
     display_controller = (ROOT / "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DisplayController.php").read_text(encoding="utf-8")
     route_tokens = (
         "view=newsletters", "screen=newsletter", "screen=preview", "screen=preflight",
-        "view=digests", "screen=digest",
+        "screen=digests", "screen=digest", "screen=digestpreview",
         "view=audience", "screen=subscribers", "screen=subscriber", "screen=topics", "screen=topic",
         "view=design", "screen=templates", "screen=template", "screen=templatepreview", "screen=contentlayouts", "screen=contentlayout",
         "view=tools", "screen=import",
@@ -642,11 +648,11 @@ def check_administrator_sidebar_routes() -> None:
         if token not in route_service:
             fail(f"Administrator sidebar route contract is missing {token!r}")
 
-    for context in ("audience", "design", "tools"):
+    for context in ("newsletters", "audience", "design", "tools"):
         if f"'{context}'" not in display_controller:
             fail(f"DisplayController does not map grouped administrator context {context!r}")
 
-    for screen in ("newsletter", "preview", "preflight", "digest", "subscribers", "subscriber", "topics", "topic", "templates", "template", "templatepreview", "contentlayouts", "contentlayout", "import"):
+    for screen in ("newsletter", "preview", "preflight", "digests", "digest", "digestpreview", "subscribers", "subscriber", "topics", "topic", "templates", "template", "templatepreview", "contentlayouts", "contentlayout", "import"):
         if screen not in display_controller:
             fail(f"DisplayController does not map administrator screen {screen!r}")
 
@@ -2198,20 +2204,20 @@ def check_release_ux_0601() -> None:
     filter_form = (admin_root / "forms/filter_newsletters.xml").read_text(encoding="utf-8")
 
     expected_menu = (
-        '<menu view="dashboard">', '<menu view="newsletters">', '<menu view="digests">',
+        '<menu view="dashboard">', '<menu view="newsletters">',
         '<menu view="audience">', '<menu view="design">', '<menu view="delivery">', '<menu view="tools">',
     )
     positions = [manifest.find(token) for token in expected_menu]
     if min(positions) < 0 or positions != sorted(positions):
         fail("0.6.1 grouped administrator menu is missing or out of order")
-    for old in ('<menu view="templates">', '<menu view="contentlayouts">', '<menu view="topics">', '<menu view="subscribers">', '<menu view="import">'):
+    for old in ('<menu view="digests">', '<menu view="templates">', '<menu view="contentlayouts">', '<menu view="topics">', '<menu view="subscribers">', '<menu view="import">'):
         if old in manifest:
             fail(f"0.6.1 still exposes obsolete flat submenu item {old}")
 
-    for token in ("'audience' => 'subscribers'", "'design' => 'templates'", "'tools' => 'import'"):
+    for token in ("'newsletters' => [", "'audience' => 'subscribers'", "'design' => 'templates'", "'tools' => 'import'"):
         if token not in display:
             fail(f"0.6.1 grouped navigation is missing default screen mapping {token!r}")
-    for token in ("AdministratorRoute::subscribers()", "AdministratorRoute::topics()", "AdministratorRoute::templates()", "AdministratorRoute::contentLayouts()"):
+    for token in ("AdministratorRoute::newsletters()", "AdministratorRoute::digests()", "AdministratorRoute::subscribers()", "AdministratorRoute::topics()", "AdministratorRoute::templates()", "AdministratorRoute::contentLayouts()"):
         if token not in section_navigation:
             fail(f"0.6.1 section tabs are missing {token!r}")
     for token in ("view=audience", "view=design", "view=tools"):
@@ -3246,7 +3252,7 @@ def check_package_members() -> None:
 
     tree = ET.parse(PACKAGE_MANIFEST)
     names = {node.text.strip() for node in tree.getroot().findall("./files/file") if node.text}
-    expected = {"com_pungamail.zip", "mod_pungamail_signup.zip", "plg_user_pungamail.zip", "plg_task_pungamail.zip"}
+    expected = {"com_pungamail.zip", "mod_pungamail_signup.zip", "plg_user_pungamail.zip", "plg_task_pungamail.zip", "plg_system_pungamailcampaign.zip"}
     if names != expected:
         fail(f"Package constituents differ: got {sorted(names)}, expected {sorted(expected)}")
 
@@ -3480,6 +3486,9 @@ def main() -> int:
     check_v0624_digest_filters()
     check_v0625_filter_input_types()
     check_v0626_digest_filter_javascript()
+    check_v0627_campaign_and_content_fixes()
+    check_v0628_statistics_and_source_diagnostics()
+    check_v0629_validation_and_first_run_cutoff()
     print(f"[OK] Punga Mail {VERSION} release checks passed")
     return 0
 
@@ -3905,13 +3914,14 @@ def check_v0624_digest_filters() -> None:
         "ToolbarHelper::apply('digest.save')",
         "ToolbarHelper::save('digest.save2close')",
         "ToolbarHelper::cancel('digest.cancel')",
+        "ToolbarHelper::custom('digest.preview'",
         "ToolbarHelper::custom('digest.sendTest'",
     ]
     positions = [view.find(token) for token in toolbar_order]
     if any(position < 0 for position in positions) or positions != sorted(positions):
-        fail("0.6.24 Automatic Newsletter toolbar order is not Save / Save & Close / Cancel / Send test")
-    if "#toolbar-mail { margin-inline-start: auto; }" not in view:
-        fail("0.6.24 Send test automatic newsletter is not aligned to the right toolbar group")
+        fail("Automatic Newsletter toolbar order is not Save / Save & Close / Cancel / Preview / Send test")
+    if "#toolbar-eye { margin-inline-start: auto; }" not in view:
+        fail("Automatic Newsletter Preview/Test actions are not aligned to the right toolbar group")
 
     for token in ("CREATE TABLE IF NOT EXISTS `#__pungamail_digest_filters`", "INSERT INTO `#__pungamail_digest_filters`", "'catid'", "'in'"):
         if token not in migration:
@@ -3983,6 +3993,153 @@ def check_v0626_digest_filter_javascript() -> None:
 
     if any(token in migration.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
         fail("0.6.26 is a JavaScript hotfix; its version-marker migration must not change schema")
+
+
+def check_v0627_campaign_and_content_fixes() -> None:
+    """Verify 0.6.27 content-type fixes, campaign tracking, preview, and grouped navigation."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    content = (admin / "src/Service/ContentTypeService.php").read_text(encoding="utf-8")
+    campaign = (admin / "src/Service/CampaignTrackingService.php").read_text(encoding="utf-8")
+    token = (admin / "src/Service/TokenService.php").read_text(encoding="utf-8")
+    digest_service = (admin / "src/Service/DigestService.php").read_text(encoding="utf-8")
+    digest_controller = (admin / "src/Controller/DigestController.php").read_text(encoding="utf-8")
+    digest_view = (admin / "src/View/Digest/HtmlView.php").read_text(encoding="utf-8")
+    nav = (admin / "layouts/pungamail/section_navigation.php").read_text(encoding="utf-8")
+    manifest = (ROOT / "extensions/com_pungamail/pungamail.xml").read_text(encoding="utf-8")
+    package = (ROOT / "package/pkg_pungamail.xml").read_text(encoding="utf-8")
+    plugin = (ROOT / "extensions/plg_system_pungamailcampaign/src/Extension/PungaMailCampaign.php").read_text(encoding="utf-8")
+    migration = (admin / "sql/updates/mysql/0.6.27.sql").read_text(encoding="utf-8")
+
+    for expected in ("strtolower($value) === 'null'", "nonZeroDateExpression", "core_created_time", "core_publish_up"):
+        if expected not in content:
+            fail(f"0.6.27 generic content-type normalization is missing {expected!r}")
+
+    for expected in ("SCOPE_DISABLED", "SCOPE_INTERNAL", "SCOPE_ALL", "utm_source", "utm_medium", "utm_campaign", "utm_id", "utm_content", "pm_track"):
+        if expected not in campaign:
+            fail(f"0.6.27 campaign URL service is missing {expected!r}")
+    for expected in ("createCampaignToken", "validateCampaignToken", "hash_hmac", "hash_equals"):
+        if expected not in token:
+            fail(f"0.6.27 campaign token service is missing {expected!r}")
+    for expected in ("onPungaMailCampaignVisit", "validateCampaignToken", "timestamp_utc"):
+        if expected not in plugin:
+            fail(f"0.6.27 campaign system plugin is missing {expected!r}")
+    for forbidden in ("\'email\' =>", "\'subscriber_id\' =>", "\'recipient\' =>"):
+        if forbidden in plugin:
+            fail(f"0.6.27 campaign visit plugin must not include recipient identity {forbidden!r}")
+
+    for expected in ("public function preview(", "transientNewsletter", "campaign_scope"):
+        if expected not in digest_service:
+            fail(f"0.6.27 Automatic Newsletter preview/generation is missing {expected!r}")
+    if "public function preview(): void" not in digest_controller:
+        fail("0.6.27 Automatic Newsletter browser preview controller action is missing")
+    for expected in ("ToolbarHelper::custom('digest.preview'", "#toolbar-eye { margin-inline-start: auto; }"):
+        if expected not in digest_view:
+            fail(f"0.6.27 Automatic Newsletter preview toolbar is missing {expected!r}")
+
+    if "AdministratorRoute::digests()" not in nav or "AdministratorRoute::newsletters()" not in nav:
+        fail("0.6.27 Newsletters section tabs are incomplete")
+    if '<menu view="digests">' in manifest:
+        fail("0.6.27 still exposes Automatic Newsletters as a first-level sidebar item")
+    if 'plg_system_pungamailcampaign.zip' not in package:
+        fail("0.6.27 package does not include the campaign system plugin")
+    for expected in ("campaign_scope", "utm_source", "utm_medium", "utm_campaign", "utm_id", "utm_content"):
+        if expected not in migration:
+            fail(f"0.6.27 migration is missing {expected!r}")
+
+    result = subprocess.run(["php", str(ROOT / "tools/test_campaign_token.php")], cwd=ROOT, text=True, capture_output=True)
+    if result.returncode != 0:
+        fail("0.6.27 campaign-token regression failed: " + (result.stderr or result.stdout).strip())
+
+    result = subprocess.run(["php", str(ROOT / "tools/test_campaign_tracking.php")], cwd=ROOT, text=True, capture_output=True)
+    if result.returncode != 0:
+        fail("0.6.27 campaign URL regression failed: " + (result.stderr or result.stdout).strip())
+
+
+def check_v0628_statistics_and_source_diagnostics():
+    """Verify 0.6.28 source diagnostics and privacy-conscious campaign statistics."""
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    manifest = (ROOT / "extensions/com_pungamail/pungamail.xml").read_text(encoding="utf-8")
+    permissions = (admin / "src/Service/Permissions.php").read_text(encoding="utf-8")
+    access = (admin / "access.xml").read_text(encoding="utf-8")
+    content_types = (admin / "src/Service/ContentTypeService.php").read_text(encoding="utf-8")
+    digest = (admin / "src/Service/DigestService.php").read_text(encoding="utf-8")
+    digest_tmpl = (admin / "tmpl/digest/default.php").read_text(encoding="utf-8")
+    stats = (admin / "src/Service/StatisticsService.php").read_text(encoding="utf-8")
+    stats_view = (admin / "src/View/Statistics/HtmlView.php").read_text(encoding="utf-8")
+    stats_tmpl = (admin / "tmpl/statistics/default.php").read_text(encoding="utf-8")
+    plugin = (ROOT / "extensions/plg_system_pungamailcampaign/src/Extension/PungaMailCampaign.php").read_text(encoding="utf-8")
+    migration = (admin / "sql/updates/mysql/0.6.28.sql").read_text(encoding="utf-8")
+    for expected in ('<menu view="statistics">COM_PUNGAMAIL_SUBMENU_STATISTICS</menu>',):
+        if expected not in manifest:
+            fail(f"0.6.28 component manifest is missing {expected!r}")
+    if "pungamail.statistics.view" not in access or "VIEW_STATISTICS" not in permissions:
+        fail("0.6.28 Statistics ACL capability is incomplete")
+    for expected in ("$access === null", "getSourceRowCount"):
+        if expected not in content_types:
+            fail(f"0.6.28 content-type safety is missing {expected!r}")
+    for expected in ("raw_count", "published_count", "new_count", "cutoff_display"):
+        if expected not in digest:
+            fail(f"0.6.28 source diagnostics are missing {expected!r}")
+    for expected in ("previewRawUnavailable", "previewNoneAfterCutoff", "previewFilteredOut"):
+        if expected not in digest_tmpl:
+            fail(f"0.6.28 source-preview UI is missing {expected!r}")
+    for expected in ("recordCampaignClick", "campaignDashboard", "campaignReport", "campaignGroups", "clickMapHtml", "is_automated"):
+        if expected not in stats:
+            fail(f"0.6.28 Statistics service is missing {expected!r}")
+    if "campaignDashboard" not in stats_view or "campaignReport" not in stats_view:
+        fail("0.6.28 Statistics view does not expose overview and drill-down")
+    for expected in ("COM_PUNGAMAIL_STATISTICS_CLICK_MAP", "COM_PUNGAMAIL_STATISTICS_CAMPAIGN_SUMMARY", "COM_PUNGAMAIL_STATISTICS_LINK_PERFORMANCE"):
+        if expected not in stats_tmpl:
+            fail(f"0.6.28 Statistics UI is missing {expected!r}")
+    for expected in ("onPungaMailCampaignVisit", "onPungaAnalyticsRecord", "'mail.click'", "recordCampaignClick"):
+        if expected not in plugin:
+            fail(f"0.6.28 campaign integration is missing {expected!r}")
+    for forbidden in ("`subscriber_id`", "`email`", "`ip_address`", "`user_agent`"):
+        if forbidden in migration:
+            fail(f"0.6.28 campaign click table must not store {forbidden}")
+    if "#__pungamail_campaign_clicks" not in migration:
+        fail("0.6.28 migration does not create campaign click storage")
+
+
+def check_v0629_validation_and_first_run_cutoff() -> None:
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    manifest = (ROOT / "extensions/com_pungamail/pungamail.xml").read_text(encoding="utf-8")
+    newsletter_controller = (admin / "src/Controller/NewsletterController.php").read_text(encoding="utf-8")
+    newsletter_model = (admin / "src/Model/NewsletterModel.php").read_text(encoding="utf-8")
+    digest = (admin / "tmpl/digest/default.php").read_text(encoding="utf-8")
+    digest_controller = (admin / "src/Controller/DigestController.php").read_text(encoding="utf-8")
+    digest_repository = (admin / "src/Service/DigestRepository.php").read_text(encoding="utf-8")
+    digest_service = (admin / "src/Service/DigestService.php").read_text(encoding="utf-8")
+    digest_schedule = (admin / "src/Service/DigestSchedule.php").read_text(encoding="utf-8")
+    content_types = (admin / "src/Service/ContentTypeService.php").read_text(encoding="utf-8")
+    install = (admin / "sql/install.mysql.sql").read_text(encoding="utf-8")
+    migration = (admin / "sql/updates/mysql/0.6.29.sql").read_text(encoding="utf-8")
+
+    if '<version>0.6.29</version>' not in manifest:
+        fail("0.6.29 component manifest version is missing")
+    for token in ("com_pungamail.edit.newsletter.data", "AdministratorRoute::newsletter($id)"):
+        if token not in newsletter_controller:
+            fail(f"0.6.29 Newsletter failed-save restoration is missing {token!r}")
+    for token in ("getSubmittedData", "submitted"):
+        if token not in newsletter_model:
+            fail(f"0.6.29 Newsletter editor restore model is missing {token!r}")
+    for token in ('name="first_run_cutoff_mode"', 'name="first_run_lookback_days"', 'value="recurrence"', 'value="lookback"', 'value="all"'):
+        if token not in digest:
+            fail(f"0.6.29 first-run cutoff UI is missing {token!r}")
+    for token in ("first_run_cutoff_mode", "first_run_lookback_hours"):
+        if token not in digest_controller + digest_repository + install + migration:
+            fail(f"0.6.29 first-run cutoff persistence is missing {token!r}")
+    for token in ("initialCutoff", "first_run_cutoff_mode"):
+        if token not in digest_service + digest_schedule:
+            fail(f"0.6.29 first-run cutoff resolution is missing {token!r}")
+    for token in ("required_level_titles", "viewLevelTitle", "blocked_items"):
+        if token not in content_types + digest_service:
+            fail(f"0.6.29 ACL preview diagnostics are missing {token!r}")
+
+    result = subprocess.run(["php", str(ROOT / "tools/test_digest_schedule.php")], cwd=ROOT, text=True, capture_output=True)
+    if result.returncode != 0:
+        fail("0.6.29 first-run cutoff regression failed: " + (result.stderr or result.stdout).strip())
 
 if __name__ == "__main__":
     raise SystemExit(main())

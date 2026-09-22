@@ -123,14 +123,26 @@ final class AdministratorRoute
 	/** @return string */
 	public static function digests(): string
 	{
-		return 'index.php?option=com_pungamail&view=digests';
+		return self::newsletters() . '&screen=digests';
 	}
 
 	/** @return string */
 	public static function digest(int $id = 0): string
 	{
-		return self::digests() . '&screen=digest' . ($id > 0 ? '&id=' . $id : '');
+		return self::newsletters() . '&screen=digest' . ($id > 0 ? '&id=' . $id : '');
 	}
+
+	/** @return string */
+	public static function digestPreview(int $id): string
+	{
+		return self::newsletters() . '&screen=digestpreview&id=' . max(0, $id);
+	}
+	/** @return string */
+	public static function statistics(int $newsletterId = 0): string
+	{
+		return 'index.php?option=com_pungamail&view=statistics' . ($newsletterId > 0 ? '&newsletter_id=' . $newsletterId : '');
+	}
+
 	/** @return string */
 	public static function tools(): string
 	{

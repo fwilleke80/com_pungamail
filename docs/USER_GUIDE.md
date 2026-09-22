@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.26. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.29. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -86,14 +86,14 @@ Punga Mail keeps the primary Joomla sidebar compact by grouping related work:
 | Sidebar item | Contains |
 | --- | --- |
 | Dashboard | Overall status, upcoming mail, recent activity and quick actions. |
-| Newsletters | Ordinary drafts, scheduled/sent mail, archived newsletters and delivery history. |
-| Automatic Newsletters | Recurring newsletter rules and their run history. |
+| Newsletters | **Newsletters** and **Automatic Newsletters**, shown as tabs inside one section. The first tab contains ordinary drafts/scheduled/sent mail; the second contains recurring automation definitions and run history. |
 | Audience | **Subscribers** and **Channels**, shown as tabs inside one section. |
 | Design | **Templates** and **Content layouts**, shown as tabs inside one section. |
 | Delivery | Queue inspection, bounce handling and delivery diagnostics. |
+| Statistics | Delivery and campaign performance for sent Newsletters, including trusted clicks and per-link reports. |
 | Tools | Subscriber **Import / Export** and future infrequent maintenance tools. |
 
-When you move between Subscribers and Channels, or between Templates and Content layouts, the parent sidebar entry remains selected. Save/Cancel actions, filters, inline actions, and editor redirects preserve the same grouped parent context. Existing old administrator bookmarks continue to work, but normal navigation uses these grouped sections.
+When you move between Newsletters and Automatic Newsletters, Subscribers and Channels, or Templates and Content layouts, the parent sidebar entry remains selected. Save/Cancel actions, filters, inline actions, and editor redirects preserve the same grouped parent context. Existing old administrator bookmarks continue to work, but normal navigation uses these grouped sections.
 
 The visible navigation is permission-aware. A backend user only sees Punga Mail sections they are allowed to use. For example, a Manager who may create/edit/send Newsletters but may not manage Delivery will not see the Delivery entry while working in Punga Mail. Hiding a menu item is only a convenience: the corresponding administrator views and controller actions enforce the same permission server-side, so entering a restricted URL manually does not bypass ACL.
 
@@ -133,6 +133,27 @@ Open **Options** from the toolbar on Punga Mail's main backend sections. Joomla'
 **Use Joomla settings** is the backward-compatible default. Select **Custom SMTP** only when Punga Mail should use a separate outgoing account, for example `newsletter@example.com`, while Joomla system messages continue through another account. Punga Mail still creates the mailer through Joomla's mail API; the custom mode supplies a Punga Mail-specific SMTP configuration to that mailer.
 
 The SMTP password is intentionally not stored in Joomla's ordinary component-parameter JSON. Use **Save outgoing mail settings** inside the outgoing-mail section after entering or changing the Custom SMTP connection. The normal Joomla Options **Save** button stores ordinary component fields such as From name, From email, and Reply-To. **Send test mail** in the outgoing-mail section tests the values currently shown there; a blank password reuses the saved encrypted password.
+
+### Campaign tracking
+
+Campaign tracking is optional and disabled by default. Component Options provide the defaults inherited by ordinary and Automatic Newsletters.
+
+| Setting | What it controls |
+| --- | --- |
+| Tracked links | **Disabled**, **Internal links only**, or **All links**. Internal links point back to the same Joomla site. |
+| `utm_source` | Campaign source. Default: `pungamail`; change it to values such as `newsletter` when that better matches the site's analytics convention. |
+| `utm_medium` | Campaign medium. Default: `email`. |
+| `utm_campaign` | Campaign name. Default: `{newsletter_title}`. |
+| `utm_id` | Campaign/newsletter identifier. Default: `{newsletter_id}`. |
+| `utm_content` | Identifies the concrete link. Default: `link-{link_index}`. |
+
+UTM values may use `{newsletter_id}`, `{newsletter_title}`, `{link_index}`, `{link_host}`, and `{link_path}`. Newsletter and Automatic Newsletter editors can inherit the component defaults or override the scope and individual UTM values. Leaving an individual override empty inherits its component value.
+
+When tracking includes an **internal** URL, Punga Mail also adds an opaque signed `pm_track` token. The System - Punga Mail Campaign Tracking plugin validates that token and confirms that the visible UTM values have not been altered before dispatching Joomla event `onPungaMailCampaignVisit`. External links can receive the ordinary UTM parameters when **All links** is selected, but they do not receive the trusted internal token because the destination request does not pass through this Joomla site.
+
+Tracking URLs never contain a subscriber ID, email address, or other recipient identity. Valid internal visits are recorded by Punga Mail for its own Statistics page. Only a boolean “likely automated” classification is stored from the request user agent; the raw user agent and IP address are not stored with campaign clicks.
+
+Punga Mail dispatches both the domain event `onPungaMailCampaignVisit` and the standard Punga Analytics bridge `onPungaAnalyticsRecord` with `event_type=mail.click` and `component=com_pungamail`. Punga Analytics therefore does not need to listen for the Punga Mail-specific event.
 
 ### Mail layout
 
@@ -566,6 +587,10 @@ A new Newsletter starts with **no audience selected**. Choose at least one effec
 | Check recipients & send | Saves and opens the non-mutating Preflight screen. No messages are sent until you confirm queueing. |
 | Duplicate as new draft | Creates an independent editable Draft from any saved Newsletter, including a Draft, Scheduled, or already-sent Newsletter. |
 
+### Campaign tracking override
+
+The Newsletter editor includes **Campaign tracking** settings. **Inherit** uses Component Options. A Newsletter can instead disable tracking, tag only internal links, or tag all links, and can override any individual UTM value while leaving the rest inherited. Internal tracked links receive a signed `pm_track` token in addition to the UTM parameters; external links never receive that trusted token.
+
 ### Preview and test mail
 
 Preview uses the current administrator for `{recipient}` and disables both personal actions: Unsubscribe and View in browser. Neither preview link can navigate. A test message exercises Punga Mail's active outgoing transport and uses the same rendering hierarchy, but it is not a substitute for Preflight because it does not resolve the real audience.
@@ -637,7 +662,7 @@ Keep a published Punga Mail subscription menu item so Joomla can produce a clean
 
 An Automatic Newsletter is a recurring definition that creates newsletters from newly published registered Joomla content.
 
-The Automatic Newsletters list supports search, enabled/disabled filtering, sorting, pagination, enable, disable, trash, restore, and delete. Each normal row has Joomla's enabled/disabled state icon immediately after the selection checkbox. Click that icon to enable or disable the Automatic Newsletter without opening its editor; the icon is read-only when your account lacks state-edit permission. The list also shows the chosen template, generation mode, and next run. A separate text Status column is not needed because the state icon carries that information and action.
+Open **Newsletters** in the Punga Mail sidebar and select the **Automatic Newsletters** tab. The Automatic Newsletters list supports search, enabled/disabled filtering, sorting, pagination, enable, disable, trash, restore, and delete. Each normal row has Joomla's enabled/disabled state icon immediately after the selection checkbox. Click that icon to enable or disable the Automatic Newsletter without opening its editor; the icon is read-only when your account lacks state-edit permission. The list also shows the chosen template, generation mode, and next run. A separate text Status column is not needed because the state icon carries that information and action.
 
 ### Automatic Newsletter fields
 
@@ -651,9 +676,11 @@ The Automatic Newsletters list supports search, enabled/disabled filtering, sort
 
 #### Content
 
-Select one or more registered content types. Their names follow the current Joomla administrator language when the registered component provides a matching language string. For each source, optional **Category IDs** may contain comma-separated numeric Joomla category IDs, for example `1, 4, 12`. Leave it blank to include all categories from that content source.
+Select one or more registered content types. Their names follow the current Joomla administrator language when the registered component provides a matching language string. Each enabled source gets its own optional **Filters** area and **Preview matching content** action.
 
-Category filters are applied only where the registered content provides a category ID.
+Filters stay content-type agnostic: Punga Mail discovers the registered source table, its columns and SQL types, then applies field/operator/value rules. All rules for one source must match. Joomla category fields, boolean values and conventional sibling-table `*_id` relations receive friendlier controls when generic metadata can be resolved; unknown fields still remain usable by their database column names. The field chooser also shows the detected data type. Numeric fields use number-only controls, `DATE` uses Joomla's date picker, `DATETIME`/`TIMESTAMP` use Joomla's native date/time picker, and `TIME` uses the standard time input.
+
+The registered-content adapter treats Joomla's literal `"null"` field-mapping sentinel as “no column” and handles legacy zero publication dates generically. This matters for content types such as Users and older Weblinks: missing publication fields fall back safely where possible instead of producing SQL such as `SELECT null`, and zero `publish_up` values can fall back to the creation timestamp.
 
 Automatic Newsletters also provide three selection controls: **Order** chooses newest-first or oldest-first; **Maximum items** caps the number included (`0` means no limit); and **Minimum items** can require a certain number of eligible items before a newsletter is generated (`0` disables only this threshold). A value of `0` does **not** cause an empty newsletter to be sent: the separate **If no new content is found** setting still decides whether an empty run is skipped or produces an empty draft. The minimum is evaluated before the maximum. If a positive minimum is missed in **Since last** mode, Punga Mail records a skipped run without advancing the content cutoff, allowing eligible content to accumulate for the next scheduled run.
 
@@ -663,7 +690,7 @@ Automatic Newsletters also provide three selection controls: **Order** chooses n
 | --- | --- |
 | Next run | Earliest date/time at which the digest task should run this definition, displayed in Joomla's site timezone. |
 | Repeat every | Number plus unit for the recurrence: days, weeks, or calendar months. Months are real calendar months rather than a fixed 30-day approximation, so monthly schedules do not drift. |
-| Content cutoff: Since last | Uses the previous successful automatic-newsletter cutoff so the same item is not intentionally repeated. For the first run, when no previous automatic newsletter exists, it looks back exactly one configured recurrence interval; for example, an every-2-month newsletter initially considers eligible content from the previous 2 calendar months. |
+| Content cutoff: Since last | Uses the previous successful automatic-newsletter cutoff so the same item is not intentionally repeated. Before the first successful run, choose whether to start one recurrence interval back (default), use a custom look-back period, or include all available matching content. After the first successful run this first-run choice is ignored and the stored cutoff is used. |
 | Content from a recent time period | Uses a fixed recent window on every run. Selecting it reveals **Look back … days**. Overlapping windows can intentionally repeat content. |
 | Look back … days | Shown only for the fixed recent-period mode. Default: 7 days. |
 | Create draft | Safe default. Generates an editable newsletter and stops. |
@@ -673,6 +700,10 @@ Automatic Newsletters also provide three selection controls: **Order** chooses n
 | Empty digest: Create draft | Creates a draft even when no matching content remains. It stops at Draft even when the digest normally sends automatically, so an administrator must add/review content before sending. |
 
 The recipient controls behave exactly like the newsletter editor: sources are combined, topic choices are a union, and all addresses are deduplicated and filtered by opt-out/suppression rules.
+
+### Campaign tracking override
+
+Automatic Newsletters have the same Campaign tracking overrides as ordinary Newsletters. The chosen values are copied into each generated Newsletter so the resulting campaign attribution remains inspectable and stable. Component defaults remain available through **Inherit**.
 
 ### Content access safety
 
@@ -692,11 +723,43 @@ The editor's history table shows the latest runs with a plain-language result (d
 
 Only enabled digests run. Editing a digest does not itself generate a newsletter.
 
-### Test the next automatic newsletter
+### Preview and test the next automatic newsletter
 
-Use **Send test automatic newsletter** in the Automatic Newsletter editor to save the current definition and send a simulation to the currently logged-in administrator. The test uses the same cutoff, content sources/categories, access checks, audience-aware filtering, ordering, maximum/minimum item rules, Template/Layout inheritance, and subject placeholders as a real run. It uses content that is available **now**, so it cannot predict articles that will be published before a future scheduled run.
+Use **Preview** to save the current Automatic Newsletter definition and render the complete would-be message in the browser through the same cutoff, filters, access checks, audience-aware selection, ordering/limits, Template/Layout inheritance and mail renderer as the real run. Preview sends no mail and creates no Newsletter, queue row or run-history entry, and it does not advance the cutoff or next-run schedule.
+
+Use **Send test automatic newsletter** in the Automatic Newsletter editor to save the current definition and send a simulation to the currently logged-in administrator. The test uses the same cutoff, content sources/filters, access checks, audience-aware filtering, ordering, maximum/minimum item rules, Template/Layout inheritance, and subject placeholders as a real run. It uses content that is available **now**, so it cannot predict articles that will be published before a future scheduled run.
 
 The test does **not** create a Newsletter record, add Automatic Newsletter history, queue subscriber mail, advance the content cutoff, or change the next-run schedule. If the real next run would currently be skipped because no content is available or the configured minimum has not been reached, no test email is sent; the editor reports that condition instead.
+
+## Statistics
+
+Open **Components → Punga Mail → Statistics** to inspect sent Newsletter and campaign performance. Choose the last 7, 30, 90, or 365 days, or all history.
+
+The overview reports sent Newsletters, mail accepted by the transport, attributed unsubscribes, trusted internal clicks, likely automated clicks, and distinct tracked links that received trusted clicks. Punga Mail deliberately reports **no open rate** because it uses no invisible tracking pixel. It also does not claim a unique-clicker count because tracked URLs contain no recipient identity; repeated visits are ordinary click counts.
+
+Newsletters sharing the same `utm_campaign` are also rolled up under **Observed campaigns**. Open **View report** for one sent Newsletter to see delivery outcomes, click activity, ranked links, and a click map over the immutable sent HTML.
+
+External links may carry UTM parameters when **All links** is selected, but only links returning to this Joomla site can become trusted Punga Mail clicks. Measure external destinations with analytics running there.
+
+### Punga Analytics setup for Newsletter clicks
+
+Punga Mail emits Punga Analytics custom event **`mail.click`**. Add a Custom Event definition in Punga Analytics with these recommended values:
+
+| Setting | Value |
+| --- | --- |
+| Event identifier | `mail.click` |
+| Title | `Newsletter clicks` |
+| Source component | `com_pungamail` |
+| Record | Yes |
+| Show summary | Yes |
+| Show trend | Yes |
+| Show time | Yes |
+| Show ranking | Yes |
+| Ranking title | `Most clicked newsletter links` |
+| Report title | `Newsletter clicks` |
+| Icon | Link |
+
+If Punga Analytics is set to **Record all valid custom events**, the definition mainly controls presentation. If it records configured events only, create the definition before testing. Its own Do Not Track, visitor-exclusion, and bot rules still apply independently.
 
 ## Delivery / Bounces
 
@@ -930,4 +993,4 @@ Ask the named administrator to use Save & Close or Cancel. If the edit session w
 
 ## Per-source content filters
 
-Automatic Newsletters can filter each selected registered content type independently. Add rules inside a content-source card; all rules for that source must match. Punga Mail discovers fields and SQL data types from the registered content type and backing table, so filtering does not require source-specific Punga Mail integrations. The field picker shows the detected database type; Joomla category fields, booleans, and conventional sibling-table `*_id` relations receive friendlier controls where generic metadata can be resolved. Numeric single-value comparisons use number inputs, `DATE` fields use Joomla’s date picker, `DATETIME`/`TIMESTAMP` fields use Joomla’s date-and-time picker, and `TIME` fields use the standard time control. Use **Preview matching content** to inspect the current source, cutoff and audience-safe matches before sending a test or waiting for the real run.
+Automatic Newsletters can filter each selected registered content type independently. Add rules inside a content-source card; all rules for that source must match. Punga Mail discovers fields and SQL data types from the registered content type and backing table, so filtering does not require source-specific Punga Mail integrations. The field picker shows the detected database type; Joomla category fields, booleans, and conventional sibling-table `*_id` relations receive friendlier controls where generic metadata can be resolved. Numeric single-value comparisons use number inputs, `DATE` fields use Joomla’s date picker, `DATETIME`/`TIMESTAMP` fields use Joomla’s date-and-time picker, and `TIME` fields use the standard time control. Use **Preview matching content** to inspect the current source, cutoff and audience-safe matches before sending a test or waiting for the real run. When Joomla access rules exclude an otherwise matching item, the preview identifies the item and required viewing-access level rather than reporting only a generic blocked count.

@@ -13,6 +13,7 @@ defined('_JEXEC') or die;
 use Joomla\CMS\Factory;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
+use Joomla\CMS\Layout\LayoutHelper;
 use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 use Punga\Component\PungaMail\Administrator\Service\NewsletterRepository;
@@ -33,6 +34,8 @@ $recurrenceValue = $storedRecurrenceUnit === 'legacy'
 $contentOrder = (string) ($item->content_order ?? 'newest') === 'oldest' ? 'oldest' : 'newest';
 $maxItems = max(0, (int) ($item->max_items ?? 0));
 $minimumItems = max(0, (int) ($item->minimum_items ?? 0));
+$firstRunCutoffMode = in_array((string) ($item->first_run_cutoff_mode ?? 'recurrence'), ['recurrence', 'lookback', 'all'], true) ? (string) ($item->first_run_cutoff_mode ?? 'recurrence') : 'recurrence';
+$firstRunLookbackDays = max(1, (int) round(((int) ($item->first_run_lookback_hours ?? 168)) / 24));
 $filterDateControlTemplate = HTMLHelper::_('calendar', '', '__PM_FILTER_NAME__', '__PM_FILTER_ID__', '%Y-%m-%d', [
 	'class' => 'form-control form-control-sm',
 	'showTime' => false,
@@ -192,6 +195,22 @@ $newsletterStatus = static function (?int $status): string
 						</div>
 						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_ROLLING_DAYS_HELP'); ?></div>
 					</div>
+					<div class="mb-3" id="pm-digest-first-run" <?php echo (string) ($item->cutoff_mode ?? 'since_last') === 'since_last' ? '' : 'hidden'; ?>>
+						<label class="form-label" for="digest-first-run-cutoff"><?php echo Text::_('COM_PUNGAMAIL_FIRST_RUN_CUTOFF'); ?></label>
+						<select class="form-select" id="digest-first-run-cutoff" name="first_run_cutoff_mode">
+							<option value="recurrence" <?php echo $firstRunCutoffMode === 'recurrence' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_FIRST_RUN_RECURRENCE'); ?></option>
+							<option value="lookback" <?php echo $firstRunCutoffMode === 'lookback' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_FIRST_RUN_LOOKBACK'); ?></option>
+							<option value="all" <?php echo $firstRunCutoffMode === 'all' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_FIRST_RUN_ALL_AVAILABLE'); ?></option>
+						</select>
+						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_FIRST_RUN_CUTOFF_HELP'); ?></div>
+					</div>
+					<div class="mb-3" id="pm-digest-first-run-lookback" <?php echo (string) ($item->cutoff_mode ?? 'since_last') === 'since_last' && $firstRunCutoffMode === 'lookback' ? '' : 'hidden'; ?>>
+						<label class="form-label" for="digest-first-run-days"><?php echo Text::_('COM_PUNGAMAIL_FIRST_RUN_LOOKBACK_DAYS'); ?></label>
+						<div class="input-group">
+							<input class="form-control" type="number" min="1" max="3650" id="digest-first-run-days" name="first_run_lookback_days" value="<?php echo $firstRunLookbackDays; ?>">
+							<span class="input-group-text"><?php echo Text::_('COM_PUNGAMAIL_DAYS'); ?></span>
+						</div>
+					</div>
 					<div class="mb-3">
 						<label class="form-label" for="digest-mode"><?php echo Text::_('COM_PUNGAMAIL_DIGEST_MODE'); ?></label>
 						<select class="form-select" id="digest-mode" name="generation_mode">
@@ -215,6 +234,8 @@ $newsletterStatus = static function (?int $status): string
 					</div>
 				</div>
 			</div>
+
+			<?php echo LayoutHelper::render('pungamail.campaign_tracking', ['item' => $item]); ?>
 
 			<div class="card mb-3">
 				<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_AUDIENCE'); ?></strong></div>
@@ -331,7 +352,12 @@ const pmDigestFilterText = <?php echo json_encode([
 	'none' => Text::_('COM_PUNGAMAIL_NO_FILTERS'),
 	'loading' => Text::_('COM_PUNGAMAIL_PREVIEW_LOADING'),
 	'previewCount' => Text::_('COM_PUNGAMAIL_PREVIEW_MATCH_COUNT'),
+	'previewCutoff' => Text::_('COM_PUNGAMAIL_PREVIEW_CUTOFF'),
+	'previewRawUnavailable' => Text::_('COM_PUNGAMAIL_PREVIEW_RAW_UNAVAILABLE'),
+	'previewNoneAfterCutoff' => Text::_('COM_PUNGAMAIL_PREVIEW_NONE_AFTER_CUTOFF'),
+	'previewFilteredOut' => Text::_('COM_PUNGAMAIL_PREVIEW_FILTERED_OUT'),
 	'previewBlocked' => Text::_('COM_PUNGAMAIL_PREVIEW_BLOCKED_COUNT'),
+	'previewBlockedDetail' => Text::_('COM_PUNGAMAIL_PREVIEW_BLOCKED_DETAIL'),
 	'previewMore' => Text::_('COM_PUNGAMAIL_PREVIEW_MORE_ITEMS'),
 	'previewError' => Text::_('COM_PUNGAMAIL_PREVIEW_ERROR'),
 	'operators' => [
@@ -497,7 +523,12 @@ document.addEventListener('DOMContentLoaded', function ()
 				if (!response.ok || payload.success === false) throw new Error(payload.message || pmDigestFilterText.previewError);
 				const result = payload.data || payload; output.textContent = ''; output.className = 'pm-source-preview mt-2 small';
 				const summaryLine = document.createElement('div'); summaryLine.className = 'fw-semibold'; summaryLine.textContent = pmDigestFilterText.previewCount.replace('%d', String(result.count)); output.appendChild(summaryLine);
+				if (result.cutoff_display) { const cutoffLine = document.createElement('div'); cutoffLine.className = 'text-muted'; cutoffLine.textContent = pmDigestFilterText.previewCutoff.replace('%s', String(result.cutoff_display)); output.appendChild(cutoffLine); }
+				if (result.count === 0 && result.raw_count > 0 && result.published_count === 0) { const line = document.createElement('div'); line.className = 'text-muted'; line.textContent = pmDigestFilterText.previewRawUnavailable.replace('%d', String(result.raw_count)); output.appendChild(line); }
+				else if (result.count === 0 && result.published_count > 0 && result.new_count === 0) { const line = document.createElement('div'); line.className = 'text-muted'; line.textContent = pmDigestFilterText.previewNoneAfterCutoff.replace('%d', String(result.published_count)).replace('%s', String(result.cutoff_display || result.cutoff || '')); output.appendChild(line); }
+				else if (result.count === 0 && result.new_count > 0 && result.filtered_count === 0) { const line = document.createElement('div'); line.className = 'text-muted'; line.textContent = pmDigestFilterText.previewFilteredOut.replace('%d', String(result.new_count)); output.appendChild(line); }
 				if (result.blocked_count > 0) { const blocked = document.createElement('div'); blocked.className = 'text-muted'; blocked.textContent = pmDigestFilterText.previewBlocked.replace('%d', String(result.blocked_count)); output.appendChild(blocked); }
+				if (Array.isArray(result.blocked_items) && result.blocked_items.length) { const blockedList = document.createElement('ul'); blockedList.className = 'mb-0 mt-1 text-muted'; result.blocked_items.forEach(function (item) { const li = document.createElement('li'); li.textContent = pmDigestFilterText.previewBlockedDetail.replace('%s', String(item.title || '')).replace('%s', String(item.required || '')).replace('%d', String(item.blocked_count || 0)); blockedList.appendChild(li); }); output.appendChild(blockedList); }
 				if (Array.isArray(result.items) && result.items.length) { const list = document.createElement('ul'); list.className = 'mb-0 mt-1'; result.items.forEach(function (item) { const li = document.createElement('li'); li.textContent = item.title + (item.published ? ' — ' + item.published : ''); list.appendChild(li); }); output.appendChild(list); }
 				if (result.count > (result.items || []).length) { const more = document.createElement('div'); more.className = 'text-muted'; more.textContent = pmDigestFilterText.previewMore.replace('%d', String(result.count - result.items.length)); output.appendChild(more); }
 			}
@@ -512,6 +543,9 @@ document.addEventListener('DOMContentLoaded', function ()
 	const groups = Array.from(document.querySelectorAll('.pm-digest-audience-group'));
 	const cutoff = document.getElementById('digest-cutoff');
 	const rollingPeriod = document.getElementById('pm-digest-rolling-period');
+	const firstRun = document.getElementById('pm-digest-first-run');
+	const firstRunMode = document.getElementById('digest-first-run-cutoff');
+	const firstRunLookback = document.getElementById('pm-digest-first-run-lookback');
 	const generationMode = document.getElementById('digest-mode');
 	const autoConfirm = document.getElementById('pm-digest-auto-confirm');
 	const checkedLabels = function (items)
@@ -531,6 +565,14 @@ document.addEventListener('DOMContentLoaded', function ()
 		if (rollingPeriod)
 		{
 			rollingPeriod.hidden = !cutoff || cutoff.value !== 'rolling';
+		}
+		if (firstRun)
+		{
+			firstRun.hidden = !cutoff || cutoff.value !== 'since_last';
+		}
+		if (firstRunLookback)
+		{
+			firstRunLookback.hidden = !cutoff || cutoff.value !== 'since_last' || !firstRunMode || firstRunMode.value !== 'lookback';
 		}
 
 		if (autoConfirm)
@@ -573,7 +615,7 @@ document.addEventListener('DOMContentLoaded', function ()
 		}
 	};
 
-	[cutoff, generationMode].filter(Boolean).forEach(function (field)
+	[cutoff, firstRunMode, generationMode].filter(Boolean).forEach(function (field)
 	{
 		field.addEventListener('change', updateConditionalFields);
 	});

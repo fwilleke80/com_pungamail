@@ -77,6 +77,7 @@ return new class () implements InstallerScriptInterface
 
 		$db = Factory::getContainer()->get(DatabaseInterface::class);
 		$tables = [
+			'#__pungamail_campaign_clicks',
 			'#__pungamail_events',
 			'#__pungamail_content_layouts',
 			'#__pungamail_digest_runs',
@@ -222,8 +223,10 @@ return new class () implements InstallerScriptInterface
 			->update($db->quoteName('#__extensions'))
 			->set($db->quoteName('enabled') . ' = 1')
 			->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
-			->where($db->quoteName('element') . ' = ' . $db->quote('pungamail'))
-			->where('(' . $db->quoteName('folder') . ' = ' . $db->quote('user') . ' OR ' . $db->quoteName('folder') . ' = ' . $db->quote('task') . ')');
+			->where('(
+				(' . $db->quoteName('element') . ' = ' . $db->quote('pungamail') . ' AND (' . $db->quoteName('folder') . ' = ' . $db->quote('user') . ' OR ' . $db->quoteName('folder') . ' = ' . $db->quote('task') . '))
+				OR (' . $db->quoteName('element') . ' = ' . $db->quote('pungamailcampaign') . ' AND ' . $db->quoteName('folder') . ' = ' . $db->quote('system') . ')
+			)');
 
 		$db->setQuery($query)->execute();
 		$this->migrateLegacyContentLayout();

@@ -6,9 +6,12 @@ defined('_JEXEC') or die;
 use Joomla\CMS\Factory;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
+use Joomla\CMS\Layout\LayoutHelper;
 use Joomla\CMS\Router\Route;
 use Punga\Component\PungaMail\Administrator\Helper\MarkdownEditorHelper;
+use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 use Punga\Component\PungaMail\Administrator\Service\NewsletterRenderer;
+use Punga\Component\PungaMail\Administrator\Service\Permissions;
 use Punga\Component\PungaMail\Administrator\Service\NewsletterRepository;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
@@ -39,16 +42,21 @@ $statusKey = match ((int) ($item->status ?? NewsletterRepository::STATUS_DRAFT))
 };
 $scheduledInputValue = '';
 
+if ($item !== null && property_exists($item, 'submitted_scheduled_at'))
+{
+	$scheduledInputValue = (string) $item->submitted_scheduled_at;
+}
+elseif ($item !== null && !empty($item->scheduled_at))
+{
+	$scheduledInputValue = HTMLHelper::_('date', (string) $item->scheduled_at, 'Y-m-d\TH:i', $siteTimezone);
+}
+
 $requestedTab = Factory::getApplication()->getInput()->getCmd('tab', '');
 $requestedTab = $requestedTab === 'pm-design' ? 'pm-layout' : $requestedTab;
 $allowedTabs = ['pm-settings', 'pm-mail-content', 'pm-content-selection', 'pm-layout'];
 $activeTab = in_array($requestedTab, $allowedTabs, true) ? $requestedTab : 'pm-settings';
 $recallTabs = $requestedTab === '';
 
-if ($item !== null && !empty($item->scheduled_at))
-{
-	$scheduledInputValue = HTMLHelper::_('date', (string) $item->scheduled_at, 'Y-m-d\TH:i', $siteTimezone);
-}
 ?>
 <style>
 .pm-content-row[draggable="true"] { cursor: grab; }
@@ -81,7 +89,7 @@ if ($item !== null && !empty($item->scheduled_at))
 		<?php endforeach; ?>
 		</tbody></table>
 	</div></div>
-	<form class="mt-3 d-flex flex-wrap gap-2" action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post"><input type="hidden" name="id" value="<?php echo (int) $item->id; ?>"><?php if ($this->canSend && in_array((int) $item->status, [NewsletterRepository::STATUS_QUEUED, NewsletterRepository::STATUS_SENDING], true)) : ?><input type="hidden" name="paused" value="<?php echo (int) $item->queue_paused === 1 ? 0 : 1; ?>"><button class="btn btn-outline-warning" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.toggleMailingPause'); ?>" type="submit"><?php echo Text::_((int) $item->queue_paused === 1 ? 'COM_PUNGAMAIL_RESUME_MAILING' : 'COM_PUNGAMAIL_PAUSE_MAILING'); ?></button><button class="btn btn-danger" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.cancelRemaining'); ?>" type="submit" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CANCEL_REMAINING_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CANCEL_REMAINING'); ?></button><?php endif; ?><a class="btn btn-outline-secondary" href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletters'); ?>"><?php echo Text::_('JTOOLBAR_BACK'); ?></a><?php echo HTMLHelper::_('form.token'); ?></form>
+	<form class="mt-3 d-flex flex-wrap gap-2" action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post"><input type="hidden" name="id" value="<?php echo (int) $item->id; ?>"><?php if (Permissions::can(Permissions::VIEW_STATISTICS)) : ?><a class="btn btn-outline-primary" href="<?php echo Route::_(AdministratorRoute::statistics((int) $item->id)); ?>"><?php echo Text::_('COM_PUNGAMAIL_STATISTICS_VIEW_REPORT'); ?></a><?php endif; ?><?php if ($this->canSend && in_array((int) $item->status, [NewsletterRepository::STATUS_QUEUED, NewsletterRepository::STATUS_SENDING], true)) : ?><input type="hidden" name="paused" value="<?php echo (int) $item->queue_paused === 1 ? 0 : 1; ?>"><button class="btn btn-outline-warning" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.toggleMailingPause'); ?>" type="submit"><?php echo Text::_((int) $item->queue_paused === 1 ? 'COM_PUNGAMAIL_RESUME_MAILING' : 'COM_PUNGAMAIL_PAUSE_MAILING'); ?></button><button class="btn btn-danger" formaction="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.cancelRemaining'); ?>" type="submit" onclick="return confirm('<?php echo htmlspecialchars(Text::_('COM_PUNGAMAIL_CANCEL_REMAINING_CONFIRM'), ENT_QUOTES, 'UTF-8'); ?>');"><?php echo Text::_('COM_PUNGAMAIL_CANCEL_REMAINING'); ?></button><?php endif; ?><a class="btn btn-outline-secondary" href="<?php echo Route::_('index.php?option=com_pungamail&view=newsletters'); ?>"><?php echo Text::_('JTOOLBAR_BACK'); ?></a><?php echo HTMLHelper::_('form.token'); ?></form>
 <?php else : ?>
 	<form action="<?php echo Route::_('index.php?option=com_pungamail'); ?>" method="post" name="adminForm" id="adminForm" data-pm-unsaved-warning="1">
 		<input type="hidden" name="id" value="<?php echo (int) ($item->id ?? 0); ?>">
@@ -125,6 +133,8 @@ if ($item !== null && !empty($item->scheduled_at))
 						</div>
 					</div>
 				</div>
+				<?php echo LayoutHelper::render('pungamail.campaign_tracking', ['item' => $item]); ?>
+
 			</div>
 
 			<div class="col-12 col-xl-4">

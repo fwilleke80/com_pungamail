@@ -54,4 +54,20 @@ if (DigestSchedule::legacyMinutes(1, 'weeks') !== 10080 || DigestSchedule::legac
 	failDigestScheduleTest('Legacy minute compatibility conversion is incorrect.');
 }
 
+
+if (DigestSchedule::initialCutoff('2026-09-23 00:00:00', 'all', 168, 2, 'months') !== '1000-01-01 00:00:00')
+{
+	failDigestScheduleTest('All-content first-run cutoff is incorrect.');
+}
+
+if (DigestSchedule::initialCutoff('2026-09-23 00:00:00', 'lookback', 72, 2, 'months') !== '2026-09-20 00:00:00')
+{
+	failDigestScheduleTest('Custom first-run look-back cutoff is incorrect.');
+}
+
+if (DigestSchedule::initialCutoff('2026-09-23 00:00:00', 'recurrence', 168, 2, 'months') !== '2026-07-23 00:00:00')
+{
+	failDigestScheduleTest('Recurrence-based first-run cutoff is incorrect.');
+}
+
 fwrite(STDOUT, "[OK] Automatic Newsletter schedule regression tests passed\n");

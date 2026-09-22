@@ -108,6 +108,12 @@ final class NewsletterRepository
 		$replyToMode = in_array((string) ($options['reply_to_mode'] ?? 'inherit'), ['inherit', 'custom', 'none'], true) ? (string) ($options['reply_to_mode'] ?? 'inherit') : 'inherit';
 		$replyToEmail = trim((string) ($options['reply_to_email'] ?? ''));
 		$replyToName = trim((string) ($options['reply_to_name'] ?? ''));
+		$campaignScope = in_array((string) ($options['campaign_scope'] ?? 'inherit'), ['inherit', 'disabled', 'internal', 'all'], true) ? (string) ($options['campaign_scope'] ?? 'inherit') : 'inherit';
+		$utmSource = trim((string) ($options['utm_source'] ?? ''));
+		$utmMedium = trim((string) ($options['utm_medium'] ?? ''));
+		$utmCampaign = trim((string) ($options['utm_campaign'] ?? ''));
+		$utmId = trim((string) ($options['utm_id'] ?? ''));
+		$utmContent = trim((string) ($options['utm_content'] ?? ''));
 		$newContentItemTemplate = trim((string) ($options['new_content_item_template'] ?? ''));
 		$topicIds = (array) ($options['topic_ids'] ?? []);
 		$this->db->transactionStart();
@@ -132,6 +138,12 @@ final class NewsletterRepository
 					'reply_to_mode' => $replyToMode,
 					'reply_to_email' => $replyToEmail !== '' ? $replyToEmail : null,
 					'reply_to_name' => $replyToName !== '' ? $replyToName : null,
+					'campaign_scope' => $campaignScope,
+					'utm_source' => $utmSource !== '' ? $utmSource : null,
+					'utm_medium' => $utmMedium !== '' ? $utmMedium : null,
+					'utm_campaign' => $utmCampaign !== '' ? $utmCampaign : null,
+					'utm_id' => $utmId !== '' ? $utmId : null,
+					'utm_content' => $utmContent !== '' ? $utmContent : null,
 					'include_subscribers' => $includeSubscribers ? 1 : 0,
 					'content_cutoff_start' => $effectiveCutoff,
 					'content_cutoff_end' => null,
@@ -181,6 +193,12 @@ final class NewsletterRepository
 					->set($this->db->quoteName('reply_to_mode') . ' = :replyToMode')
 					->set($this->db->quoteName('reply_to_email') . ($replyToEmail === '' ? ' = NULL' : ' = :replyToEmail'))
 					->set($this->db->quoteName('reply_to_name') . ($replyToName === '' ? ' = NULL' : ' = :replyToName'))
+					->set($this->db->quoteName('campaign_scope') . ' = :campaignScope')
+					->set($this->db->quoteName('utm_source') . ($utmSource === '' ? ' = NULL' : ' = :utmSource'))
+					->set($this->db->quoteName('utm_medium') . ($utmMedium === '' ? ' = NULL' : ' = :utmMedium'))
+					->set($this->db->quoteName('utm_campaign') . ($utmCampaign === '' ? ' = NULL' : ' = :utmCampaign'))
+					->set($this->db->quoteName('utm_id') . ($utmId === '' ? ' = NULL' : ' = :utmId'))
+					->set($this->db->quoteName('utm_content') . ($utmContent === '' ? ' = NULL' : ' = :utmContent'))
 					->set($this->db->quoteName('include_subscribers') . ' = :includeSubscribers')
 					->set($this->db->quoteName('content_cutoff_start') . ($effectiveCutoff === null ? ' = NULL' : ' = :contentCutoffStart'))
 					->set($this->db->quoteName('modified') . ' = :modified')
@@ -192,6 +210,7 @@ final class NewsletterRepository
 					->bind(':headingMode', $headingMode)
 					->bind(':browserView', $browserView, ParameterType::INTEGER)
 					->bind(':replyToMode', $replyToMode)
+					->bind(':campaignScope', $campaignScope)
 					->bind(':modified', $now)
 					->bind(':id', $id, ParameterType::INTEGER);
 
@@ -233,6 +252,20 @@ final class NewsletterRepository
 				if ($replyToName !== '')
 				{
 					$query->bind(':replyToName', $replyToName);
+				}
+
+				foreach ([
+					':utmSource' => $utmSource,
+					':utmMedium' => $utmMedium,
+					':utmCampaign' => $utmCampaign,
+					':utmId' => $utmId,
+					':utmContent' => $utmContent,
+				] as $placeholder => $value)
+				{
+					if ($value !== '')
+					{
+						$query->bind($placeholder, $value);
+					}
 				}
 
 				$this->db->setQuery($query)->execute();
@@ -763,6 +796,12 @@ final class NewsletterRepository
 				'reply_to_mode' => (string) ($newsletter->reply_to_mode ?? 'inherit'),
 				'reply_to_email' => (string) ($newsletter->reply_to_email ?? ''),
 				'reply_to_name' => (string) ($newsletter->reply_to_name ?? ''),
+				'campaign_scope' => (string) ($newsletter->campaign_scope ?? 'inherit'),
+				'utm_source' => (string) ($newsletter->utm_source ?? ''),
+				'utm_medium' => (string) ($newsletter->utm_medium ?? ''),
+				'utm_campaign' => (string) ($newsletter->utm_campaign ?? ''),
+				'utm_id' => (string) ($newsletter->utm_id ?? ''),
+				'utm_content' => (string) ($newsletter->utm_content ?? ''),
 			]
 		);
 	}

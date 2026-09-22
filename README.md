@@ -14,7 +14,7 @@ It is designed for websites that want to manage newsletters directly inside Joom
 - Let subscribers choose **Channels** so they receive only the newsletters they are interested in.
 - Restrict Channels to registered users or selected Joomla user groups when needed.
 - Add new Joomla content to newsletters with **`{new_content}`**, including selected/available item management, drag-and-drop ordering, and central per-content-type layouts that can use fields discovered from registered source tables.
-- Create **Automatic Newsletters** on daily, weekly or monthly schedules, with content ordering/limits, run history, and either draft-for-review or automatic-send workflows.
+- Create **Automatic Newsletters** on daily, weekly or monthly schedules, with per-content-type filters, browser preview/test delivery, content ordering/limits, run history, and either draft-for-review or automatic-send workflows.
 - Schedule ordinary newsletters for delivery at a later date and time.
 - Manage Joomla users and external email subscribers from one recipient list.
 - Provide public subscribe, unsubscribe and preference-management pages.
@@ -22,9 +22,11 @@ It is designed for websites that want to manage newsletters directly inside Joom
 - Use Joomla's outgoing mail settings or a separate Punga Mail-specific SMTP account.
 - Handle undeliverable mail, show the latest returned-mail check on Delivery/Dashboard, and stop repeatedly sending to addresses that can no longer be reached.
 - Show delivery statistics, recent activity, upcoming mail and other useful status information on the Dashboard.
+- Inspect privacy-conscious **Newsletter and campaign statistics** with trusted clicks, scanner-like clicks separated, link rankings, timelines, campaign roll-ups, and a click map.
 - Import and export recipient data as CSV.
-- Use grouped administrator navigation for Audience, Design, and Tools workflows.
+- Use grouped administrator navigation for Newsletters/Automatic Newsletters, Audience, Design, and Tools workflows.
 - Generate browser-view and unsubscribe links for newsletters.
+- Optionally add configurable UTM campaign parameters to internal or all newsletter links; trusted internal campaign visits are recorded for Punga Mail Statistics and dispatch Joomla integration events that analytics extensions such as Punga Analytics can consume without putting recipient identity into URLs.
 - Use Joomla's language system; Punga Mail currently includes **English and German**.
 
 By default, Punga Mail uses Joomla's configured mail transport. Administrators can instead select **Custom SMTP** in Punga Mail Options when newsletters should use a separate outgoing account; Joomla system mail remains unchanged.
@@ -37,7 +39,7 @@ Install the Punga Mail package through:
 
 **System → Install → Extensions**
 
-The package installs the Punga Mail component together with its signup module and the Joomla plugins used for user-profile integration and Scheduled Tasks.
+The package installs the Punga Mail component together with its signup module and the Joomla plugins used for user-profile integration, Scheduled Tasks, and trusted internal campaign-visit detection.
 
 For unattended sending and Automatic Newsletters, enable the appropriate Punga Mail tasks under Joomla's **Scheduled Tasks** manager.
 

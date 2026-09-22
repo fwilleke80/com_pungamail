@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.6.29 — 2026-09-23
+
+- Fixed Newsletter editor validation failures discarding unsaved work. Submitted form data is now kept in Joomla user state before required-field validation and restored when the editor is shown again.
+- A failed **Save**, **Save & Close**, **Preview**, **Send test mail**, or **Check recipients & send** action now returns to the same Newsletter editor instead of the Newsletters list.
+- Restored state includes title/subject/body, selected content and its ordering/overrides, selected content types, recipients/groups/Channels, cutoff, Template, Layout/style overrides, Reply-To and campaign settings, plus the entered schedule date/time.
+- New Newsletter validation failures remain under `core.create` semantics and continue to display as **New Newsletter** rather than being mistaken for an existing record.
+- Added an explicit **first-run content cutoff** policy for Automatic Newsletters using “Content since the previous automatic newsletter”: keep the existing one-recurrence-interval default, choose a custom look-back period, or include all available matching content. The setting is ignored after the first successful run, when the stored previous cutoff takes over.
+- Expanded **Preview matching content** access diagnostics to name blocked items and show the Joomla viewing-access level that caused exclusion, making it easier to distinguish legitimate audience restrictions from selection bugs.
+- Added the 0.6.29 schema update and regression checks for form-state preservation, first-run cutoff modes, and ACL preview diagnostics.
+
+## 0.6.28 — 2026-09-22
+
+- Added a dedicated **Statistics** administrator page with privacy-conscious Newsletter/campaign reporting: sent Newsletter totals, delivery outcomes, attributed unsubscribes, trusted internal clicks, likely automated mail-security clicks shown separately, click activity over time, per-link performance, observed `utm_campaign` roll-ups, and per-Newsletter drill-down.
+- Added a click-map view over the immutable sent HTML snapshot. Tracked internal links receive non-interactive click badges while the original sent message remains unchanged.
+- Punga Mail still deliberately uses no open-tracking pixel and stores no recipient identity, IP address, or raw user agent for campaign clicks; repeated trusted clicks are counts, not claimed unique people.
+- Added persistent `#__pungamail_campaign_clicks` storage for validated internal campaign visits and bot/scanner classification. External UTM-tagged links remain measurable by the destination analytics system but are not claimed as Punga Mail clicks.
+- Extended System - Punga Mail Campaign Tracking to emit the generic `onPungaAnalyticsRecord` bridge with `event_type=mail.click`, in addition to the domain-specific `onPungaMailCampaignVisit` event. This lets Punga Analytics record Newsletter clicks using its normal extension-event contract.
+- Hardened registered-content discovery: content types without a safe public access mapping (notably Joomla User records) are no longer offered as Newsletter content sources instead of appearing selectable but yielding no safe items.
+- Expanded Automatic Newsletter source preview diagnostics to distinguish an empty source table, no currently published/eligible rows, no rows newer than the cutoff, source-filter exclusions, and recipient-access exclusions. This makes zero-result sources such as older Weblinks diagnosable without source-specific code.
+- Added a dedicated Statistics ACL capability and report links from immutable sent Newsletters.
+- Updated administrator documentation, Newsletter/Automatic Newsletter tutorials, database notes, analytics-integration instructions, and live acceptance tests.
+
+## 0.6.27 — 2026-09-22
+
+- Fixed generic registered-content discovery for Joomla content types whose registry mapping uses the literal `"null"` sentinel. Missing mappings are now treated as absent instead of becoming invalid SQL columns such as ``SELECT `null```; publication time safely falls back to creation time where available.
+- Fixed legacy zero publication dates generically: zero/empty `publish_up` values can fall back to the creation timestamp, while zero/empty `publish_down` means no publication end. This restores expected Automatic Newsletter discovery for older Weblinks and similarly structured content types without source-specific code.
+- Added optional hierarchical campaign tracking. Component Options define the tracking scope and defaults for `utm_source`, `utm_medium`, `utm_campaign`, `utm_id`, and `utm_content`; ordinary and Automatic Newsletters can override the scope and each UTM value independently.
+- Added configurable tracking scope: **Disabled**, **Internal links only**, or **All links**. External links receive standard UTM parameters only when All links is selected; internal tracked links additionally receive a signed opaque `pm_track` token. No recipient ID or email address is placed in tracking URLs.
+- Added **System - Punga Mail Campaign Tracking**. It validates internal `pm_track` signatures and verifies the visible UTM values before dispatching Joomla event `onPungaMailCampaignVisit` with campaign/link attribution data for optional consumers such as Punga Analytics.
+- Added a full browser **Preview** action to the Automatic Newsletter editor using the same candidate selection, filters, access checks, ordering/limits, Template/Layout inheritance and renderer as the real run without creating run history, queue rows or generated Newsletter records or advancing cutoff/schedule state.
+- Consolidated the administrator sidebar into one **Newsletters** entry with **Newsletters** and **Automatic Newsletters** tabs while preserving legacy controller/view routes for existing bookmarks/actions.
+- Kept Automatic Newsletter **Save**, **Save & Close**, and **Cancel** grouped on the left; **Preview** and **Send test automatic newsletter** form the right-side toolbar group.
+- Updated administrator guide, tutorials, architecture/database documentation and live regression tests for campaign tracking, the new navigation, Automatic Newsletter Preview, registered-content edge cases, and the current generic filter UI.
+
 ## 0.6.26 — 2026-09-22
 
 - Fixed a JavaScript parse regression in the Automatic Newsletter content-source filter editor introduced in 0.6.25. Existing filters are visible again, Add Filter works, and enabling a previously unchecked content type immediately reveals its filter/preview controls.

@@ -33,6 +33,9 @@ final class ContentTypeService
 	/** @var array<string,array<int,array{name:string,type:string,date_like:bool}>> */
 	private array $tableColumns = [];
 
+	/** @var array<int,string> */
+	private array $viewLevelTitles = [];
+
 	/**
 	 * @param DatabaseInterface $db Database connection.
 	 */
@@ -99,6 +102,34 @@ final class ContentTypeService
 		$type = $this->getTypes()[$sourceKey] ?? null;
 
 		return $type !== null ? $this->columnsForType($type) : [];
+	}
+
+
+	/**
+	 * Returns the number of rows in one selectable source table before state,
+	 * publication-window, cutoff, filter and access rules are applied.
+	 *
+	 * This is used only for administrator diagnostics; content itself is never
+	 * exposed when the registered type cannot pass Punga Mail's safety gates.
+	 *
+	 * @param string $sourceKey Registered content type alias.
+	 *
+	 * @return int
+	 */
+	public function getSourceRowCount(string $sourceKey): int
+	{
+		$type = $this->getTypes()[$sourceKey] ?? null;
+
+		if ($type === null)
+		{
+			return 0;
+		}
+
+		$query = $this->db->getQuery(true)
+			->select('COUNT(*)')
+			->from($this->db->quoteName((string) $type->table));
+
+		return (int) $this->db->setQuery($query)->loadResult();
 	}
 
 	/**
@@ -500,6 +531,8 @@ final class ContentTypeService
 					'source_item_id' => (string) ($item->id ?? ''),
 					'title' => (string) ($item->title ?? ''),
 					'blocked_user_ids' => $userIds,
+					'reason' => 'category_unpublished',
+					'category_id' => (int) ($item->catid ?? 0),
 				];
 				continue;
 			}
@@ -534,6 +567,9 @@ final class ContentTypeService
 				'source_item_id' => (string) ($item->id ?? ''),
 				'title' => (string) ($item->title ?? ''),
 				'blocked_user_ids' => $blockedUsers,
+				'reason' => 'view_level',
+				'required_levels' => array_values(array_unique($requiredLevels)),
+				'required_level_titles' => array_map(fn (int $level): string => $this->viewLevelTitle($level), array_values(array_unique($requiredLevels))),
 			];
 		}
 
@@ -700,9 +736,17 @@ final class ContentTypeService
 		$table = trim((string) ($special['dbtable'] ?? ''));
 		$id = $this->column((string) ($special['key'] ?? ($common['core_content_item_id'] ?? '')));
 		$title = $this->column((string) ($common['core_title'] ?? ''));
-		$published = $this->column((string) ($common['core_publish_up'] ?? ($common['core_created_time'] ?? '')));
+		$created = $this->column((string) ($common['core_created_time'] ?? ''));
+		$published = $this->column((string) ($common['core_publish_up'] ?? '')) ?? $created;
+		$access = $this->column((string) ($common['core_access'] ?? ($common['access'] ?? '')));
 
-		if (!$this->table($table) || $id === null || $title === null || $published === null)
+		// Punga Mail only exposes content types whose registry metadata lets us
+		// prove that every recipient may view the item. Joomla registers some
+		// non-public record types (notably com_users.user) as content types but
+		// deliberately maps their access field to the literal "null" sentinel.
+		// Offering those records as newsletter content would either leak private
+		// data or lead to an editor source that can never pass the access gate.
+		if (!$this->table($table) || $id === null || $title === null || $published === null || $access === null)
 		{
 			return null;
 		}
@@ -719,10 +763,10 @@ final class ContentTypeService
 			'state' => $this->column((string) ($common['core_state'] ?? '')),
 			'published' => $published,
 			'publish_down' => $this->column((string) ($common['core_publish_down'] ?? '')),
-			'created' => $this->column((string) ($common['core_created_time'] ?? '')),
+			'created' => $created,
 			'catid' => $this->column((string) ($common['core_catid'] ?? '')),
 			'alias' => $this->column((string) ($common['core_alias'] ?? '')),
-			'access' => $this->column((string) ($common['core_access'] ?? '')),
+			'access' => $access,
 			'language' => $this->column((string) ($common['core_language'] ?? '')),
 			'router' => trim((string) ($row->router ?? '')),
 		];
@@ -781,9 +825,11 @@ final class ContentTypeService
 		$now = (new Date('now', 'UTC'))->toSql();
 		$publishedColumn = $this->db->quoteName((string) $type->published);
 		$createdColumn = $type->created !== null ? $this->db->quoteName((string) $type->created) : null;
-		$publishedExpression = $createdColumn !== null && $type->created !== $type->published
-			? 'COALESCE(' . $publishedColumn . ', ' . $createdColumn . ')'
-			: $publishedColumn;
+		$publishedValue = $this->nonZeroDateExpression($publishedColumn);
+		$createdValue = $createdColumn !== null ? $this->nonZeroDateExpression($createdColumn) : null;
+		$publishedExpression = $createdValue !== null && $type->created !== $type->published
+			? 'COALESCE(' . $publishedValue . ', ' . $createdValue . ')'
+			: $publishedValue;
 		$select = [
 			$this->db->quoteName((string) $type->id) . ' AS ' . $this->db->quoteName('id'),
 			$this->db->quoteName((string) $type->title) . ' AS ' . $this->db->quoteName('title'),
@@ -822,7 +868,9 @@ final class ContentTypeService
 		if ($type->publish_down !== null)
 		{
 			$nowDown = $now;
-			$query->where('(' . $this->db->quoteName((string) $type->publish_down) . ' IS NULL OR ' . $this->db->quoteName((string) $type->publish_down) . ' >= :nowDown)')
+			$publishDownColumn = $this->db->quoteName((string) $type->publish_down);
+			$publishDownExpression = $this->nonZeroDateExpression($publishDownColumn);
+			$query->where('(' . $publishDownExpression . ' IS NULL OR ' . $publishDownExpression . ' >= :nowDown)')
 				->bind(':nowDown', $nowDown);
 		}
 
@@ -865,6 +913,30 @@ final class ContentTypeService
 		}
 
 		return $rows;
+	}
+
+	/** @return string */
+	private function viewLevelTitle(int $levelId): string
+	{
+		if ($levelId <= 0)
+		{
+			return (string) $levelId;
+		}
+
+		if (isset($this->viewLevelTitles[$levelId]))
+		{
+			return $this->viewLevelTitles[$levelId];
+		}
+
+		$query = $this->db->getQuery(true)
+			->select($this->db->quoteName('title'))
+			->from($this->db->quoteName('#__viewlevels'))
+			->where($this->db->quoteName('id') . ' = :levelId')
+			->bind(':levelId', $levelId, \Joomla\Database\ParameterType::INTEGER);
+		$title = trim((string) $this->db->setQuery($query)->loadResult());
+		$this->viewLevelTitles[$levelId] = $title !== '' ? $title : ('#' . $levelId);
+
+		return $this->viewLevelTitles[$levelId];
 	}
 
 	/** @return int|null */
@@ -970,10 +1042,30 @@ final class ContentTypeService
 	}
 
 	/** @return string|null */
+	/**
+	 * Converts Joomla content-type field metadata to a safe SQL column name.
+	 * Joomla uses the literal string "null" for unsupported common mappings in
+	 * several core content types; it is metadata, never a database identifier.
+	 */
 	private function column(string $value): ?string
 	{
 		$value = trim($value);
 
+		if ($value === '' || strtolower($value) === 'null')
+		{
+			return null;
+		}
+
 		return preg_match('/^[A-Za-z0-9_]+$/', $value) === 1 ? $value : null;
+	}
+
+	/**
+	 * Treats legacy SQL zero dates as an unset date. This matters for registered
+	 * content tables such as older Weblinks data where publication dates may be
+	 * stored as 0000-00-00[ 00:00:00] instead of NULL.
+	 */
+	private function nonZeroDateExpression(string $quotedColumn): string
+	{
+		return 'NULLIF(NULLIF(NULLIF(' . $quotedColumn . ", ''), '0000-00-00'), '0000-00-00 00:00:00')";
 	}
 }

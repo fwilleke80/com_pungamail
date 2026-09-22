@@ -24,6 +24,7 @@ $statusLabels = [
 ];
 $siteTimezone=(string)Factory::getApplication()->get('offset','UTC');
 ?>
+<?php echo LayoutHelper::render('pungamail.section_navigation', ['section' => 'newsletters', 'active' => 'newsletters']); ?>
 <form action="<?php echo Route::_('index.php?option=com_pungamail&view=newsletters'); ?>" method="post" name="adminForm" id="adminForm">
 	<?php echo LayoutHelper::render('joomla.searchtools.default', ['view' => $this]); ?>
 

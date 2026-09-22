@@ -43,8 +43,8 @@ final class DisplayController extends BaseController
 		$contextView = $input->getCmd('view', $this->default_view);
 		$screen = $input->getCmd('screen', '');
 		$screenViews = [
-			'newsletters' => ['newsletter', 'preview', 'preflight'],
-			'digests' => ['digest'],
+			'newsletters' => ['newsletter', 'preview', 'preflight', 'digests', 'digest', 'digestpreview'],
+			'digests' => ['digest', 'digestpreview'],
 			'audience' => ['subscribers', 'subscriber', 'topics', 'topic'],
 			'design' => ['templates', 'template', 'templatepreview', 'contentlayouts', 'contentlayout'],
 			'tools' => ['import'],

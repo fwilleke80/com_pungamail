@@ -8,7 +8,7 @@ Punga Mail is a focused, self-hosted Joomla! 6 newsletter extension. Its primary
 
 It is not intended to become a behavioural marketing/analytics platform.
 
-## Implemented through 0.6.19
+## Implemented through 0.6.29
 - Joomla User subscriber Channel eligibility updates immediately before save by resolving the selected Joomla account ID from Joomla's real hidden User field value.
 
 ### Lists, automation and access safety
@@ -122,7 +122,7 @@ A future optional provider hook is acceptable only as an escape hatch for unusua
 ## Explicit non-goals
 
 - open-tracking pixels
-- click tracking
+- recipient-level click tracking / behavioural profiling
 - behavioural profiling
 - A/B testing
 - advertising funnels/marketing automation
@@ -143,16 +143,26 @@ A future optional provider hook is acceptable only as an escape hatch for unusua
 
 ### Joomla-native editor toolbars
 
-Newsletter and template editors use Joomla's standard top administrator toolbar. **Save** uses Joomla's canonical Apply toolbar behavior and stays in the editor; **Save & Close** uses Joomla's Save toolbar behavior and returns to the owning list. Draft newsletters additionally expose Preview, Send test mail, Check recipients & send, and Cancel. Templates additionally expose Preview and Cancel. Context-specific form actions such as applying a content date or template remain next to the fields they affect.
+Newsletter and template editors use Joomla's standard top administrator toolbar. **Save** uses Joomla's canonical Apply toolbar behavior and stays in the editor; **Save & Close** uses Joomla's Save toolbar behavior and returns to the owning list. Draft newsletters additionally expose Preview, Send test mail, Check recipients & send, and Cancel. Automatic Newsletter editors expose browser Preview and Send test automatic newsletter on the right side of the toolbar while Save, Save & Close and Cancel stay grouped on the left. Automatic Newsletter “since previous” selection also has an explicit first-run cutoff policy (recurrence interval, custom look-back, or all available matching content) which ceases to apply after the first successful stored cutoff. Templates additionally expose Preview and Cancel. Context-specific form actions such as applying a content date or template remain next to the fields they affect.
 
 
 ### Administrator attention acknowledgment
 
 Returned-mail suppression warnings on the Dashboard are operational attention items, not subscriber state. Administrators can acknowledge the exact latest check after review; this only hides that Dashboard warning. Suppressions and bounce history remain unchanged, and a later check with new exclusions becomes visible again. Grouped Audience/Design routes remain the canonical administrator context for their child screens and actions.
 
+## Campaign attribution and analytics integration
+
+Campaign tracking is deliberately split into interoperable URL attribution and trusted Joomla-side events. Component defaults may add `utm_source`, `utm_medium`, `utm_campaign`, `utm_id`, and `utm_content` to internal links only or to all HTTP(S) links; ordinary and Automatic Newsletters can override the scope and individual values. External links can carry standard UTM parameters but are never treated as trusted Punga Mail visits because their destination request does not pass through this Joomla installation.
+
+Internal tagged links additionally carry a signed opaque `pm_track` token. The System - Punga Mail Campaign Tracking plugin validates the token and verifies that the visible UTM values still match the signed payload before recording the trusted visit and dispatching `onPungaMailCampaignVisit`. The payload is campaign/link oriented (`newsletter_id`, `link_index`, UTM values, URL/path, UTC timestamp) and deliberately excludes subscriber identity, email address and IP-derived identity. Punga Mail itself does not depend on Punga Analytics. It additionally dispatches the standard `onPungaAnalyticsRecord` bridge with `event_type=mail.click` and `component=com_pungamail`, matching the generic integration contract used by other Punga extensions.
+
+The renderer owns link tagging so HTML and plain-text variants share the same attribution rules. The system plugin owns trusted incoming-visit recognition, keeping analytics integration outside mail rendering and avoiding a mandatory redirect endpoint for ordinary internal links.
+
+Punga Mail stores validated internal visits at aggregate/link level for its own Statistics UI. Reporting deliberately omits pixel-derived opens and recipient-level unique-click tracking; likely automated mail-security traffic is separated, and click-map badges are rendered over the immutable sent snapshot without modifying it.
+
 ## Administrator ACL
 
-Punga Mail 0.6.11 delegates backend authorization to Joomla ACL instead of maintaining a separate user/group whitelist. `access.xml` defines standard newsletter CRUD actions plus Punga Mail-specific capabilities for sending, Automatic Newsletters, Audience, Design, Delivery, and Tools. Ordinary component configuration uses Joomla `core.options`; changing ACL remains protected by `core.admin`.
+Punga Mail 0.6.11 delegates backend authorization to Joomla ACL instead of maintaining a separate user/group whitelist. `access.xml` defines standard newsletter CRUD actions plus Punga Mail-specific capabilities for sending, Automatic Newsletters, Audience, Design, Delivery, Statistics, and Tools. Ordinary component configuration uses Joomla `core.options`; changing ACL remains protected by `core.admin`.
 
 Authorization is enforced twice by design: views/controllers reject unauthorized access server-side, while toolbar actions, Dashboard controls, and Punga Mail section navigation are filtered for usability. UI visibility is never treated as the security boundary. Newsletter editing and sending are separate capabilities so an editorial role can prepare drafts without being permitted to schedule or transmit them.
 

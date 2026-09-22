@@ -63,6 +63,18 @@
 		<field name="layout_advanced_heading" type="spacer" label="COM_PUNGAMAIL_LAYOUT_ADVANCED" hr="true" />
 		<field name="design_custom_css" type="textarea" filter="raw" rows="8" label="COM_PUNGAMAIL_STYLE_CUSTOM_CSS" description="COM_PUNGAMAIL_STYLE_CUSTOM_CSS_DESC" />
 	</fieldset>
+	<fieldset name="tracking" label="COM_PUNGAMAIL_CAMPAIGN_TRACKING">
+		<field name="campaign_tracking_scope" type="list" default="disabled" label="COM_PUNGAMAIL_CAMPAIGN_SCOPE" description="COM_PUNGAMAIL_CAMPAIGN_SCOPE_DESC">
+			<option value="disabled">COM_PUNGAMAIL_CAMPAIGN_SCOPE_DISABLED</option>
+			<option value="internal">COM_PUNGAMAIL_CAMPAIGN_SCOPE_INTERNAL</option>
+			<option value="all">COM_PUNGAMAIL_CAMPAIGN_SCOPE_ALL</option>
+		</field>
+		<field name="campaign_utm_source" type="text" default="pungamail" label="COM_PUNGAMAIL_CAMPAIGN_UTM_SOURCE" />
+		<field name="campaign_utm_medium" type="text" default="email" label="COM_PUNGAMAIL_CAMPAIGN_UTM_MEDIUM" />
+		<field name="campaign_utm_campaign" type="text" default="{newsletter_title}" label="COM_PUNGAMAIL_CAMPAIGN_UTM_CAMPAIGN" />
+		<field name="campaign_utm_id" type="text" default="{newsletter_id}" label="COM_PUNGAMAIL_CAMPAIGN_UTM_ID" />
+		<field name="campaign_utm_content" type="text" default="link-{link_index}" label="COM_PUNGAMAIL_CAMPAIGN_UTM_CONTENT" description="COM_PUNGAMAIL_CAMPAIGN_PLACEHOLDER_HELP" />
+	</fieldset>
 	<fieldset name="subscription" label="COM_PUNGAMAIL_CONFIG_SUBSCRIPTION">
 		<field name="confirmation_hours" type="number" default="48" min="1" max="168" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_HOURS" description="COM_PUNGAMAIL_CONFIG_CONFIRMATION_HOURS_DESC" />
 		<field name="signup_ip_hourly_limit" type="number" default="12" min="1" max="500" label="COM_PUNGAMAIL_CONFIG_SIGNUP_IP_LIMIT" description="COM_PUNGAMAIL_CONFIG_SIGNUP_IP_LIMIT_DESC" />

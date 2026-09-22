@@ -52,10 +52,11 @@ final class HtmlView extends BaseHtmlView
 		UnsavedChangesHelper::load();
 		$model = $this->getModel();
 		$this->item = $model->getItem();
-		$this->canEdit = $this->item === null ? Permissions::can('core.create') : Permissions::can('core.edit');
+		$itemId = (int) ($this->item->id ?? 0);
+		$this->canEdit = $itemId > 0 ? Permissions::can('core.edit') : Permissions::can('core.create');
 		$this->canSend = Permissions::can(Permissions::SEND_NEWSLETTERS);
 
-		if ($this->item === null && !$this->canEdit)
+		if ($itemId === 0 && !$this->canEdit)
 		{
 			throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
@@ -73,7 +74,7 @@ final class HtmlView extends BaseHtmlView
 		$this->statistics = $model->getStatistics();
 		$this->contentCutoffStart = $model->getContentCutoffStart();
 
-		if ($this->item !== null && !empty($this->item->snapshot_html))
+		if ($itemId > 0 && !empty($this->item->snapshot_html))
 		{
 			$identity = Factory::getApplication()->getIdentity();
 			$this->snapshotPreview = ServiceFactory::renderer()->personalize(
@@ -84,9 +85,9 @@ final class HtmlView extends BaseHtmlView
 				(int) $identity->id
 			);
 		}
-		ToolbarHelper::title($this->item ? Text::_('COM_PUNGAMAIL_EDIT_NEWSLETTER') : Text::_('COM_PUNGAMAIL_NEW_NEWSLETTER'), 'envelope');
+		ToolbarHelper::title($itemId > 0 ? Text::_('COM_PUNGAMAIL_EDIT_NEWSLETTER') : Text::_('COM_PUNGAMAIL_NEW_NEWSLETTER'), 'envelope');
 
-		$isDraft = $this->item === null || in_array((int) $this->item->status, [
+		$isDraft = $itemId === 0 || in_array((int) $this->item->status, [
 			\Punga\Component\PungaMail\Administrator\Service\NewsletterRepository::STATUS_DRAFT,
 			\Punga\Component\PungaMail\Administrator\Service\NewsletterRepository::STATUS_SCHEDULED,
 		], true);
@@ -97,7 +98,7 @@ final class HtmlView extends BaseHtmlView
 			ToolbarHelper::save('newsletter.save2close');
 			ToolbarHelper::cancel('newsletter.cancel');
 
-			if ($this->item !== null && Permissions::can('core.create'))
+			if ($itemId > 0 && Permissions::can('core.create'))
 			{
 				ToolbarHelper::custom('newsletter.duplicate', 'copy', '', Text::_('COM_PUNGAMAIL_DUPLICATE_AS_DRAFT'), false);
 			}
@@ -114,7 +115,7 @@ final class HtmlView extends BaseHtmlView
 				'#toolbar-eye { margin-inline-start: auto; }'
 			);
 		}
-		elseif ($this->item !== null && Permissions::can('core.create'))
+		elseif ($itemId > 0 && Permissions::can('core.create'))
 		{
 			ToolbarHelper::custom('newsletter.duplicate', 'copy', '', Text::_('COM_PUNGAMAIL_DUPLICATE_AS_DRAFT'), false);
 		}

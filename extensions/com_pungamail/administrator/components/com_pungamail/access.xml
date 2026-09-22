@@ -13,6 +13,7 @@
 		<action name="pungamail.audience.manage" title="COM_PUNGAMAIL_PERMISSION_AUDIENCE" description="COM_PUNGAMAIL_PERMISSION_AUDIENCE_DESC" />
 		<action name="pungamail.design.manage" title="COM_PUNGAMAIL_PERMISSION_DESIGN" description="COM_PUNGAMAIL_PERMISSION_DESIGN_DESC" />
 		<action name="pungamail.delivery.manage" title="COM_PUNGAMAIL_PERMISSION_DELIVERY" description="COM_PUNGAMAIL_PERMISSION_DELIVERY_DESC" />
+		<action name="pungamail.statistics.view" title="COM_PUNGAMAIL_PERMISSION_STATISTICS" description="COM_PUNGAMAIL_PERMISSION_STATISTICS_DESC" />
 		<action name="pungamail.tools.manage" title="COM_PUNGAMAIL_PERMISSION_TOOLS" description="COM_PUNGAMAIL_PERMISSION_TOOLS_DESC" />
 	</section>
 </access>

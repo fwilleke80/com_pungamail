@@ -125,7 +125,13 @@ Leave a style field blank to inherit from the template or Component Options. Ove
 
 The **Layout** tab is inherited from the selected Template, which in turn inherits Component Options. Override only the individual settings needed for this Newsletter. The Page, Browser link bar, Header, Content and Footer regions have their own controls; Header/Footer background images use Joomla Media Manager and retain a solid colour fallback. The Header background image can independently cover, contain, tile horizontally/vertically, tile in both directions, or remain at original size. Custom CSS remains the final optional enhancement layer because mail clients vary.
 
-## 7. Select recipients
+## 7. Configure campaign tracking, if wanted
+
+The Newsletter inherits campaign defaults from **Punga Mail → Options → Campaign tracking**. Keep **Tracked links** on **Inherit** to use those defaults, or choose **Disabled**, **Internal links only**, or **All links** for this Newsletter. You can override `utm_source`, `utm_medium`, `utm_campaign`, `utm_id`, and `utm_content` independently; leave an individual UTM field empty to inherit it.
+
+When internal tracking is active, Punga Mail adds the ordinary UTM parameters plus a signed `pm_track` token. The System - Punga Mail Campaign Tracking plugin validates that token and the UTM values before dispatching `onPungaMailCampaignVisit`, which optional analytics extensions such as Punga Analytics can record. External links can receive UTM parameters under **All links**, but never the trusted internal token. Tracking URLs contain no subscriber ID or email address.
+
+## 8. Select recipients
 
 In **Recipients**:
 
@@ -137,7 +143,7 @@ Global unsubscribes, suppression, invalid addresses, and bounce rules always win
 
 Select **Save**.
 
-## 8. Preview the output
+## 9. Preview the output
 
 Select **Preview**.
 
@@ -155,7 +161,7 @@ Preview uses the current administrator as its example recipient. Both **Unsubscr
 
 Return to the editor and correct anything unexpected.
 
-## 9. Send a test message
+## 10. Send a test message
 
 Select **Send test mail** in the editor and provide the test recipient if prompted.
 
@@ -163,7 +169,7 @@ Open the result in at least one real mail client. Check narrow/mobile display, i
 
 A successful test means Joomla's transport accepted the message; it does not guarantee that every provider will place the final mailing in an inbox.
 
-## 10. Run Preflight
+## 11. Run Preflight
 
 Select **Check recipients & send**.
 
@@ -186,13 +192,13 @@ Pay particular attention to:
 - **Duplicate eliminated**: the same address came from more than one source but will receive only one copy;
 - **Content access**: a selected item cannot be viewed on the site by every recipient. This blocks sending to prevent disclosure.
 
-## 11A. Send now
+## 12A. Send now
 
 Select **Queue emails** and confirm the displayed unique-recipient count.
 
 Punga Mail freezes the final message and audience, then adds recipient rows to the queue. The queue task sends them in configured batches.
 
-## 11B. Schedule delivery
+## 12B. Schedule delivery
 
 You can schedule directly from the Newsletter editor without opening Preflight first:
 
@@ -204,7 +210,7 @@ Punga Mail runs the same blocking sendability checks used by Preflight before ac
 
 Use **Cancel schedule** in the sidebar to return it to Draft before queueing begins.
 
-## 12. Monitor delivery
+## 13. Monitor delivery
 
 Open the newsletter from the Newsletters list.
 
@@ -235,3 +241,13 @@ Before confirming a real queue:
 - send-now or scheduled time is intentional.
 
 For field-by-field reference, see [Punga Mail Administrator Guide](USER_GUIDE.md).
+
+## Inspect campaign results after sending
+
+If campaign tracking was enabled when the Newsletter was frozen, internal links contain a signed Punga Mail tracking token alongside the configured UTM values. After recipients begin clicking, open **Components → Punga Mail → Statistics**, or open the immutable sent Newsletter and choose **View report**.
+
+The report separates trusted likely-human clicks from likely mail-security scanners, ranks tracked links, shows click activity over time, and overlays click-count badges on the frozen sent Newsletter. It intentionally does not report opens or unique people because Punga Mail uses no tracking pixel and puts no recipient identity into tracked URLs.
+
+External links can carry UTM parameters when the tracking scope is **All links**, but Punga Mail cannot see the destination request. Use analytics on that destination to evaluate those external visits.
+
+If you use Punga Analytics, define custom event `mail.click` with source component `com_pungamail`; enable Record plus summary, trend, time and ranking presentation as desired.

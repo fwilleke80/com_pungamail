@@ -26,6 +26,7 @@ final class Permissions
 	public const MANAGE_AUDIENCE = 'pungamail.audience.manage';
 	public const MANAGE_DESIGN = 'pungamail.design.manage';
 	public const MANAGE_DELIVERY = 'pungamail.delivery.manage';
+	public const VIEW_STATISTICS = 'pungamail.statistics.view';
 	public const MANAGE_TOOLS = 'pungamail.tools.manage';
 
 	/**
@@ -120,10 +121,11 @@ final class Permissions
 
 		return match ($view)
 		{
-			'digests', 'digest' => self::MANAGE_AUTOMATIC,
+			'digests', 'digest', 'digestpreview' => self::MANAGE_AUTOMATIC,
 			'audience', 'subscribers', 'subscriber', 'topics', 'topic' => self::MANAGE_AUDIENCE,
 			'design', 'templates', 'template', 'templatepreview', 'contentlayouts', 'contentlayout' => self::MANAGE_DESIGN,
 			'delivery' => self::MANAGE_DELIVERY,
+			'statistics' => self::VIEW_STATISTICS,
 			'tools', 'import' => self::MANAGE_TOOLS,
 			'preflight' => self::SEND_NEWSLETTERS,
 			default => 'core.manage',
@@ -147,6 +149,7 @@ final class Permissions
 			'audience' => self::can(self::MANAGE_AUDIENCE),
 			'design' => self::can(self::MANAGE_DESIGN),
 			'delivery' => self::can(self::MANAGE_DELIVERY),
+			'statistics' => self::can(self::VIEW_STATISTICS),
 			'tools' => self::can(self::MANAGE_TOOLS),
 		];
 		$blockedViews = array_keys(array_filter($allowedViews, static fn (bool $allowed): bool => !$allowed));

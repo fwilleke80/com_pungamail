@@ -57,10 +57,11 @@ final class HtmlView extends BaseHtmlView
 		ToolbarHelper::apply('digest.save');
 		ToolbarHelper::save('digest.save2close');
 		ToolbarHelper::cancel('digest.cancel');
+		ToolbarHelper::custom('digest.preview', 'eye', '', Text::_('COM_PUNGAMAIL_PREVIEW'), false);
 		ToolbarHelper::custom('digest.sendTest', 'mail', '', Text::_('COM_PUNGAMAIL_SEND_TEST_AUTOMATIC'), false);
 
 		Factory::getApplication()->getDocument()->getWebAssetManager()->addInlineStyle(
-			'#toolbar-mail { margin-inline-start: auto; }'
+			'#toolbar-eye { margin-inline-start: auto; }'
 		);
 
 		parent::display($tpl);

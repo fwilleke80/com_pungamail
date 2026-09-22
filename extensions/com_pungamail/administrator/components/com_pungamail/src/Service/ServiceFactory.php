@@ -114,10 +114,16 @@ final class ServiceFactory
 		return new SiteDateService();
 	}
 
+	/** @return CampaignTrackingService */
+	public static function campaignTracking(): CampaignTrackingService
+	{
+		return new CampaignTrackingService(self::tokens());
+	}
+
 	/** @return NewsletterRenderer */
 	public static function renderer(): NewsletterRenderer
 	{
-		return new NewsletterRenderer(new MarkdownRenderer(), self::contentTypes(), self::styles(), self::templates(), new MailTextService(), self::mailConfiguration(), self::contentLayouts(), self::userFields(), self::siteDate());
+		return new NewsletterRenderer(new MarkdownRenderer(), self::contentTypes(), self::styles(), self::templates(), new MailTextService(), self::mailConfiguration(), self::contentLayouts(), self::userFields(), self::siteDate(), self::campaignTracking());
 	}
 
 	/** @return RecipientResolver */
@@ -171,7 +177,7 @@ final class ServiceFactory
 	/** @return StatisticsService */
 	public static function statistics(): StatisticsService
 	{
-		return new StatisticsService(self::database());
+		return new StatisticsService(self::database(), self::tokens());
 	}
 
 	/** @return CsvService */

@@ -14,6 +14,7 @@ $direction = (string) $this->state->get('list.direction');
 $siteTimezone = (string) Factory::getApplication()->get('offset', 'UTC');
 $canChangeState = Factory::getApplication()->getIdentity()->authorise('core.edit.state', 'com_pungamail');
 ?>
+<?php echo LayoutHelper::render('pungamail.section_navigation', ['section' => 'newsletters', 'active' => 'digests']); ?>
 <form action="<?php echo Route::_(AdministratorRoute::digests()); ?>" method="post" name="adminForm" id="adminForm">
 	<?php echo LayoutHelper::render('joomla.searchtools.default', ['view' => $this]); ?>
 	<div class="table-responsive">

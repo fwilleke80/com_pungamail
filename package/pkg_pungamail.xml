@@ -2,8 +2,8 @@
 <extension type="package" method="upgrade">
 	<name>Punga Mail</name>
 	<packagename>pungamail</packagename>
-	<version>0.6.26</version>
-	<creationDate>2026-09-11</creationDate>
+	<version>0.6.29</version>
+	<creationDate>2026-09-22</creationDate>
 	<author>Punga</author>
 	<license>MIT License; see LICENSE.md</license>
 	<description>Punga Mail newsletter package for Joomla! 6.</description>
@@ -14,5 +14,6 @@
 		<file type="module" id="mod_pungamail_signup" client="site">mod_pungamail_signup.zip</file>
 		<file type="plugin" id="pungamail" group="user">plg_user_pungamail.zip</file>
 		<file type="plugin" id="pungamail" group="task">plg_task_pungamail.zip</file>
+		<file type="plugin" id="pungamailcampaign" group="system">plg_system_pungamailcampaign.zip</file>
 	</files>
 </extension>
