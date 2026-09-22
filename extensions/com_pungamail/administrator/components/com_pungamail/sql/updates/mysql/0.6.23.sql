@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.23 fixes newsletter-facing date formatting to use the Joomla site language/timezone consistently; no database schema change is required.

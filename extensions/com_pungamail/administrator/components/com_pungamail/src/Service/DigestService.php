@@ -17,13 +17,16 @@ use Joomla\CMS\Uri\Uri;
 final class DigestService
 {
 	/**
-	 * @param DigestRepository     $digests      Digest repository.
-	 * @param NewsletterRepository $newsletters  Newsletter repository.
-	 * @param TemplateRepository   $templates    Template repository.
-	 * @param ContentTypeService   $contentTypes Registered content source.
-	 * @param RecipientResolver    $recipients   Recipient resolver.
-	 * @param QueueService         $queue        Queue creator.
-	 * @param MailService          $mail         Administrator notification sender.
+	 * @param DigestRepository         $digests           Digest repository.
+	 * @param NewsletterRepository     $newsletters       Newsletter repository.
+	 * @param TemplateRepository       $templates         Template repository.
+	 * @param ContentTypeService       $contentTypes      Registered content source.
+	 * @param RecipientResolver        $recipients        Recipient resolver.
+	 * @param QueueService             $queue             Queue creator.
+	 * @param MailService              $mail              Mail sender.
+	 * @param NewsletterRenderer       $renderer          Newsletter renderer.
+	 * @param MailConfigurationService $mailConfiguration Mail metadata resolver.
+	 * @param SiteDateService          $siteDate          Site-local date formatter.
 	 */
 	public function __construct(
 		private readonly DigestRepository $digests,
@@ -32,7 +35,10 @@ final class DigestService
 		private readonly ContentTypeService $contentTypes,
 		private readonly RecipientResolver $recipients,
 		private readonly QueueService $queue,
-		private readonly MailService $mail
+		private readonly MailService $mail,
+		private readonly NewsletterRenderer $renderer,
+		private readonly MailConfigurationService $mailConfiguration,
+		private readonly SiteDateService $siteDate
 	)
 	{
 	}
@@ -56,8 +62,6 @@ final class DigestService
 
 			try
 			{
-				// Re-check due state after locking because another worker may have
-				// completed this digest between discovery and lock acquisition.
 				$current = $this->digests->find($digestId);
 
 				if ($current === null
@@ -90,48 +94,120 @@ final class DigestService
 		return $result;
 	}
 
-	/** @return string Result counter key. */
-	private function generate(object $digest, int $runId): string
+	/**
+	 * Sends a simulation of the next Automatic Newsletter to one administrator.
+	 * No digest history, newsletter row, queue row, cutoff, or schedule state is changed.
+	 *
+	 * @return array{status:string,item_count:int,available_count:int,minimum_items:int,blocked_count:int,cutoff:string}
+	 */
+	public function sendTest(int $digestId, string $email, string $recipientName, ?int $userId = null): array
 	{
-		$template = $this->templates->find((int) $digest->template_id);
-
-		if ($template === null || (int) $template->state !== 1)
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
 		{
-			throw new \RuntimeException('The configured digest template is unavailable.');
+			throw new \InvalidArgumentException('A valid test recipient email address is required.');
+		}
+
+		$digest = $this->digests->find($digestId);
+
+		if ($digest === null)
+		{
+			throw new \RuntimeException('The Automatic Newsletter could not be found.');
+		}
+
+		$now = new Date('now', 'UTC');
+		$prepared = $this->prepare($digest, $now);
+		$contentSelection = $prepared['content_selection'];
+		$items = $contentSelection['items'];
+		$result = [
+			'status' => 'sent',
+			'item_count' => count($items),
+			'available_count' => $contentSelection['available_count'],
+			'minimum_items' => $contentSelection['minimum_items'],
+			'blocked_count' => $prepared['blocked_count'],
+			'cutoff' => $prepared['cutoff'],
+		];
+
+		if ($contentSelection['below_minimum'])
+		{
+			$result['status'] = 'below_minimum';
+
+			return $result;
+		}
+
+		if ($items === [] && (string) $digest->empty_action === 'skip')
+		{
+			$result['status'] = 'no_content';
+
+			return $result;
+		}
+
+		$message = $this->message($digest, $prepared['template'], $now);
+		$newsletter = $this->transientNewsletter($prepared['template'], $message['subject'], $message['body_markdown']);
+		$rendered = $this->renderer->render($newsletter, $this->selectionObjects($items));
+		$personalized = $this->renderer->personalize($rendered['subject'], $rendered['html'], $rendered['text'], $recipientName, $userId);
+		$replyTo = $this->mailConfiguration->replyTo($prepared['template'], $newsletter);
+		$this->mail->sendTest($email, $personalized['subject'], $personalized['html'], $personalized['text'], $replyTo['email'], $replyTo['name']);
+
+		return $result;
+	}
+
+	/**
+	 * Previews one content source using the current unsaved Automatic Newsletter settings.
+	 *
+	 * @param array<string,array<int,array<string,mixed>>> $filters Current source filters.
+	 * @param array<int,int|string> $topicIds Current topic audience.
+	 * @param array<int,int|string> $groupIds Current Joomla-group audience.
+	 *
+	 * @return array{count:int,blocked_count:int,cutoff:string,items:array<int,array{title:string,published:string}>}
+	 */
+	public function previewSource(object $digest, string $sourceKey, array $filters, array $topicIds, array $groupIds): array
+	{
+		$sourceKey = trim($sourceKey);
+
+		if ($sourceKey === '' || !isset($this->contentTypes->getTypes()[$sourceKey]))
+		{
+			throw new \InvalidArgumentException('A valid content source is required.');
 		}
 
 		$now = new Date('now', 'UTC');
 		$cutoff = $this->cutoff($digest, $now);
-		$sourceKeys = $this->digests->getSourceKeys((int) $digest->id);
-		$items = $this->contentTypes->getItems($sourceKeys, $cutoff, 1000);
-		$categories = $this->digests->getCategories((int) $digest->id);
-
-		if ($categories !== [])
-		{
-			$items = array_values(array_filter($items, static function (object $item) use ($categories): bool
-			{
-				$allowed = $categories[(string) $item->source_key] ?? [];
-
-				return $allowed === [] || in_array((int) ($item->catid ?? 0), $allowed, true);
-			}));
-		}
-
-		$topicIds = $this->digests->getTopicIds((int) $digest->id);
-		$groupIds = $this->digests->getGroupIds((int) $digest->id);
-		$audience = (object) ['include_subscribers' => (int) $digest->include_subscribers];
-		$recipientReport = $this->recipients->resolveWithReport($audience, $groupIds, $topicIds, false);
+		$items = $this->contentTypes->getItems([$sourceKey], $cutoff, 1000);
+		$items = DigestContentFilter::apply($items, DigestContentFilter::normalize($filters));
+		$audience = (object) ['include_subscribers' => (int) ($digest->include_subscribers ?? 0)];
+		$recipientReport = $this->recipients->resolveWithReport(
+			$audience,
+			array_values(array_unique(array_filter(array_map('intval', $groupIds)))),
+			array_values(array_unique(array_filter(array_map('intval', $topicIds)))),
+			false
+		);
 		$access = $this->contentTypes->filterForRecipients($items, $recipientReport['recipients']);
 		$items = $access['items'];
-		$blockedCount = count($access['violations']);
-		$contentSelection = DigestContentSelection::apply(
-			$items,
-			(string) ($digest->content_order ?? 'newest'),
-			(int) ($digest->max_items ?? 0),
-			(int) ($digest->minimum_items ?? 0)
-		);
+
+		usort($items, static fn (object $a, object $b): int => strcmp((string) $b->published, (string) $a->published));
+
+		return [
+			'count' => count($items),
+			'blocked_count' => count($access['violations']),
+			'cutoff' => $cutoff,
+			'items' => array_map(fn (object $item): array => [
+				'title' => (string) ($item->title ?? ''),
+				'published' => trim((string) ($item->published ?? '')) !== ''
+					? $this->siteDate->formatDateTime(new Date((string) $item->published, 'UTC'))
+					: '',
+			], array_slice($items, 0, 20)),
+		];
+	}
+
+	/** @return string Result counter key. */
+	private function generate(object $digest, int $runId): string
+	{
+		$now = new Date('now', 'UTC');
+		$prepared = $this->prepare($digest, $now);
+		$contentSelection = $prepared['content_selection'];
 		$items = $contentSelection['items'];
 		$availableCount = $contentSelection['available_count'];
 		$minimumItems = $contentSelection['minimum_items'];
+		$blockedCount = $prepared['blocked_count'];
 
 		if ($contentSelection['below_minimum'])
 		{
@@ -156,47 +232,30 @@ final class DigestService
 		}
 
 		$forceDraftForEmptyDigest = $items === [] && (string) $digest->empty_action === 'create_draft';
-
-		$selections = [];
-
-		foreach ($items as $index => $item)
-		{
-			$selections[] = [
-				'source_key' => (string) $item->source_key,
-				'source_item_id' => (string) $item->id,
-				'title_override' => '',
-				'excerpt_override' => '',
-				'ordering' => $index,
-			];
-		}
-
-		$siteName = (string) Factory::getApplication()->get('sitename');
-		$date = $now->format('Y-m-d', true);
-		$subjectPattern = trim((string) $digest->subject_pattern) ?: (string) $template->subject;
-		$subject = strtr($subjectPattern, ['{date}' => $date, '{site_name}' => $siteName]);
-		$internalTitle = (string) $digest->title . ' — ' . $date;
+		$messageData = $this->message($digest, $prepared['template'], $now);
+		$internalTitle = (string) $digest->title . ' — ' . $messageData['date'];
 		$newsletterId = $this->newsletters->saveDraft(
 			0,
 			$internalTitle,
-			$subject,
-			(string) $template->body_markdown,
+			$messageData['subject'],
+			$messageData['body_markdown'],
 			(int) $digest->include_subscribers === 1,
-			$cutoff,
-			$selections,
-			$groupIds,
+			$prepared['cutoff'],
+			$this->selectionArrays($items),
+			$prepared['group_ids'],
 			(int) $digest->created_by,
-			$sourceKeys,
-			(int) $template->id,
-			$template->style_overrides !== null ? (string) $template->style_overrides : null,
-			(string) ($template->custom_css ?? ''),
+			$prepared['source_keys'],
+			(int) $prepared['template']->id,
+			$prepared['template']->style_overrides !== null ? (string) $prepared['template']->style_overrides : null,
+			(string) ($prepared['template']->custom_css ?? ''),
 			[
-				'topic_ids' => $topicIds,
-				'heading_mode' => (string) ($template->heading_mode ?? 'inherit'),
-				'mail_heading' => (string) ($template->mail_heading ?? ''),
-				'browser_view' => (int) ($template->browser_view ?? -1),
-				'reply_to_mode' => (string) ($template->reply_to_mode ?? 'inherit'),
-				'reply_to_email' => (string) ($template->reply_to_email ?? ''),
-				'reply_to_name' => (string) ($template->reply_to_name ?? ''),
+				'topic_ids' => $prepared['topic_ids'],
+				'heading_mode' => (string) ($prepared['template']->heading_mode ?? 'inherit'),
+				'mail_heading' => (string) ($prepared['template']->mail_heading ?? ''),
+				'browser_view' => (int) ($prepared['template']->browser_view ?? -1),
+				'reply_to_mode' => (string) ($prepared['template']->reply_to_mode ?? 'inherit'),
+				'reply_to_email' => (string) ($prepared['template']->reply_to_email ?? ''),
+				'reply_to_name' => (string) ($prepared['template']->reply_to_name ?? ''),
 			]
 		);
 
@@ -221,6 +280,117 @@ final class DigestService
 		$this->digests->finishRun((int) $digest->id, $runId, 'draft', $newsletterId, count($items), $message, true);
 
 		return 'drafts';
+	}
+
+	/**
+	 * Builds the exact candidate set shared by real and test Automatic Newsletter runs.
+	 *
+	 * @return array{template:object,cutoff:string,source_keys:array<int,string>,topic_ids:array<int,int>,group_ids:array<int,int>,blocked_count:int,content_selection:array{items:array<int,object>,available_count:int,minimum_items:int,below_minimum:bool}}
+	 */
+	private function prepare(object $digest, Date $now): array
+	{
+		$template = $this->templates->find((int) $digest->template_id);
+
+		if ($template === null || (int) $template->state !== 1)
+		{
+			throw new \RuntimeException('The configured digest template is unavailable.');
+		}
+
+		$cutoff = $this->cutoff($digest, $now);
+		$sourceKeys = $this->digests->getSourceKeys((int) $digest->id);
+		$items = $this->contentTypes->getItems($sourceKeys, $cutoff, 1000);
+		$categories = $this->digests->getCategories((int) $digest->id);
+
+		if ($categories !== [])
+		{
+			$items = array_values(array_filter($items, static function (object $item) use ($categories): bool
+			{
+				$allowed = $categories[(string) $item->source_key] ?? [];
+
+				return $allowed === [] || in_array((int) ($item->catid ?? 0), $allowed, true);
+			}));
+		}
+
+		$items = DigestContentFilter::apply($items, $this->digests->getFilters((int) $digest->id));
+
+		$topicIds = $this->digests->getTopicIds((int) $digest->id);
+		$groupIds = $this->digests->getGroupIds((int) $digest->id);
+		$audience = (object) ['include_subscribers' => (int) $digest->include_subscribers];
+		$recipientReport = $this->recipients->resolveWithReport($audience, $groupIds, $topicIds, false);
+		$access = $this->contentTypes->filterForRecipients($items, $recipientReport['recipients']);
+		$contentSelection = DigestContentSelection::apply(
+			$access['items'],
+			(string) ($digest->content_order ?? 'newest'),
+			(int) ($digest->max_items ?? 0),
+			(int) ($digest->minimum_items ?? 0)
+		);
+
+		return [
+			'template' => $template,
+			'cutoff' => $cutoff,
+			'source_keys' => $sourceKeys,
+			'topic_ids' => $topicIds,
+			'group_ids' => $groupIds,
+			'blocked_count' => count($access['violations']),
+			'content_selection' => $contentSelection,
+		];
+	}
+
+	/** @return array{subject:string,body_markdown:string,date:string} */
+	private function message(object $digest, object $template, Date $now): array
+	{
+		$siteName = (string) Factory::getApplication()->get('sitename');
+		$date = $this->siteDate->format($now);
+		$subjectPattern = trim((string) $digest->subject_pattern) ?: (string) $template->subject;
+
+		return [
+			'subject' => strtr($subjectPattern, ['{date}' => $date, '{site_name}' => $siteName]),
+			'body_markdown' => str_replace(NewsletterRenderer::DATE_PLACEHOLDER, $date, (string) $template->body_markdown),
+			'date' => $date,
+		];
+	}
+
+	/** @param array<int,object> $items @return array<int,array<string,mixed>> */
+	private function selectionArrays(array $items): array
+	{
+		$selections = [];
+
+		foreach ($items as $index => $item)
+		{
+			$selections[] = [
+				'source_key' => (string) $item->source_key,
+				'source_item_id' => (string) $item->id,
+				'title_override' => '',
+				'excerpt_override' => '',
+				'ordering' => $index,
+			];
+		}
+
+		return $selections;
+	}
+
+	/** @param array<int,object> $items @return array<int,object> */
+	private function selectionObjects(array $items): array
+	{
+		return array_map(static fn (array $selection): object => (object) $selection, $this->selectionArrays($items));
+	}
+
+	/** @return object */
+	private function transientNewsletter(object $template, string $subject, string $bodyMarkdown): object
+	{
+		return (object) [
+			'subject' => $subject,
+			'body_markdown' => $bodyMarkdown,
+			'template_id' => (int) $template->id,
+			'style_overrides' => $template->style_overrides !== null ? (string) $template->style_overrides : null,
+			'custom_css' => (string) ($template->custom_css ?? ''),
+			'heading_mode' => (string) ($template->heading_mode ?? 'inherit'),
+			'mail_heading' => (string) ($template->mail_heading ?? ''),
+			'browser_view' => (int) ($template->browser_view ?? -1),
+			'reply_to_mode' => (string) ($template->reply_to_mode ?? 'inherit'),
+			'reply_to_email' => (string) ($template->reply_to_email ?? ''),
+			'reply_to_name' => (string) ($template->reply_to_name ?? ''),
+		];
 	}
 
 	/** @return string */
@@ -253,6 +423,7 @@ final class DigestService
 			DigestSchedule::normalizeUnit((string) ($digest->recurrence_unit ?? DigestSchedule::UNIT_WEEKS))
 		);
 	}
+
 	/**
 	 * Sends the optional draft-review notification without turning a successful
 	 * automatic draft creation into a failed run when mail delivery fails.
@@ -295,5 +466,4 @@ final class DigestService
 
 		return '';
 	}
-
 }

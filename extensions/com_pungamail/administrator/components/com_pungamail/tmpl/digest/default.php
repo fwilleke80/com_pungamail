@@ -95,15 +95,26 @@ $newsletterStatus = static function (?int $status): string
 				<div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_DIGEST_CONTENT'); ?></strong></div>
 				<div class="card-body">
 					<div class="form-text mb-3"><?php echo Text::_('COM_PUNGAMAIL_DIGEST_ACCESS_HELP'); ?></div>
+					<div class="small text-muted mb-3"><?php echo Text::_('COM_PUNGAMAIL_DIGEST_FILTERS_HELP'); ?></div>
 					<?php foreach ($this->contentTypes as $key => $type) : ?>
-						<?php $selected = in_array((string) $key, $this->sourceKeys, true); $cats = implode(',', $this->categories[(string) $key] ?? []); ?>
-						<div class="border rounded p-2 mb-2">
-							<div class="form-check">
-								<input class="form-check-input" type="checkbox" name="source_keys[]" value="<?php echo htmlspecialchars((string) $key, ENT_QUOTES, 'UTF-8'); ?>" id="digest-source-<?php echo md5((string) $key); ?>" <?php echo $selected ? 'checked' : ''; ?>>
-								<label class="form-check-label fw-semibold" for="digest-source-<?php echo md5((string) $key); ?>"><?php echo htmlspecialchars((string) $type->label, ENT_QUOTES, 'UTF-8'); ?></label>
+						<?php $selected = in_array((string) $key, $this->sourceKeys, true); $sourceId = md5((string) $key); ?>
+						<div class="border rounded p-3 mb-3 pm-digest-source-card" data-source-key="<?php echo htmlspecialchars((string) $key, ENT_QUOTES, 'UTF-8'); ?>">
+							<div class="d-flex justify-content-between align-items-center gap-3">
+								<div class="form-check m-0">
+									<input class="form-check-input pm-digest-source-toggle" type="checkbox" name="source_keys[]" value="<?php echo htmlspecialchars((string) $key, ENT_QUOTES, 'UTF-8'); ?>" id="digest-source-<?php echo $sourceId; ?>" <?php echo $selected ? 'checked' : ''; ?>>
+									<label class="form-check-label fw-semibold" for="digest-source-<?php echo $sourceId; ?>"><?php echo htmlspecialchars((string) $type->label, ENT_QUOTES, 'UTF-8'); ?></label>
+								</div>
+								<span class="small text-muted"><?php echo Text::_('COM_PUNGAMAIL_DIGEST_SOURCE_FILTER_SUMMARY'); ?></span>
 							</div>
-							<label class="form-label small mt-2" for="digest-categories-<?php echo md5((string) $key); ?>"><?php echo Text::_('COM_PUNGAMAIL_CATEGORY_IDS'); ?></label>
-							<input class="form-control form-control-sm" id="digest-categories-<?php echo md5((string) $key); ?>" name="source_categories[<?php echo htmlspecialchars((string) $key, ENT_QUOTES, 'UTF-8'); ?>]" value="<?php echo htmlspecialchars($cats, ENT_QUOTES, 'UTF-8'); ?>" placeholder="1, 4, 12">
+							<div class="pm-digest-source-config mt-3" <?php echo $selected ? '' : 'hidden'; ?>>
+								<div class="small fw-semibold mb-2"><?php echo Text::_('COM_PUNGAMAIL_FILTERS'); ?></div>
+								<div class="pm-digest-filter-list"></div>
+								<div class="d-flex flex-wrap gap-2 mt-2">
+									<button class="btn btn-sm btn-outline-secondary pm-add-filter" type="button"><?php echo Text::_('COM_PUNGAMAIL_ADD_FILTER'); ?></button>
+									<button class="btn btn-sm btn-outline-primary pm-preview-source" type="button"><?php echo Text::_('COM_PUNGAMAIL_PREVIEW_MATCHING_CONTENT'); ?></button>
+								</div>
+								<div class="pm-source-preview mt-2" aria-live="polite"></div>
+							</div>
 						</div>
 					<?php endforeach; ?>
 
@@ -158,6 +169,7 @@ $newsletterStatus = static function (?int $status): string
 							<option value="since_last" <?php echo (string) ($item->cutoff_mode ?? 'since_last') === 'since_last' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_CUTOFF_SINCE_LAST'); ?></option>
 							<option value="rolling" <?php echo (string) ($item->cutoff_mode ?? '') === 'rolling' ? 'selected' : ''; ?>><?php echo Text::_('COM_PUNGAMAIL_CUTOFF_ROLLING'); ?></option>
 						</select>
+						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_CUTOFF_SINCE_LAST_HELP'); ?></div>
 					</div>
 					<div class="mb-3" id="pm-digest-rolling-period" <?php echo (string) ($item->cutoff_mode ?? 'since_last') === 'rolling' ? '' : 'hidden'; ?>>
 						<label class="form-label" for="digest-days"><?php echo Text::_('COM_PUNGAMAIL_ROLLING_DAYS'); ?></label>
@@ -292,8 +304,135 @@ $newsletterStatus = static function (?int $status): string
 	<?php echo HTMLHelper::_('form.token'); ?>
 </form>
 <script>
+const pmDigestFilterFields = <?php echo json_encode($this->filterFields, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+const pmDigestFilters = <?php echo json_encode($this->filters, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+const pmDigestFilterText = <?php echo json_encode([
+	'field' => Text::_('COM_PUNGAMAIL_FILTER_FIELD'),
+	'operator' => Text::_('COM_PUNGAMAIL_FILTER_OPERATOR'),
+	'value' => Text::_('COM_PUNGAMAIL_FILTER_VALUE'),
+	'remove' => Text::_('JACTION_DELETE'),
+	'none' => Text::_('COM_PUNGAMAIL_NO_FILTERS'),
+	'loading' => Text::_('COM_PUNGAMAIL_PREVIEW_LOADING'),
+	'previewCount' => Text::_('COM_PUNGAMAIL_PREVIEW_MATCH_COUNT'),
+	'previewBlocked' => Text::_('COM_PUNGAMAIL_PREVIEW_BLOCKED_COUNT'),
+	'previewMore' => Text::_('COM_PUNGAMAIL_PREVIEW_MORE_ITEMS'),
+	'previewError' => Text::_('COM_PUNGAMAIL_PREVIEW_ERROR'),
+	'operators' => [
+		'eq' => Text::_('COM_PUNGAMAIL_FILTER_EQ'), 'neq' => Text::_('COM_PUNGAMAIL_FILTER_NEQ'),
+		'in' => Text::_('COM_PUNGAMAIL_FILTER_IN'), 'not_in' => Text::_('COM_PUNGAMAIL_FILTER_NOT_IN'),
+		'contains' => Text::_('COM_PUNGAMAIL_FILTER_CONTAINS'), 'not_contains' => Text::_('COM_PUNGAMAIL_FILTER_NOT_CONTAINS'),
+		'gt' => Text::_('COM_PUNGAMAIL_FILTER_GT'), 'gte' => Text::_('COM_PUNGAMAIL_FILTER_GTE'),
+		'lt' => Text::_('COM_PUNGAMAIL_FILTER_LT'), 'lte' => Text::_('COM_PUNGAMAIL_FILTER_LTE'),
+		'is_empty' => Text::_('COM_PUNGAMAIL_FILTER_IS_EMPTY'), 'not_empty' => Text::_('COM_PUNGAMAIL_FILTER_NOT_EMPTY'),
+	],
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 document.addEventListener('DOMContentLoaded', function ()
 {
+	const form = document.getElementById('adminForm');
+	const filterIndexes = {};
+	const operatorSet = function (field)
+	{
+		if (field && field.kind === 'boolean') return ['eq', 'neq'];
+		if (field && Array.isArray(field.options) && field.options.length) return ['in', 'not_in', 'eq', 'neq', 'is_empty', 'not_empty'];
+		if (field && (field.kind === 'number' || field.kind === 'date')) return ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'is_empty', 'not_empty'];
+		return ['eq', 'neq', 'contains', 'not_contains', 'in', 'not_in', 'is_empty', 'not_empty'];
+	};
+	const fieldByName = function (sourceKey, name)
+	{
+		return (pmDigestFilterFields[sourceKey] || []).find(function (field) { return field.name === name; }) || null;
+	};
+	const makeOption = function (value, label, selected)
+	{
+		const option = document.createElement('option');
+		option.value = value;
+		option.textContent = label;
+		option.selected = selected;
+		return option;
+	};
+	const renderValue = function (holder, sourceKey, index, field, operator, value)
+	{
+		holder.textContent = '';
+		if (operator === 'is_empty' || operator === 'not_empty') return;
+		const values = Array.isArray(value) ? value.map(String) : String(value == null ? '' : value).split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);
+		if (field && Array.isArray(field.options) && field.options.length)
+		{
+			const select = document.createElement('select');
+			select.className = 'form-select form-select-sm';
+			select.name = 'filters[' + sourceKey + '][' + index + '][value][]';
+			select.multiple = operator === 'in' || operator === 'not_in';
+			field.options.forEach(function (option) { select.appendChild(makeOption(String(option.value), option.label, values.includes(String(option.value)))); });
+			holder.appendChild(select);
+			return;
+		}
+		const input = document.createElement('input');
+		input.className = 'form-control form-control-sm';
+		input.name = 'filters[' + sourceKey + '][' + index + '][value]';
+		input.value = Array.isArray(value) ? value.join(', ') : String(value == null ? '' : value);
+		input.placeholder = operator === 'in' || operator === 'not_in' ? 'value1, value2' : '';
+		holder.appendChild(input);
+	};
+	const addFilterRow = function (card, rule)
+	{
+		const sourceKey = card.dataset.sourceKey;
+		const fields = pmDigestFilterFields[sourceKey] || [];
+		if (!fields.length) return;
+		filterIndexes[sourceKey] = (filterIndexes[sourceKey] || 0) + 1;
+		const index = filterIndexes[sourceKey];
+		const row = document.createElement('div');
+		row.className = 'row g-2 align-items-end mb-2 pm-digest-filter-row';
+		const fieldCol = document.createElement('div'); fieldCol.className = 'col-md-4';
+		const fieldSelect = document.createElement('select'); fieldSelect.className = 'form-select form-select-sm'; fieldSelect.name = 'filters[' + sourceKey + '][' + index + '][field]';
+		fields.forEach(function (field) { fieldSelect.appendChild(makeOption(field.name, field.label, field.name === (rule.field || fields[0].name))); });
+		fieldCol.appendChild(fieldSelect);
+		const opCol = document.createElement('div'); opCol.className = 'col-md-3';
+		const opSelect = document.createElement('select'); opSelect.className = 'form-select form-select-sm'; opSelect.name = 'filters[' + sourceKey + '][' + index + '][operator]'; opCol.appendChild(opSelect);
+		const valueCol = document.createElement('div'); valueCol.className = 'col-md-4 pm-filter-value';
+		const removeCol = document.createElement('div'); removeCol.className = 'col-md-1 d-grid';
+		const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'btn btn-sm btn-outline-danger'; remove.title = pmDigestFilterText.remove; remove.textContent = '×'; remove.addEventListener('click', function () { row.remove(); }); removeCol.appendChild(remove);
+		row.append(fieldCol, opCol, valueCol, removeCol);
+		const updateOperator = function (preferred)
+		{
+			const field = fieldByName(sourceKey, fieldSelect.value);
+			const operators = operatorSet(field); opSelect.textContent = '';
+			operators.forEach(function (operator) { opSelect.appendChild(makeOption(operator, pmDigestFilterText.operators[operator] || operator, operator === preferred)); });
+			if (!operators.includes(preferred)) opSelect.value = operators[0];
+			renderValue(valueCol, sourceKey, index, field, opSelect.value, rule.value || '');
+		};
+		fieldSelect.addEventListener('change', function () { rule.value = ''; updateOperator('eq'); });
+		opSelect.addEventListener('change', function () { renderValue(valueCol, sourceKey, index, fieldByName(sourceKey, fieldSelect.value), opSelect.value, ''); });
+		updateOperator(rule.operator || ((fieldByName(sourceKey, fieldSelect.value)?.options || []).length ? 'in' : 'eq'));
+		card.querySelector('.pm-digest-filter-list').appendChild(row);
+	};
+	const updateSourceCard = function (card)
+	{
+		const toggle = card.querySelector('.pm-digest-source-toggle');
+		const config = card.querySelector('.pm-digest-source-config');
+		if (config) config.hidden = !toggle.checked;
+	};
+	document.querySelectorAll('.pm-digest-source-card').forEach(function (card)
+	{
+		const sourceKey = card.dataset.sourceKey;
+		(pmDigestFilters[sourceKey] || []).forEach(function (rule) { addFilterRow(card, rule); });
+		card.querySelector('.pm-digest-source-toggle').addEventListener('change', function () { updateSourceCard(card); });
+		card.querySelector('.pm-add-filter').addEventListener('click', function () { addFilterRow(card, {}); });
+		card.querySelector('.pm-preview-source').addEventListener('click', async function (event)
+		{
+			const output = card.querySelector('.pm-source-preview'); output.className = 'pm-source-preview mt-2 small text-muted'; output.textContent = pmDigestFilterText.loading;
+			try
+			{
+				const data = new FormData(form); data.set('task', 'digest.previewSource'); data.set('preview_source_key', sourceKey);
+				const response = await fetch(form.action, {method: 'POST', body: data, headers: {'Accept': 'application/json'}}); const payload = await response.json();
+				if (!response.ok || payload.success === false) throw new Error(payload.message || pmDigestFilterText.previewError);
+				const result = payload.data || payload; output.textContent = ''; output.className = 'pm-source-preview mt-2 small';
+				const summaryLine = document.createElement('div'); summaryLine.className = 'fw-semibold'; summaryLine.textContent = pmDigestFilterText.previewCount.replace('%d', String(result.count)); output.appendChild(summaryLine);
+				if (result.blocked_count > 0) { const blocked = document.createElement('div'); blocked.className = 'text-muted'; blocked.textContent = pmDigestFilterText.previewBlocked.replace('%d', String(result.blocked_count)); output.appendChild(blocked); }
+				if (Array.isArray(result.items) && result.items.length) { const list = document.createElement('ul'); list.className = 'mb-0 mt-1'; result.items.forEach(function (item) { const li = document.createElement('li'); li.textContent = item.title + (item.published ? ' — ' + item.published : ''); list.appendChild(li); }); output.appendChild(list); }
+				if (result.count > (result.items || []).length) { const more = document.createElement('div'); more.className = 'text-muted'; more.textContent = pmDigestFilterText.previewMore.replace('%d', String(result.count - result.items.length)); output.appendChild(more); }
+			}
+			catch (error) { output.className = 'pm-source-preview mt-2 small text-danger'; output.textContent = error.message || pmDigestFilterText.previewError; }
+		});
+		updateSourceCard(card);
+	});
 	const summary = document.getElementById('pm-digest-audience-summary');
 	const warning = document.getElementById('pm-digest-audience-warning');
 	const includeAll = document.querySelector('.pm-digest-audience-all');

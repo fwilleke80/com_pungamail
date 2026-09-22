@@ -138,6 +138,205 @@ final class ContentTypeService
 	}
 
 	/**
+	 * Returns generic filter metadata for one registered content type.
+	 *
+	 * @param string $sourceKey Registered content type alias.
+	 *
+	 * @return array<int,array{name:string,label:string,kind:string,date_like:bool,options:array<int,array{value:string,label:string}>}>
+	 */
+	public function getFilterFields(string $sourceKey): array
+	{
+		$type = $this->getTypes()[$sourceKey] ?? null;
+
+		if ($type === null)
+		{
+			return [];
+		}
+
+		$result = [];
+		$seen = [];
+
+		if ($type->catid !== null)
+		{
+			$result[] = [
+				'name' => 'catid',
+				'label' => Text::_('JCATEGORY'),
+				'kind' => 'number',
+				'date_like' => false,
+				'options' => $this->categoryOptions($sourceKey),
+			];
+			$seen[(string) $type->catid] = true;
+		}
+
+		foreach ($this->columnsForType($type) as $column)
+		{
+			$name = (string) $column['name'];
+
+			if (isset($seen[$name]))
+			{
+				continue;
+			}
+
+			$kind = $this->filterKind((string) $column['type'], (bool) $column['date_like']);
+			$options = [];
+
+			if ($kind === 'boolean')
+			{
+				$options = [
+					['value' => '1', 'label' => Text::_('JYES')],
+					['value' => '0', 'label' => Text::_('JNO')],
+				];
+			}
+			elseif (str_ends_with(strtolower($name), '_id'))
+			{
+				$options = $this->relationOptions($type, $name);
+			}
+
+			$label = $options !== [] && str_ends_with(strtolower($name), '_id')
+				? ucwords(str_replace('_', ' ', substr($name, 0, -3)))
+				: ucwords(str_replace('_', ' ', $name));
+
+			$result[] = [
+				'name' => $name,
+				'label' => $label,
+				'kind' => $kind,
+				'date_like' => (bool) $column['date_like'],
+				'options' => $options,
+			];
+		}
+
+		return $result;
+	}
+
+	/** @return array<int,array{value:string,label:string}> */
+	private function categoryOptions(string $sourceKey): array
+	{
+		$component = explode('.', $sourceKey, 2)[0] ?? '';
+
+		if (preg_match('/^com_[a-z0-9_]+$/i', $component) !== 1)
+		{
+			return [];
+		}
+
+		$query = $this->db->getQuery(true)
+			->select([$this->db->quoteName('id'), $this->db->quoteName('title')])
+			->from($this->db->quoteName('#__categories'))
+			->where($this->db->quoteName('extension') . ' = :extension')
+			->where($this->db->quoteName('published') . ' >= 0')
+			->order($this->db->quoteName('lft') . ' ASC')
+			->bind(':extension', $component);
+		$result = [];
+
+		foreach ($this->db->setQuery($query, 0, 250)->loadObjectList() as $row)
+		{
+			$result[] = ['value' => (string) $row->id, 'label' => (string) $row->title];
+		}
+
+		return $result;
+	}
+
+	/** @return array<int,array{value:string,label:string}> */
+	private function relationOptions(object $type, string $field): array
+	{
+		$base = substr($field, 0, -3);
+
+		if ($base === '')
+		{
+			return [];
+		}
+
+		$table = (string) $type->table;
+		$prefix = preg_replace('/[^_]+$/', '', $table);
+
+		if (!is_string($prefix) || $prefix === '')
+		{
+			return [];
+		}
+
+		$plural = str_ends_with($base, 'y')
+			? substr($base, 0, -1) . 'ies'
+			: (str_ends_with($base, 's') ? $base : $base . 's');
+		$candidate = $prefix . $plural;
+
+		if (!$this->table($candidate))
+		{
+			return [];
+		}
+
+		try
+		{
+			$columns = $this->db->getTableColumns($this->db->replacePrefix($candidate), false);
+		}
+		catch (\Throwable)
+		{
+			return [];
+		}
+
+		$names = [];
+
+		foreach ($columns as $columnName => $metadata)
+		{
+			$name = is_string($columnName) ? $columnName : (string) ($metadata->Field ?? $metadata->field ?? '');
+			$names[$name] = true;
+		}
+
+		if (!isset($names['id']))
+		{
+			return [];
+		}
+
+		$labelColumn = null;
+
+		foreach (['title', 'name', 'label', 'alias'] as $candidateLabel)
+		{
+			if (isset($names[$candidateLabel]))
+			{
+				$labelColumn = $candidateLabel;
+				break;
+			}
+		}
+
+		if ($labelColumn === null)
+		{
+			return [];
+		}
+
+		$query = $this->db->getQuery(true)
+			->select([$this->db->quoteName('id'), $this->db->quoteName($labelColumn, 'pm_label')])
+			->from($this->db->quoteName($candidate))
+			->order($this->db->quoteName($labelColumn) . ' ASC');
+		$result = [];
+
+		foreach ($this->db->setQuery($query, 0, 250)->loadObjectList() as $row)
+		{
+			$result[] = ['value' => (string) $row->id, 'label' => (string) $row->pm_label];
+		}
+
+		return $result;
+	}
+
+	/** @return string */
+	private function filterKind(string $type, bool $dateLike): string
+	{
+		if ($dateLike)
+		{
+			return 'date';
+		}
+
+		if (preg_match('/^(?:bool|boolean|tinyint\s*\(\s*1\s*\))/i', trim($type)) === 1)
+		{
+			return 'boolean';
+		}
+
+		if (preg_match('/(?:int|decimal|numeric|float|double|real|bit)/i', $type) === 1)
+		{
+			return 'number';
+		}
+
+		return 'string';
+	}
+
+	/**
 	 * Finds one current source item.
 	 *
 	 * @param string $sourceKey Registered type alias.

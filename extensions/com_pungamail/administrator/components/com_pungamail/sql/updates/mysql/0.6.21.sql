@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.21 adds Automatic Newsletter test sending and localized {date} placeholders; no database schema change is required.

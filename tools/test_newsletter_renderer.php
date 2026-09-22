@@ -15,21 +15,74 @@ namespace Joomla\CMS\Component
 		/** @return object Parameter stub. */
 		public static function getParams(string $option): object
 		{
-			return new class
+			return new class($option)
 			{
+				public function __construct(private readonly string $option)
+				{
+				}
+
 				/** @return mixed */
 				public function get(string $key, mixed $default = null): mixed
 				{
-					return $default;
+					return $this->option === 'com_languages' && $key === 'site' ? 'de-DE' : $default;
 				}
 			};
 		}
 	}
 }
 
+
+namespace Joomla\CMS\Date
+{
+	/** Minimal Joomla Date stub with a deterministic current time. */
+	class Date extends \DateTime
+	{
+		public function __construct(string $time = 'now', \DateTimeZone|string|null $timezone = null)
+		{
+			$timezone = is_string($timezone) ? new \DateTimeZone($timezone) : $timezone;
+			parent::__construct($time === 'now' ? '2026-09-22 10:00:00' : $time, $timezone);
+		}
+
+		public function format(string $format, bool $local = false, bool $translate = true): string
+		{
+			return parent::format($format);
+		}
+	}
+}
+
 namespace Joomla\CMS\Language
 {
-	/** Minimal language stub for renderer testing. */
+	interface LanguageFactoryInterface
+	{
+		public function createLanguage(string $lang, bool $debug = false): Language;
+	}
+
+	class Language
+	{
+		public function load(string $extension, string $basePath, ?string $lang = null, bool $reload = false): bool
+		{
+			return true;
+		}
+
+		public function _(string $key): string
+		{
+			return match ($key)
+			{
+				'DATE_FORMAT_LC3' => 'd. F Y',
+				'DATE_FORMAT_LC5' => 'd. F Y H:i',
+				'SEPTEMBER' => 'September',
+				'DECEMBER' => 'Dezember',
+				default => $key,
+			};
+		}
+
+		public function getTag(): string
+		{
+			return 'de-DE';
+		}
+	}
+
+	/** Minimal active administrator-language stub for renderer testing. */
 	final class Text
 	{
 		/** @return string */
@@ -40,6 +93,8 @@ namespace Joomla\CMS\Language
 				'COM_PUNGAMAIL_MAIL_FOOTER_REASON' => 'Default footer reason.',
 				'COM_PUNGAMAIL_MAIL_UNSUBSCRIBE' => 'Unsubscribe',
 				'COM_PUNGAMAIL_MAIL_READ_MORE' => 'Read more',
+				'DATE_FORMAT_LC3' => 'd F Y',
+				'DATE_FORMAT_LC5' => 'd F Y H:i',
 				default => $key,
 			};
 		}
@@ -61,6 +116,9 @@ namespace Joomla\CMS\Uri
 
 namespace Joomla\CMS
 {
+	use Joomla\CMS\Language\Language;
+	use Joomla\CMS\Language\LanguageFactoryInterface;
+
 	/** Minimal application factory stub for renderer testing. */
 	final class Factory
 	{
@@ -72,7 +130,41 @@ namespace Joomla\CMS
 				/** @return mixed */
 				public function get(string $key, mixed $default = null): mixed
 				{
-					return $key === 'sitename' ? 'Test Site' : $default;
+					return match ($key)
+					{
+						'sitename' => 'Test Site',
+						'offset' => 'UTC',
+						'language' => 'en-GB',
+						default => $default,
+					};
+				}
+			};
+		}
+
+		/** @return \Joomla\CMS\Date\Date */
+		public static function getDate(string $time = 'now', string $timezone = 'UTC'): \Joomla\CMS\Date\Date
+		{
+			return new \Joomla\CMS\Date\Date($time, $timezone);
+		}
+
+		public static function getContainer(): object
+		{
+			return new class
+			{
+				public function get(string $class): object
+				{
+					if ($class !== LanguageFactoryInterface::class)
+					{
+						throw new \RuntimeException('Unexpected container lookup: ' . $class);
+					}
+
+					return new class implements LanguageFactoryInterface
+					{
+						public function createLanguage(string $lang, bool $debug = false): Language
+						{
+							return new Language();
+						}
+					};
 				}
 			};
 		}
@@ -104,9 +196,11 @@ namespace
 	use Punga\Component\PungaMail\Administrator\Service\MailTextService;
 	use Punga\Component\PungaMail\Administrator\Service\MarkdownRenderer;
 	use Punga\Component\PungaMail\Administrator\Service\NewsletterRenderer;
+	use Punga\Component\PungaMail\Administrator\Service\SiteDateService;
 	use Punga\Component\PungaMail\Administrator\Service\TemplateRepository;
 	use Punga\Component\PungaMail\Administrator\Service\UserFieldService;
 
+	define('JPATH_SITE', sys_get_temp_dir());
 	$serviceRoot = dirname(__DIR__) . '/extensions/com_pungamail/administrator/components/com_pungamail/src/Service/';
 	require_once $serviceRoot . 'MarkdownRenderer.php';
 	require_once $serviceRoot . 'ContentTypeService.php';
@@ -116,6 +210,7 @@ namespace
 	require_once $serviceRoot . 'MailTextService.php';
 	require_once $serviceRoot . 'TemplateRepository.php';
 	require_once $serviceRoot . 'UserFieldService.php';
+	require_once $serviceRoot . 'SiteDateService.php';
 	require_once $serviceRoot . 'NewsletterRenderer.php';
 
 	/**
@@ -163,11 +258,12 @@ namespace
 		new MailTextService(),
 		$mailConfiguration,
 		$contentLayouts,
-		$userFields
+		$userFields,
+		new SiteDateService()
 	);
 	$newsletter = (object) [
-		'subject' => 'Renderer test for {recipient}',
-		'body_markdown' => "# Intro\n\nHello {recipient}.\n\n{new_content}\n\nAfter the selected content.",
+		'subject' => 'Renderer test {date} for {recipient}',
+		'body_markdown' => "# Intro\n\nDate: {date}. Hello {recipient}.\n\n{new_content}\n\nAfter the selected content.",
 		'template_id' => 0,
 		'style_overrides' => null,
 		'custom_css' => null,
@@ -215,6 +311,11 @@ namespace
 		failNewsletterRendererTest('Recipient placeholder was resolved before recipient-specific delivery.');
 	}
 
+	if (str_contains($result['subject'], NewsletterRenderer::DATE_PLACEHOLDER) || str_contains($result['html'], NewsletterRenderer::DATE_PLACEHOLDER) || !str_contains($result['subject'], '22. September 2026'))
+	{
+		failNewsletterRendererTest('General {date} placeholder was not resolved with the site-facing date formatter.');
+	}
+
 	$layoutCache->setValue($contentLayouts, [
 		ContentLayoutRepository::DEFAULT_KEY => (object) ['layout_markdown' => ContentLayoutRepository::DEFAULT_LAYOUT],
 		'com_example.item' => (object) ['layout_markdown' => "## {title_link}\n\nSource: {content_type}\n\n{excerpt}\n\n{read_more}"],
@@ -244,6 +345,78 @@ namespace
 		failNewsletterRendererTest('Database placeholders or generic-placeholder precedence are incorrect.');
 	}
 
+	$rangePlaceholder = $renderItem->invoke(
+		$renderer,
+		"{start_at|date_range:{end_at}}\n{start_at|time_range:{end_at}}\n{start_at|period:{end_at},{all_day}}",
+		[],
+		[
+			'start_at' => '2026-09-22 19:00:00',
+			'end_at' => '2026-09-22 21:00:00',
+			'all_day' => '0',
+		]
+	);
+
+	if ($rangePlaceholder !== "22\\. September 2026\n19:00–21:00\n22\\. September 2026, 19:00–21:00")
+	{
+		failNewsletterRendererTest('Generic date_range/time_range/period formatters did not resolve nested placeholder arguments.');
+	}
+
+	$allDayPeriod = $renderItem->invoke(
+		$renderer,
+		'{start_at|period:{end_at},{all_day}}',
+		[],
+		[
+			'start_at' => '2026-09-22 00:00:00',
+			'end_at' => '2026-09-24 00:00:00',
+			'all_day' => '1',
+		]
+	);
+
+	if ($allDayPeriod !== '22\\.–24\\. September 2026')
+	{
+		failNewsletterRendererTest('All-day period formatter did not suppress times or compact a same-month date range.');
+	}
+
+	$siteLanguagePeriod = $renderItem->invoke(
+		$renderer,
+		'{start_at|period:{end_at},{all_day}}',
+		[],
+		[
+			'start_at' => '2026-12-29 00:00:00',
+			'end_at' => '2026-12-30 00:00:00',
+			'all_day' => '1',
+		]
+	);
+
+	if ($siteLanguagePeriod !== '29\\.–30\\. Dezember 2026')
+	{
+		failNewsletterRendererTest('Content-layout date formatting leaked the active administrator language instead of using the site language.');
+	}
+
+	$literalRange = $renderItem->invoke(
+		$renderer,
+		'{start_at|date_range:2026-09-24 00:00:00}',
+		[],
+		['start_at' => '2026-09-22 00:00:00']
+	);
+
+	if ($literalRange !== '22\\.–24\\. September 2026')
+	{
+		failNewsletterRendererTest('Range formatter literal arguments are not supported.');
+	}
+
+	$unknownNested = $renderItem->invoke(
+		$renderer,
+		'{start_at|date_range:{missing_end}}',
+		[],
+		['start_at' => '2026-09-22 00:00:00']
+	);
+
+	if ($unknownNested !== '{start_at|date_range:{missing_end}}')
+	{
+		failNewsletterRendererTest('Unknown nested formatter placeholders should remain visible for diagnosis.');
+	}
+
 	$personalized = $renderer->personalize(
 		$result['subject'],
 		$result['html'],
@@ -251,7 +424,7 @@ namespace
 		'Alice & Bob'
 	);
 
-	if ($personalized['subject'] !== 'Renderer test for Alice & Bob')
+	if ($personalized['subject'] !== 'Renderer test 22. September 2026 for Alice & Bob')
 	{
 		failNewsletterRendererTest('Recipient placeholder was not resolved in the subject.');
 	}

@@ -1,4 +1,4 @@
-# Punga Mail 0.6.20 Live Acceptance Test Guide
+# Punga Mail 0.6.24 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -857,9 +857,12 @@ Keep the global queue paused except where a test explicitly says to resume it.
 1. Enable a custom layout for the non-core content type.
 2. Use a type-specific source field, e.g. `{start_at}`, `{venue}`, or another real column.
 3. For a date/time column, test `|date`, `|time`, and/or `|datetime`.
-4. Preview a Newsletter containing that content item.
+4. If the type exposes two useful date/time fields, test `{start|date_range:{end}}`, `{start|time_range:{end}}`, and `{start|period:{end},{all_day}}` using the type's actual field names. Test both an all-day/truthy value and a timed/false value where applicable.
+5. Also test a literal formatter parameter such as `{start|date_range:2026-09-24 00:00:00}` and a deliberately missing nested field.
+6. With the Joomla administrator language different from the site language (for example, English backend and German site), send/preview the same content layout and verify `|date`, `date_range`, and `period` still use the **site** language and punctuation (for example `29.–30. Dezember 2026`).
+6. Preview a Newsletter containing that content item.
 
-**Expected:** The source-table value renders correctly. Date/time formatting uses Joomla/site conventions. An event layout can show the actual event date while Punga Mail’s new-content selection still uses its normal publication/creation recency logic.
+**Expected:** The source-table value renders correctly. Date/time formatting uses Joomla/site conventions. Range formatter parameters resolve ordinary placeholder values rather than assuming column names. Same-day periods avoid duplicate dates, all-day periods omit times, timed periods include times, literals work, and an unknown nested placeholder leaves the complete outer token visible for diagnosis. No calendar-specific integration is required.
 
 ### PM-107 — Mixed content types and fallback
 
@@ -1471,6 +1474,29 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Expected:** The row icon accurately represents the stored state and toggles through the existing CSRF-protected enable/disable actions. Disabled definitions do not generate. On re-enable, overdue scheduling follows the documented catch-up behavior rather than silently discarding the due run. Trashed rows are not directly toggleable from this icon.
 
+### PM-215 — First-run cutoff and test Automatic Newsletter
+
+**Steps:**
+
+1. Create an Automatic Newsletter with **Repeat every: 2 months** and **Content cutoff: Since last**, with no previous run history.
+2. Prepare controlled content older than two months and controlled content within the previous two calendar months.
+3. Choose **Send test automatic newsletter** while logged in as a controlled administrator.
+4. Inspect the received test and then re-open the Automatic Newsletter history and schedule.
+
+**Expected:** The first-run candidate window starts one recurrence interval before the test/run time, so the older content is excluded and the recent controlled content is included. The test uses the same selection/layout path as a real run, but creates no Newsletter row or Automatic Newsletter history, does not queue subscriber mail, and does not advance the cutoff or next-run time.
+
+### PM-216 — General localized `{date}` placeholder
+
+**Steps:**
+
+1. Set the Joomla site timezone and use a site language whose long date format is visibly localized.
+2. Put `{date}` in a Template subject and body, preview it, and create a normal Newsletter from it.
+3. Put `{date}` directly into a normal Newsletter subject/body and send a controlled test.
+4. Use the same Template from an Automatic Newsletter and send its test.
+5. Repeat near a date boundary where the configured site timezone differs from UTC if practical.
+
+**Expected:** `{date}` appears in the Markdown placeholder menu and resolves in subjects and bodies for normal and automatic newsletters. It uses the Joomla website timezone and localized long-date format rather than UTC or fixed `YYYY-MM-DD`. No raw `{date}` remains in rendered/test output.
+
 ### PM-214 — Automatic Newsletter checkout and grouped navigation
 
 **Steps:**
@@ -1957,3 +1983,13 @@ Do not approve the release for production until all applicable items below are t
 
 **Expected:** The control is labelled Header background image rather than Header image. Cover and Contain use centred non-repeating backgrounds; Tile repeats both directions; horizontal/vertical modes repeat only on the selected axis; Original size does not repeat. Template and Newsletter values inherit independently from their parent level, and the configured Header background colour remains available as fallback.
 
+
+## Automatic Newsletter source filters
+
+1. Edit an Automatic Newsletter and select two registered content types.
+2. Add a filter to each source and verify the available field labels/operators are source-specific.
+3. Where a source exposes a Joomla category, verify category titles are selectable rather than requiring numeric IDs.
+4. Where a source has a conventional sibling-table foreign key such as `calendar_id`, verify Punga Mail offers friendly values when the related table exposes `id` plus `title`, `name`, `label` or `alias`.
+5. Click **Preview matching content** and verify the count/list changes when filter values change without first saving.
+6. Send a test Automatic Newsletter and verify only items matching all rules for their source are included.
+7. Upgrade a site that previously used Category IDs and verify the equivalent category restriction remains active after migration.

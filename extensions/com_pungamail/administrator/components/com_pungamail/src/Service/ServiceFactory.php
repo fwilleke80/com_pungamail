@@ -108,10 +108,16 @@ final class ServiceFactory
 		return new MailStyleService();
 	}
 
+	/** @return SiteDateService */
+	public static function siteDate(): SiteDateService
+	{
+		return new SiteDateService();
+	}
+
 	/** @return NewsletterRenderer */
 	public static function renderer(): NewsletterRenderer
 	{
-		return new NewsletterRenderer(new MarkdownRenderer(), self::contentTypes(), self::styles(), self::templates(), new MailTextService(), self::mailConfiguration(), self::contentLayouts(), self::userFields());
+		return new NewsletterRenderer(new MarkdownRenderer(), self::contentTypes(), self::styles(), self::templates(), new MailTextService(), self::mailConfiguration(), self::contentLayouts(), self::userFields(), self::siteDate());
 	}
 
 	/** @return RecipientResolver */
@@ -159,7 +165,7 @@ final class ServiceFactory
 	/** @return DigestService */
 	public static function digestProcessor(): DigestService
 	{
-		return new DigestService(self::digests(), self::newsletters(), self::templates(), self::contentTypes(), self::recipients(), self::queue(), self::mail());
+		return new DigestService(self::digests(), self::newsletters(), self::templates(), self::contentTypes(), self::recipients(), self::queue(), self::mail(), self::renderer(), self::mailConfiguration(), self::siteDate());
 	}
 
 	/** @return StatisticsService */

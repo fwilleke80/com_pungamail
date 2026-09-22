@@ -13,7 +13,7 @@ use Punga\Component\PungaMail\Administrator\Service\NewsletterRepository;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 $item = $this->item;
-$mailPlaceholders = array_merge(['{recipient}', '{new_content}'], ServiceFactory::userFields()->placeholders());
+$mailPlaceholders = array_merge(['{date}', '{recipient}', '{new_content}'], ServiceFactory::userFields()->placeholders());
 $isDraft = $item === null || in_array((int) $item->status, [NewsletterRepository::STATUS_DRAFT, NewsletterRepository::STATUS_SCHEDULED], true);
 $selectedByKey = [];
 foreach ($this->selectedItems as $selected)
@@ -192,6 +192,7 @@ if ($item !== null && !empty($item->scheduled_at))
 					<div class="mb-3">
 						<label class="form-label" for="pm-subject"><?php echo Text::_('COM_PUNGAMAIL_EMAIL_SUBJECT'); ?></label>
 						<input class="form-control" id="pm-subject" name="subject" required value="<?php echo htmlspecialchars((string) ($item->subject ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_SUBJECT_PLACEHOLDER_HELP'); ?></div>
 					</div>
 					<div>
 						<label class="form-label" for="pm-body"><?php echo Text::_('COM_PUNGAMAIL_NEWSLETTER_BODY_MARKDOWN'); ?></label>

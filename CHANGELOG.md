@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.6.24 — 2026-09-22
+
+- Replaced Automatic Newsletter's raw per-source Category IDs box with generic per-content-type filters.
+- Added field-aware filter controls with friendly Joomla categories, booleans, and generically discovered `*_id` relations where possible.
+- Added per-source matching-content preview using the current unsaved filter and audience settings.
+- Added generic filter operators for equality, sets, text containment, ranges, and empty values; all rules for one source use AND semantics.
+- Migrated existing saved category restrictions into the generic filter table so upgrades preserve selection behavior.
+- Moved **Send test automatic newsletter** to the right side of the Automatic Newsletter toolbar while keeping Save, Save & Close, and Cancel together on the left.
+
+## 0.6.23 — 2026-09-22
+
+- Fixed newsletter-facing content date formatters leaking the active administrator language into rendered mail. `|date`, `|datetime`, `date_range`, `period`, and `{publish_date}` now use the Joomla **site** language and site timezone consistently, matching the general `{date}` placeholder.
+- In particular, sending an Automatic Newsletter test from an English administrator session no longer changes German frontend dates such as `29.–30. Dezember 2026` into `29–30 December 2026`.
+- Centralized `DATE_FORMAT_LC3`/`DATE_FORMAT_LC5` resolution in `SiteDateService` and cached the site-language instance for repeated content-item formatting.
+- Added a renderer regression that deliberately runs with an English administrator language and German site language to prevent this context leak from returning.
+- Added a no-schema-change 0.6.23 migration marker.
+
+## 0.6.22 — 2026-09-22
+
+- Added generic selected-content formatters `{start|date_range:{end}}`, `{start|time_range:{end}}`, and `{start|period:{end},{all_day}}`.
+- Formatter parameters can now resolve ordinary content placeholders, so values from another source-table column can be passed without Punga Mail knowing anything about the originating extension or its column names. Literal formatter arguments remain supported.
+- `date_range` collapses equal dates to one localized date and compacts compatible same-month day-first site formats; `time_range` renders a compact time span; `period` automatically renders an all-day date range or a timed same-/multi-day period depending on its optional all-day value.
+- Replaced the flat content-placeholder regex with balanced placeholder parsing so nested argument placeholders are handled safely. Missing nested placeholders leave the complete outer token visible for diagnosis rather than silently producing a misleading value.
+- Expanded the Content Layout editor reference and placeholder dropdown with date/time formatter syntax and examples. No calendar-specific placeholder or conditional template language was introduced.
+- Added renderer regression coverage and a no-schema-change 0.6.22 migration marker.
+
+## 0.6.21 — 2026-09-22
+
+- Added **Send test automatic newsletter** to the Automatic Newsletter editor. It saves the current definition and sends the logged-in administrator a simulation using the same cutoff, source/category filters, recipient-aware access checks, ordering/limits, Template/Layout inheritance, and renderer as a real run.
+- Kept Automatic Newsletter tests non-destructive: they create no Newsletter/run-history/queue records and do not advance the content cutoff or next-run schedule. If the real run would currently skip for no content or an unmet minimum, the test reports that instead of sending a misleading message.
+- Clarified the first-run **Content since the previous automatic newsletter** behavior: without previous history, Punga Mail looks back by one recurrence interval (for example, 2 months for an every-2-month automation), not the entire site.
+- Made `{date}` a general Newsletter/Template placeholder for both subject and Markdown body and added it to the editor placeholder dropdown.
+- `{date}` now follows the Joomla website timezone and localized long-date format instead of fixed UTC `YYYY-MM-DD`; automatic generation freezes that localized generation date into generated drafts/messages.
+- Updated Template, Newsletter, and Automatic Newsletter help/documentation and added regression coverage.
+- Added a no-schema-change 0.6.21 migration marker.
+
 ## 0.6.20 — 2026-09-12
 
 - Renamed the ambiguous Header image control to **Header background image** (German: **Header-Hintergrundbild**) and the Footer equivalent to **Footer background image**.

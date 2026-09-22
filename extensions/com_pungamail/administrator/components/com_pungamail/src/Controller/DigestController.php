@@ -13,8 +13,10 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
+use Joomla\CMS\Response\JsonResponse;
 use Joomla\CMS\Session\Session;
 use Punga\Component\PungaMail\Administrator\Service\Permissions;
+use Punga\Component\PungaMail\Administrator\Service\RecipientName;
 use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 use Punga\Component\PungaMail\Administrator\Service\DigestSchedule;
 use Punga\Component\PungaMail\Administrator\Service\ErrorMessage;
@@ -50,6 +52,98 @@ final class DigestController extends BaseController
 		Factory::getApplication()->setUserState('com_pungamail.edit.digest.data', null);
 		$this->checkin((int) Factory::getApplication()->getInput()->getInt('id', 0));
 		$this->setRedirect(Route::_(AdministratorRoute::digests(), false));
+	}
+
+	/** @return void */
+	public function sendTest(): void
+	{
+		$this->guard(true);
+		Permissions::require(Permissions::SEND_NEWSLETTERS);
+		$app = Factory::getApplication();
+		$id = max(0, (int) $app->getInput()->getInt('id', 0));
+
+		try
+		{
+			$data = $this->readInput();
+			$id = $this->saveData($id, $data);
+			$app->setUserState('com_pungamail.edit.digest.data', null);
+			$identity = $app->getIdentity();
+			$email = trim((string) $identity->email);
+
+			if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+			{
+				throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_TEST_EMAIL'));
+			}
+
+			$result = ServiceFactory::digestProcessor()->sendTest(
+				$id,
+				$email,
+				RecipientName::resolve((string) $identity->name, $email),
+				(int) $identity->id
+			);
+
+			if ($result['status'] === 'below_minimum')
+			{
+				$message = Text::sprintf('COM_PUNGAMAIL_AUTOMATIC_TEST_BELOW_MINIMUM', $result['available_count'], $result['minimum_items']);
+				$this->setRedirect(Route::_(AdministratorRoute::digest($id), false), $message, 'warning');
+				return;
+			}
+
+			if ($result['status'] === 'no_content')
+			{
+				$this->setRedirect(Route::_(AdministratorRoute::digest($id), false), Text::_('COM_PUNGAMAIL_AUTOMATIC_TEST_NO_CONTENT'), 'warning');
+				return;
+			}
+
+			$this->setRedirect(
+				Route::_(AdministratorRoute::digest($id), false),
+				Text::sprintf('COM_PUNGAMAIL_AUTOMATIC_TEST_SENT', $email, $result['item_count'])
+			);
+		}
+		catch (\Throwable $e)
+		{
+			$this->setRedirect(Route::_(AdministratorRoute::digest($id), false), ErrorMessage::sanitize($e), 'error');
+		}
+	}
+
+	/** @return void */
+	public function previewSource(): void
+	{
+		$this->guard(true);
+		$app = Factory::getApplication();
+
+		try
+		{
+			$data = $this->readInput();
+			$id = max(0, (int) $app->getInput()->getInt('id', 0));
+			$existing = $id > 0 ? ServiceFactory::digests()->find($id) : null;
+			$digest = $existing ?? (object) [];
+
+			foreach ($data as $key => $value)
+			{
+				if (!in_array($key, ['source_keys', 'topic_ids', 'group_ids', 'filters', 'categories', 'confirm_auto_send'], true))
+				{
+					$digest->{$key} = $value;
+				}
+			}
+
+			$digest->id = $id;
+			$sourceKey = $app->getInput()->post->getString('preview_source_key');
+			$result = ServiceFactory::digestProcessor()->previewSource(
+				$digest,
+				$sourceKey,
+				(array) ($data['filters'] ?? []),
+				(array) ($data['topic_ids'] ?? []),
+				(array) ($data['group_ids'] ?? [])
+			);
+			echo new JsonResponse($result);
+		}
+		catch (\Throwable $e)
+		{
+			echo new JsonResponse(null, ErrorMessage::sanitize($e), true);
+		}
+
+		$app->close();
 	}
 
 	/** @return void */
@@ -92,6 +186,7 @@ final class DigestController extends BaseController
 			$categories[(string) $sourceKey] = array_map('intval', preg_split('/\s*,\s*/', (string) $value) ?: []);
 		}
 
+		$filters = $this->readFilters((array) $input->post->get('filters', [], 'array'));
 		$recurrenceValue = DigestSchedule::normalizeValue($input->post->getInt('recurrence_value', 1));
 		$recurrenceUnit = DigestSchedule::normalizeUnit($input->post->getCmd('recurrence_unit', DigestSchedule::UNIT_WEEKS));
 
@@ -116,8 +211,40 @@ final class DigestController extends BaseController
 			'topic_ids' => (array) $input->post->get('topic_ids', [], 'array'),
 			'group_ids' => (array) $input->post->get('group_ids', [], 'array'),
 			'categories' => $categories,
+			'filters' => $filters,
 			'confirm_auto_send' => $input->post->getInt('confirm_auto_send', 0),
 		];
+	}
+
+	/** @return array<string,array<int,array<string,mixed>>> */
+	private function readFilters(array $input): array
+	{
+		$filters = [];
+
+		foreach ($input as $sourceKey => $rules)
+		{
+			if (!is_array($rules))
+			{
+				continue;
+			}
+
+			foreach ($rules as $rule)
+			{
+				if (!is_array($rule))
+				{
+					continue;
+				}
+
+				$value = $rule['value'] ?? '';
+				$filters[(string) $sourceKey][] = [
+					'field' => preg_replace('/[^A-Za-z0-9_]/', '', (string) ($rule['field'] ?? '')),
+					'operator' => preg_replace('/[^a-z_]/', '', strtolower((string) ($rule['operator'] ?? 'eq'))),
+					'value' => is_array($value) ? array_map('strval', $value) : (string) $value,
+				];
+			}
+		}
+
+		return \Punga\Component\PungaMail\Administrator\Service\DigestContentFilter::normalize($filters);
 	}
 
 	/** @return int */

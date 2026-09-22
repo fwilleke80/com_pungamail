@@ -144,6 +144,35 @@ final class DigestModel extends BaseDatabaseModel
 		return $item && (int) $item->id > 0 ? ServiceFactory::digests()->getCategories((int) $item->id) : [];
 	}
 
+	/** @return array<string,array<int,array{field:string,operator:string,value:mixed}>> */
+	public function getFilters(): array
+	{
+		$submitted = $this->getSubmittedData();
+
+		if ($submitted !== [])
+		{
+			return \Punga\Component\PungaMail\Administrator\Service\DigestContentFilter::normalize((array) ($submitted['filters'] ?? []));
+		}
+
+		$item = $this->getItem();
+
+		return $item && (int) $item->id > 0 ? ServiceFactory::digests()->getFilters((int) $item->id) : [];
+	}
+
+	/** @return array<string,array<int,array{name:string,label:string,kind:string,date_like:bool,options:array<int,array{value:string,label:string}>}>> */
+	public function getFilterFields(): array
+	{
+		$result = [];
+		$service = ServiceFactory::contentTypes();
+
+		foreach ($this->getContentTypes() as $key => $type)
+		{
+			$result[(string) $key] = $service->getFilterFields((string) $key);
+		}
+
+		return $result;
+	}
+
 	/** @return array<int,object> */
 	public function getRuns(): array
 	{

@@ -69,6 +69,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/ErrorMessage.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/MailStyleService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/MailTextService.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/SiteDateService.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/MailfooterField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/BouncemailboxField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/OutgoingmailField.php",
@@ -130,6 +131,12 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.18.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.19.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.20.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.21.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.22.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.23.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.24.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestContentFilter.php",
+    "tools/test_digest_filters.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/Permissions.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/MarkdownController.php",
@@ -155,6 +162,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "tools/test_markdown.php",
     "tools/test_newsletter_renderer.php",
     "tools/test_mail_language.php",
+    "tools/test_site_date.php",
     "tools/test_digest_schedule.php",
     "tools/test_digest_content_selection.php",
     "extensions/mod_pungamail_signup/mod_pungamail_signup.xml",
@@ -589,7 +597,7 @@ def check_renderer_regressions() -> None:
         print("[skip] php executable not found; renderer regression tests not run")
         return
 
-    for script in ("test_markdown.php", "test_newsletter_renderer.php", "test_mail_language.php", "test_digest_schedule.php"):
+    for script in ("test_markdown.php", "test_newsletter_renderer.php", "test_mail_language.php", "test_site_date.php", "test_digest_schedule.php", "test_digest_content_selection.php"):
         result = subprocess.run(
             [php, str(ROOT / "tools" / script)],
             check=False,
@@ -2132,7 +2140,7 @@ def check_release_ux_0600() -> None:
         (content_types, "sensitiveColumn", "sensitive field filtering"),
         (renderer, "layoutFor((string) $selection->source_key)", "per-content-type layout resolution"),
         (renderer, "renderContentItemTemplate", "dynamic database placeholder rendering"),
-        (renderer, "(?:\\|(date|time|datetime))?", "date/time placeholder formatting"),
+        (renderer, "'date', 'time', 'datetime'", "date/time placeholder formatting"),
         (list_layout, "COM_PUNGAMAIL_CONTENT_LAYOUTS_TABLE_PLACEHOLDERS_DESC", "content-layout overview explanation"),
         (edit_layout, "COM_PUNGAMAIL_AVAILABLE_PLACEHOLDERS", "visible placeholder reference"),
         (edit_layout, "COM_PUNGAMAIL_DATABASE_PLACEHOLDERS", "database placeholder reference"),
@@ -3463,6 +3471,10 @@ def main() -> int:
     check_v0618_media_and_css()
     check_v0619_mail_layout()
     check_v0620_header_background_modes()
+    check_v0621_automatic_tests_and_date()
+    check_v0622_content_range_formatters()
+    check_v0623_site_language_dates()
+    check_v0624_digest_filters()
     print(f"[OK] Punga Mail {VERSION} release checks passed")
     return 0
 
@@ -3657,6 +3669,259 @@ def check_v0620_header_background_modes() -> None:
         ):
             if values.get(key, "").strip() == "":
                 fail(f"0.6.20 is missing {locale} Header background UI copy: {key}")
+
+
+def check_v0621_automatic_tests_and_date() -> None:
+    """Verify the 0.6.21 Automatic Newsletter test and general date placeholder."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    renderer = (admin / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    site_date = (admin / "src/Service/SiteDateService.php").read_text(encoding="utf-8")
+    digest_service = (admin / "src/Service/DigestService.php").read_text(encoding="utf-8")
+    digest_controller = (admin / "src/Controller/DigestController.php").read_text(encoding="utf-8")
+    digest_view = (admin / "src/View/Digest/HtmlView.php").read_text(encoding="utf-8")
+    digest_layout = (admin / "tmpl/digest/default.php").read_text(encoding="utf-8")
+    newsletter = (admin / "tmpl/newsletter/default.php").read_text(encoding="utf-8")
+    template = (admin / "tmpl/template/default.php").read_text(encoding="utf-8")
+    marker_sql = (admin / "sql/updates/mysql/0.6.21.sql").read_text(encoding="utf-8")
+
+    for token in (
+        "DATE_PLACEHOLDER",
+        "$this->siteDate->format()",
+        "str_replace(self::DATE_PLACEHOLDER",
+    ):
+        if token not in renderer:
+            fail(f"0.6.21 general date placeholder rendering is missing {token!r}")
+
+    for token in (
+        "DATE_FORMAT_LC3",
+        "LanguageFactoryInterface",
+        "get('offset', 'UTC')",
+        "IntlDateFormatter",
+    ):
+        if token not in site_date:
+            fail(f"0.6.21 site-localized date service is missing {token!r}")
+
+    for token in (
+        "public function sendTest",
+        "$this->prepare($digest, $now)",
+        "$this->renderer->render",
+        "$this->mail->sendTest",
+        "$result['status'] = 'below_minimum'",
+        "$result['status'] = 'no_content'",
+    ):
+        if token not in digest_service:
+            fail(f"0.6.21 Automatic Newsletter test simulation is missing {token!r}")
+
+    for forbidden in ("startRun(", "finishRun(", "queue->queue(", "saveDraft("):
+        test_start = digest_service.find("public function sendTest")
+        test_end = digest_service.find("private function generate", test_start)
+        if forbidden in digest_service[test_start:test_end]:
+            fail(f"0.6.21 Automatic Newsletter test mutates production state via {forbidden!r}")
+
+    for token in (
+        "digest.sendTest",
+        "COM_PUNGAMAIL_SEND_TEST_AUTOMATIC",
+    ):
+        if token not in digest_view:
+            fail(f"0.6.21 Automatic Newsletter toolbar test action is missing {token!r}")
+
+    for token in (
+        "Permissions::require(Permissions::SEND_NEWSLETTERS)",
+        "ServiceFactory::digestProcessor()->sendTest",
+        "COM_PUNGAMAIL_AUTOMATIC_TEST_SENT",
+    ):
+        if token not in digest_controller:
+            fail(f"0.6.21 Automatic Newsletter test controller is missing {token!r}")
+
+    if "COM_PUNGAMAIL_CUTOFF_SINCE_LAST_HELP" not in digest_layout:
+        fail("0.6.21 first-run cutoff explanation is missing from the Automatic Newsletter editor")
+
+    for contents, label in ((newsletter, "Newsletter"), (template, "Template")):
+        if "['{date}', '{recipient}', '{new_content}']" not in contents:
+            fail(f"0.6.21 {label} placeholder dropdown does not contain {{date}}")
+        if "COM_PUNGAMAIL_SUBJECT_PLACEHOLDER_HELP" not in contents:
+            fail(f"0.6.21 {label} subject does not explain the general {{date}} placeholder")
+
+    if any(token in marker_sql.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.6.21 is a behavior/UI release; its version-marker migration must not change schema")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_SUBJECT_PLACEHOLDER_HELP",
+            "COM_PUNGAMAIL_CUTOFF_SINCE_LAST_HELP",
+            "COM_PUNGAMAIL_SEND_TEST_AUTOMATIC",
+            "COM_PUNGAMAIL_AUTOMATIC_TEST_SENT",
+            "COM_PUNGAMAIL_AUTOMATIC_TEST_NO_CONTENT",
+            "COM_PUNGAMAIL_AUTOMATIC_TEST_BELOW_MINIMUM",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.6.21 is missing {locale} Automatic Newsletter/date copy: {key}")
+
+
+def check_v0622_content_range_formatters() -> None:
+    """Verify the 0.6.22 generic content-layout range formatter release."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    renderer = (admin / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    content_layout = (admin / "tmpl/contentlayout/default.php").read_text(encoding="utf-8")
+    renderer_test = (ROOT / "tools/test_newsletter_renderer.php").read_text(encoding="utf-8")
+    marker_sql = (admin / "sql/updates/mysql/0.6.22.sql").read_text(encoding="utf-8")
+
+    for token in (
+        "contentPlaceholderEnd",
+        "splitContentExpression",
+        "resolveContentFormatterArgument",
+        "formatDatabaseDateRange",
+        "formatDatabaseTimeRange",
+        "formatDatabasePeriod",
+        "'date_range'",
+        "'time_range'",
+        "'period'",
+    ):
+        if token not in renderer:
+            fail(f"0.6.22 content range formatter implementation is missing {token!r}")
+
+    for token in (
+        "{start|date_range:{end}}",
+        "{start|time_range:{end}}",
+        "{start|period:{end},{all_day}}",
+        "COM_PUNGAMAIL_CONTENT_FORMATTERS",
+    ):
+        if token not in content_layout:
+            fail(f"0.6.22 Content Layout formatter help/dropdown is missing {token!r}")
+
+    for token in (
+        "Generic date_range/time_range/period formatters did not resolve nested placeholder arguments.",
+        "All-day period formatter did not suppress times",
+        "Range formatter literal arguments are not supported.",
+        "Unknown nested formatter placeholders should remain visible for diagnosis.",
+    ):
+        if token not in renderer_test:
+            fail(f"0.6.22 renderer regression coverage is missing {token!r}")
+
+    if any(token in marker_sql.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.6.22 is a formatter/rendering release; its version-marker migration must not change schema")
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin / f"language/{locale}/com_pungamail.ini")
+        for key in (
+            "COM_PUNGAMAIL_CONTENT_FORMATTERS",
+            "COM_PUNGAMAIL_CONTENT_FORMATTERS_DESC",
+            "COM_PUNGAMAIL_CONTENT_FORMATTER_DATE_RANGE",
+            "COM_PUNGAMAIL_CONTENT_FORMATTER_TIME_RANGE",
+            "COM_PUNGAMAIL_CONTENT_FORMATTER_PERIOD",
+        ):
+            if values.get(key, "").strip() == "":
+                fail(f"0.6.22 is missing {locale} content formatter copy: {key}")
+
+
+def check_v0623_site_language_dates() -> None:
+    """Verify the 0.6.23 site-language date rendering fix."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    renderer = (admin / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    site_date = (admin / "src/Service/SiteDateService.php").read_text(encoding="utf-8")
+    renderer_test = (ROOT / "tools/test_newsletter_renderer.php").read_text(encoding="utf-8")
+    marker_sql = (admin / "sql/updates/mysql/0.6.23.sql").read_text(encoding="utf-8")
+
+    for token in (
+        "$this->siteDate->format($date)",
+        "$this->siteDate->formatDateTime($date)",
+        "$this->siteDate->format($start)",
+        "$this->siteDate->format($end)",
+        "$this->siteDate->dateFormat()",
+    ):
+        if token not in renderer:
+            fail(f"0.6.23 renderer is missing site-language date integration {token!r}")
+
+    for token in (
+        "public function dateFormat(): string",
+        "public function dateTimeFormat(): string",
+        "private function siteFormat",
+        "private bool $languageResolved",
+    ):
+        if token not in site_date:
+            fail(f"0.6.23 SiteDateService is missing {token!r}")
+
+    for token in (
+        "'language' => 'en-GB'",
+        "'com_languages'",
+        "'de-DE'",
+        "siteLanguagePeriod",
+        "Dezember 2026",
+        "leaked the active administrator language",
+    ):
+        if token not in renderer_test:
+            fail(f"0.6.23 renderer language-context regression is missing {token!r}")
+
+    if any(token in marker_sql.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.6.23 is a rendering fix; its version-marker migration must not change schema")
+
+
+def check_v0624_digest_filters() -> None:
+    """Verify generic per-source Automatic Newsletter filters and preview UX."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    filter_service = (admin / "src/Service/DigestContentFilter.php").read_text(encoding="utf-8")
+    content_types = (admin / "src/Service/ContentTypeService.php").read_text(encoding="utf-8")
+    repository = (admin / "src/Service/DigestRepository.php").read_text(encoding="utf-8")
+    digest_service = (admin / "src/Service/DigestService.php").read_text(encoding="utf-8")
+    controller = (admin / "src/Controller/DigestController.php").read_text(encoding="utf-8")
+    view = (admin / "src/View/Digest/HtmlView.php").read_text(encoding="utf-8")
+    layout = (admin / "tmpl/digest/default.php").read_text(encoding="utf-8")
+    migration = (admin / "sql/updates/mysql/0.6.24.sql").read_text(encoding="utf-8")
+
+    for token in ("class DigestContentFilter", "'in'", "'contains'", "'is_empty'", "raw_fields"):
+        if token not in filter_service:
+            fail(f"0.6.24 generic content filter service is missing {token!r}")
+
+    for token in ("getFilterFields", "categoryOptions", "relationOptions", "str_ends_with(strtolower($name), '_id')"):
+        if token not in content_types:
+            fail(f"0.6.24 filter metadata discovery is missing {token!r}")
+
+    for token in ("getFilters", "replaceFilters", "#__pungamail_digest_filters"):
+        if token not in repository:
+            fail(f"0.6.24 digest filter persistence is missing {token!r}")
+
+    for token in ("DigestContentFilter::apply", "public function previewSource"):
+        if token not in digest_service:
+            fail(f"0.6.24 digest selection/preview is missing {token!r}")
+
+    for token in ("digest.previewSource", "COM_PUNGAMAIL_PREVIEW_MATCHING_CONTENT", "pm-digest-filter-list", "pmDigestFilterFields"):
+        if token not in layout:
+            fail(f"0.6.24 Automatic Newsletter filter UX is missing {token!r}")
+
+    if "public function previewSource" not in controller or "JsonResponse" not in controller:
+        fail("0.6.24 per-source preview controller endpoint is missing")
+
+    toolbar_order = [
+        "ToolbarHelper::apply('digest.save')",
+        "ToolbarHelper::save('digest.save2close')",
+        "ToolbarHelper::cancel('digest.cancel')",
+        "ToolbarHelper::custom('digest.sendTest'",
+    ]
+    positions = [view.find(token) for token in toolbar_order]
+    if any(position < 0 for position in positions) or positions != sorted(positions):
+        fail("0.6.24 Automatic Newsletter toolbar order is not Save / Save & Close / Cancel / Send test")
+    if "#toolbar-mail { margin-inline-start: auto; }" not in view:
+        fail("0.6.24 Send test automatic newsletter is not aligned to the right toolbar group")
+
+    for token in ("CREATE TABLE IF NOT EXISTS `#__pungamail_digest_filters`", "INSERT INTO `#__pungamail_digest_filters`", "'catid'", "'in'"):
+        if token not in migration:
+            fail(f"0.6.24 migration is missing legacy-category preservation {token!r}")
+
+    result = subprocess.run(["php", str(ROOT / "tools/test_digest_filters.php")], cwd=ROOT, text=True, capture_output=True)
+    if result.returncode != 0:
+        fail("0.6.24 digest-filter regression failed: " + (result.stderr or result.stdout).strip())
+
+    for locale in ("en-GB", "de-DE"):
+        values = ini_values(admin / f"language/{locale}/com_pungamail.ini")
+        for key in ("COM_PUNGAMAIL_ADD_FILTER", "COM_PUNGAMAIL_PREVIEW_MATCHING_CONTENT", "COM_PUNGAMAIL_FILTER_IN"):
+            if values.get(key, "").strip() == "":
+                fail(f"0.6.24 is missing {locale} filter UX copy: {key}")
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

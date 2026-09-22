@@ -62,7 +62,7 @@ Under **Basics**:
 
 Subject patterns support:
 
-- `{date}` — generation date in `YYYY-MM-DD` form;
+- `{date}` — generation date using the website timezone and localized long-date format (for example `22. September 2026` on a German site);
 - `{site_name}` — Joomla site name.
 
 For example:
@@ -91,7 +91,7 @@ The maximum matching set is intentionally generous; the access and cutoff rules 
 
 ### Since last
 
-Use **Since last** for a normal “what is new” digest. After a successful run, the next run starts from the preceding successful cutoff. This prevents routine repetition.
+Use **Since last** for a normal “what is new” digest. After a successful run, the next run starts from the preceding successful cutoff. This prevents routine repetition. On the very first run there is no previous cutoff, so Punga Mail looks back by one configured recurrence interval. An every-2-month Automatic Newsletter therefore initially considers eligible content from the previous 2 calendar months, not the entire site.
 
 On the first run, Punga Mail looks back one recurrence interval. If a weekly Automatic Newsletter’s first run is scheduled for Friday, it normally finds the previous week’s matching content. If you instead choose **Content from a recent time period**, the separate **Look back … days** field appears and controls that fixed window.
 
@@ -245,3 +245,10 @@ The minimum threshold is evaluated before the maximum limit. For a rolling **Sin
 ## Schedule time and timezone
 
 The **Next run** control includes both a calendar and a 24-hour time picker. Enter the date and time as they should occur in the Joomla site timezone shown below the field. Punga Mail converts that value to UTC for storage and task processing, then converts it back to the configured Joomla timezone wherever the schedule is shown in the editor, Automatic Newsletters list and Dashboard.
+
+
+## 9. Test the next run
+
+Open the Automatic Newsletter and choose **Send test automatic newsletter**. Punga Mail saves the current definition and sends the currently logged-in administrator a test built through the same selection/rendering path as the real run. The test does not create run history, create a Newsletter record, queue subscribers, advance the cutoff, or move the next-run date.
+
+If no matching content exists, or the configured minimum item count has not yet been reached, Punga Mail reports that the real run would currently be skipped instead of sending a misleading empty test.

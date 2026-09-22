@@ -335,6 +335,18 @@ CREATE TABLE IF NOT EXISTS `#__pungamail_digest_categories` (
   PRIMARY KEY (`digest_id`, `source_key`, `category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `#__pungamail_digest_filters` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `digest_id` BIGINT UNSIGNED NOT NULL,
+  `source_key` VARCHAR(191) NOT NULL,
+  `field_name` VARCHAR(128) NOT NULL,
+  `operator_name` VARCHAR(24) NOT NULL DEFAULT 'eq',
+  `filter_value` TEXT NULL,
+  `ordering` INT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_pungamail_digest_filter` (`digest_id`, `source_key`, `ordering`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `#__pungamail_digest_topics` (
   `digest_id` BIGINT UNSIGNED NOT NULL,
   `topic_id` BIGINT UNSIGNED NOT NULL,

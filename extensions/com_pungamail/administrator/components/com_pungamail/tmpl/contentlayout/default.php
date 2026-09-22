@@ -27,7 +27,20 @@ foreach ((array) $item->columns as $column)
 	if ($name !== '' && !isset($genericPlaceholders['{' . $name . '}']))
 	{
 		$editorPlaceholders[] = '{' . $name . '}';
+
+		if ((bool) ($column['date_like'] ?? false))
+		{
+			$editorPlaceholders[] = '{' . $name . '|date}';
+			$editorPlaceholders[] = '{' . $name . '|time}';
+			$editorPlaceholders[] = '{' . $name . '|datetime}';
+		}
 	}
+}
+if (!$isDefault)
+{
+	$editorPlaceholders[] = '{start|date_range:{end}}';
+	$editorPlaceholders[] = '{start|time_range:{end}}';
+	$editorPlaceholders[] = '{start|period:{end},{all_day}}';
 }
 ?>
 <?php echo \Joomla\CMS\Layout\LayoutHelper::render('pungamail.section_navigation', ['section' => 'design', 'active' => 'contentlayouts'], JPATH_ADMINISTRATOR . '/components/com_pungamail/layouts'); ?>
@@ -86,6 +99,18 @@ foreach ((array) $item->columns as $column)
 						</div>
 
 						<?php if (!$isDefault) : ?>
+							<h3 class="h6"><?php echo Text::_('COM_PUNGAMAIL_CONTENT_FORMATTERS'); ?></h3>
+							<p class="small text-muted"><?php echo Text::_('COM_PUNGAMAIL_CONTENT_FORMATTERS_DESC'); ?></p>
+							<div class="table-responsive mb-3">
+								<table class="table table-sm pm-placeholder-table">
+									<tbody>
+									<tr><td><code>{start|date_range:{end}}</code></td><td class="small"><?php echo Text::_('COM_PUNGAMAIL_CONTENT_FORMATTER_DATE_RANGE'); ?></td></tr>
+									<tr><td><code>{start|time_range:{end}}</code></td><td class="small"><?php echo Text::_('COM_PUNGAMAIL_CONTENT_FORMATTER_TIME_RANGE'); ?></td></tr>
+									<tr><td><code>{start|period:{end},{all_day}}</code></td><td class="small"><?php echo Text::_('COM_PUNGAMAIL_CONTENT_FORMATTER_PERIOD'); ?></td></tr>
+									</tbody>
+								</table>
+							</div>
+
 							<h3 class="h6"><?php echo Text::_('COM_PUNGAMAIL_DATABASE_PLACEHOLDERS'); ?></h3>
 							<p class="small text-muted"><?php echo Text::_('COM_PUNGAMAIL_DATABASE_PLACEHOLDERS_DESC'); ?></p>
 							<?php if ((array) $item->columns === []) : ?>

@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.22 adds generic content-layout date/time range formatters with placeholder-valued arguments; no database schema change is required.

@@ -21,6 +21,7 @@ final class NewsletterRenderer
 	public const UNSUBSCRIBE_PLACEHOLDER = '{{PUNGAMAIL_UNSUBSCRIBE_URL}}';
 	public const NEW_CONTENT_PLACEHOLDER = '{new_content}';
 	public const RECIPIENT_PLACEHOLDER = '{recipient}';
+	public const DATE_PLACEHOLDER = '{date}';
 	public const BROWSER_PLACEHOLDER = '{{PUNGAMAIL_BROWSER_URL}}';
 
 	/**
@@ -39,7 +40,8 @@ final class NewsletterRenderer
 		private readonly MailTextService $mailText,
 		private readonly MailConfigurationService $mailConfiguration,
 		private readonly ContentLayoutRepository $contentLayouts,
-		private readonly UserFieldService $userFields
+		private readonly UserFieldService $userFields,
+		private readonly SiteDateService $siteDate
 	)
 	{
 	}
@@ -126,7 +128,8 @@ final class NewsletterRenderer
 			];
 		}
 
-		$bodyMarkdown = (string) $newsletter->body_markdown;
+		$date = $this->siteDate->format();
+		$bodyMarkdown = str_replace(self::DATE_PLACEHOLDER, $date, (string) $newsletter->body_markdown);
 		$bodyParts = preg_split('/^\s*\{new_content\}\s*$/mi', $bodyMarkdown);
 
 		if (!is_array($bodyParts))
@@ -163,7 +166,7 @@ final class NewsletterRenderer
 		$text .= $this->mailText->text('COM_PUNGAMAIL_MAIL_UNSUBSCRIBE') . ': ' . self::UNSUBSCRIBE_PLACEHOLDER . "\n";
 
 		return [
-			'subject' => (string) $newsletter->subject,
+			'subject' => str_replace(self::DATE_PLACEHOLDER, $date, (string) $newsletter->subject),
 			'html' => $html,
 			'text' => $text,
 			'items' => $snapshots,
@@ -254,76 +257,431 @@ final class NewsletterRenderer
 	 * Generic Punga Mail placeholders deliberately take precedence over database
 	 * columns with the same name so title/excerpt overrides continue to work.
 	 *
-	 * @param string                    $layout  Markdown layout.
-	 * @param array<string,string>      $generic Normalized Punga Mail values.
-	 * @param array<string,mixed>       $raw     Safe source-table values.
+	 * Formatter arguments may contain simple placeholders. For example,
+	 * `{start_at|period:{end_at},{all_day}}` passes the resolved end/all-day
+	 * values to the generic period formatter without coupling Punga Mail to the
+	 * originating content extension.
+	 *
+	 * @param string               $layout  Markdown layout.
+	 * @param array<string,string> $generic Normalized Punga Mail values.
+	 * @param array<string,mixed>  $raw     Safe source-table values.
 	 *
 	 * @return string Rendered Markdown.
 	 */
 	private function renderContentItemTemplate(string $layout, array $generic, array $raw): string
 	{
-		return preg_replace_callback(
-			'/\{([A-Za-z0-9_]+)(?:\|(date|time|datetime))?\}/',
-			function (array $match) use ($generic, $raw): string
+		$result = '';
+		$length = strlen($layout);
+
+		for ($offset = 0; $offset < $length;)
+		{
+			if ($layout[$offset] !== '{')
 			{
-				$name = (string) $match[1];
-				$format = (string) ($match[2] ?? '');
+				$result .= $layout[$offset++];
+				continue;
+			}
 
-				if (array_key_exists($name, $generic))
+			$end = $this->contentPlaceholderEnd($layout, $offset);
+
+			if ($end === null)
+			{
+				$result .= substr($layout, $offset);
+				break;
+			}
+
+			$token = substr($layout, $offset, $end - $offset + 1);
+			$expression = substr($layout, $offset + 1, $end - $offset - 1);
+			$replacement = $this->renderContentPlaceholderExpression($expression, $generic, $raw, true);
+			$result .= $replacement ?? $token;
+			$offset = $end + 1;
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Finds the closing brace for a content-layout placeholder, honoring nested
+	 * placeholders used as formatter arguments.
+	 *
+	 * @return int|null Closing brace offset, or null for an unbalanced token.
+	 */
+	private function contentPlaceholderEnd(string $text, int $start): ?int
+	{
+		$depth = 0;
+		$length = strlen($text);
+
+		for ($offset = $start; $offset < $length; $offset++)
+		{
+			if ($text[$offset] === '{')
+			{
+				$depth++;
+			}
+			elseif ($text[$offset] === '}')
+			{
+				$depth--;
+
+				if ($depth === 0)
 				{
-					return $generic[$name];
+					return $offset;
 				}
+			}
+		}
 
-				if (!array_key_exists($name, $raw))
-				{
-					return $match[0];
-				}
+		return null;
+	}
 
-				$value = $raw[$name];
+	/**
+	 * Renders one content-layout placeholder expression.
+	 *
+	 * @param string               $expression Placeholder body without braces.
+	 * @param array<string,string> $generic    Normalized Punga Mail values.
+	 * @param array<string,mixed>  $raw        Safe source-table values.
+	 * @param bool                 $escape     Escape raw output for Markdown.
+	 *
+	 * @return string|null Null means the original token must remain unchanged.
+	 */
+	private function renderContentPlaceholderExpression(string $expression, array $generic, array $raw, bool $escape): ?string
+	{
+		$parts = $this->splitContentExpression($expression, '|', 2);
+		$name = trim((string) ($parts[0] ?? ''));
 
-				if ($value === null)
-				{
-					return '';
-				}
+		if ($name === '' || preg_match('/^[A-Za-z0-9_]+$/', $name) !== 1)
+		{
+			return null;
+		}
 
-				$text = is_scalar($value) ? (string) $value : json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-				$text = $text === false ? '' : $text;
+		if (array_key_exists($name, $generic))
+		{
+			return (string) $generic[$name];
+		}
 
-				if ($format !== '')
-				{
-					$text = $this->formatDatabaseDate($text, $format);
-				}
+		if (!array_key_exists($name, $raw))
+		{
+			return null;
+		}
 
-				return $this->escapeMarkdown($text);
-			},
-			$layout
-		) ?? $layout;
+		$text = $this->contentPlaceholderValue($raw[$name]);
+
+		if (count($parts) === 1)
+		{
+			return $escape ? $this->escapeMarkdown($text) : $text;
+		}
+
+		$formatterParts = $this->splitContentExpression((string) $parts[1], ':', 2);
+		$formatter = strtolower(trim((string) ($formatterParts[0] ?? '')));
+		$argumentText = (string) ($formatterParts[1] ?? '');
+		$arguments = $argumentText === '' ? [] : $this->splitContentExpression($argumentText, ',');
+		$resolved = [];
+
+		foreach ($arguments as $argument)
+		{
+			$value = $this->resolveContentFormatterArgument((string) $argument, $generic, $raw);
+
+			if ($value === null)
+			{
+				return null;
+			}
+
+			$resolved[] = $value;
+		}
+
+		$formatted = match ($formatter)
+		{
+			'date', 'time', 'datetime' => $resolved === [] ? $this->formatDatabaseDate($text, $formatter) : null,
+			'date_range' => count($resolved) === 1 ? $this->formatDatabaseDateRange($text, $resolved[0]) : null,
+			'time_range' => count($resolved) === 1 ? $this->formatDatabaseTimeRange($text, $resolved[0]) : null,
+			'period' => count($resolved) >= 1 && count($resolved) <= 2
+				? $this->formatDatabasePeriod($text, $resolved[0], $resolved[1] ?? '')
+				: null,
+			default => null,
+		};
+
+		if ($formatted === null)
+		{
+			return null;
+		}
+
+		return $escape ? $this->escapeMarkdown($formatted) : $formatted;
+	}
+
+	/**
+	 * Splits an expression only at separators outside nested `{...}` arguments.
+	 *
+	 * @return array<int,string>
+	 */
+	private function splitContentExpression(string $value, string $separator, int $limit = PHP_INT_MAX): array
+	{
+		$parts = [];
+		$current = '';
+		$depth = 0;
+		$length = strlen($value);
+
+		for ($offset = 0; $offset < $length; $offset++)
+		{
+			$character = $value[$offset];
+
+			if ($character === '{')
+			{
+				$depth++;
+			}
+			elseif ($character === '}' && $depth > 0)
+			{
+				$depth--;
+			}
+
+			if ($character === $separator && $depth === 0 && count($parts) < $limit - 1)
+			{
+				$parts[] = $current;
+				$current = '';
+				continue;
+			}
+
+			$current .= $character;
+		}
+
+		$parts[] = $current;
+
+		return $parts;
+	}
+
+	/**
+	 * Resolves a formatter argument. A simple `{field}` argument is replaced with
+	 * the same field value that the ordinary placeholder would expose; anything
+	 * else is treated as a literal value.
+	 *
+	 * @param array<string,string> $generic Normalized Punga Mail values.
+	 * @param array<string,mixed>  $raw     Safe source-table values.
+	 *
+	 * @return string|null Null when a referenced placeholder does not exist.
+	 */
+	private function resolveContentFormatterArgument(string $argument, array $generic, array $raw): ?string
+	{
+		$argument = trim($argument);
+
+		if (preg_match('/^\{([A-Za-z0-9_]+)\}$/', $argument, $match) !== 1)
+		{
+			return $argument;
+		}
+
+		$name = (string) $match[1];
+
+		if (array_key_exists($name, $generic))
+		{
+			return (string) $generic[$name];
+		}
+
+		if (!array_key_exists($name, $raw))
+		{
+			return null;
+		}
+
+		return $this->contentPlaceholderValue($raw[$name]);
+	}
+
+	/** @return string */
+	private function contentPlaceholderValue(mixed $value): string
+	{
+		if ($value === null)
+		{
+			return '';
+		}
+
+		if (is_scalar($value))
+		{
+			return (string) $value;
+		}
+
+		$encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+		return $encoded === false ? '' : $encoded;
 	}
 
 	/** @return string */
 	private function formatDatabaseDate(string $value, string $format): string
 	{
+		$date = $this->databaseDate($value);
+
+		if ($date === null)
+		{
+			return trim($value) === '' ? '' : $value;
+		}
+
+		if ($format === 'date')
+		{
+			return $this->siteDate->format($date);
+		}
+
+		if ($format === 'time')
+		{
+			return $date->format('H:i', true);
+		}
+
+		return $this->siteDate->formatDateTime($date);
+	}
+
+	/** @return string */
+	private function formatDatabaseDateRange(string $startValue, string $endValue): string
+	{
+		$start = $this->databaseDate($startValue);
+		$end = $this->databaseDate($endValue);
+
+		if ($start === null)
+		{
+			return trim($startValue) === '' ? '' : $startValue;
+		}
+
+		$startText = $this->siteDate->format($start);
+
+		if ($end === null || trim($endValue) === '')
+		{
+			return $startText;
+		}
+
+		if ($start->format('Y-m-d') === $end->format('Y-m-d'))
+		{
+			return $startText;
+		}
+
+		$endText = $this->siteDate->format($end);
+		$compact = $this->compactSameMonthDateRange($start, $end, $endText);
+
+		return $compact ?? ($startText . ' – ' . $endText);
+	}
+
+	/** @return string */
+	private function formatDatabaseTimeRange(string $startValue, string $endValue): string
+	{
+		$start = $this->databaseDate($startValue);
+		$end = $this->databaseDate($endValue);
+
+		if ($start === null)
+		{
+			return trim($startValue) === '' ? '' : $startValue;
+		}
+
+		$startText = $start->format('H:i', true);
+
+		if ($end === null || trim($endValue) === '')
+		{
+			return $startText;
+		}
+
+		$endText = $end->format('H:i', true);
+
+		return $startText === $endText ? $startText : $startText . '–' . $endText;
+	}
+
+	/** @return string */
+	private function formatDatabasePeriod(string $startValue, string $endValue, string $allDayValue): string
+	{
+		if ($this->contentBoolean($allDayValue))
+		{
+			return $this->formatDatabaseDateRange($startValue, $endValue);
+		}
+
+		$start = $this->databaseDate($startValue);
+		$end = $this->databaseDate($endValue);
+
+		if ($start === null)
+		{
+			return trim($startValue) === '' ? '' : $startValue;
+		}
+
+		$startDate = $this->siteDate->format($start);
+		$startTime = $start->format('H:i', true);
+
+		if ($end === null || trim($endValue) === '')
+		{
+			return $startDate . ', ' . $startTime;
+		}
+
+		if ($start->format('Y-m-d') === $end->format('Y-m-d'))
+		{
+			return $startDate . ', ' . $this->formatDatabaseTimeRange($startValue, $endValue);
+		}
+
+		return $startDate . ', ' . $startTime
+			. ' – '
+			. $this->siteDate->format($end) . ', ' . $end->format('H:i', true);
+	}
+
+	/**
+	 * Compacts a same-month, day-first site format, e.g. German
+	 * `22.–24. September 2026`. Other locale layouts keep two full dates rather
+	 * than guessing at punctuation or word order.
+	 *
+	 * @return string|null
+	 */
+	private function compactSameMonthDateRange(object $start, object $end, string $endText): ?string
+	{
+		if ($start->format('Y-m') !== $end->format('Y-m'))
+		{
+			return null;
+		}
+
+		$pattern = $this->siteDate->dateFormat();
+
+		if (preg_match('/^([^A-Za-z]*[dj])([^A-Za-z]*)(?=[A-Za-z])/', $pattern, $match) !== 1)
+		{
+			return null;
+		}
+
+		$dayPattern = (string) $match[1] . (string) $match[2];
+		$startDay = rtrim($start->format($dayPattern, true));
+
+		if ($startDay === '')
+		{
+			return null;
+		}
+
+		return $startDay . '–' . ltrim($endText);
+	}
+
+	/** @return bool */
+	private function contentBoolean(string $value): bool
+	{
+		$value = strtolower(trim($value));
+
+		if ($value === '')
+		{
+			return false;
+		}
+
+		if (is_numeric($value))
+		{
+			return (float) $value != 0.0;
+		}
+
+		return in_array($value, ['true', 'yes', 'on', 'y'], true);
+	}
+
+	/** @return object|null */
+	private function databaseDate(string $value): ?object
+	{
 		if (trim($value) === '')
 		{
-			return '';
+			return null;
 		}
 
 		try
 		{
 			$date = Factory::getDate($value, 'UTC');
-			$date->setTimezone(new \DateTimeZone((string) Factory::getApplication()->get('offset', 'UTC')));
-			$pattern = match ($format)
-			{
-				'date' => Text::_('DATE_FORMAT_LC3'),
-				'time' => 'H:i',
-				default => Text::_('DATE_FORMAT_LC5'),
-			};
+			$timezoneName = trim((string) Factory::getApplication()->get('offset', 'UTC')) ?: 'UTC';
 
-			return $date->format($pattern, true);
+			try
+			{
+				$date->setTimezone(new \DateTimeZone($timezoneName));
+			}
+			catch (\Throwable)
+			{
+				$date->setTimezone(new \DateTimeZone('UTC'));
+			}
+
+			return $date;
 		}
 		catch (\Throwable)
 		{
-			return $value;
+			return null;
 		}
 	}
 
@@ -340,7 +698,7 @@ final class NewsletterRenderer
 			$date = Factory::getDate($value, 'UTC');
 			$date->setTimezone(new \DateTimeZone((string) Factory::getApplication()->get('offset', 'UTC')));
 
-			return $date->format(Text::_('DATE_FORMAT_LC3'), true);
+			return $this->siteDate->format($date);
 		}
 		catch (\Throwable)
 		{

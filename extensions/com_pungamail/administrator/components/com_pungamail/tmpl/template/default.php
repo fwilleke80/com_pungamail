@@ -18,7 +18,7 @@ use Punga\Component\PungaMail\Administrator\Service\AdministratorRoute;
 use Punga\Component\PungaMail\Administrator\Service\ServiceFactory;
 
 $item = $this->item;
-$mailPlaceholders = array_merge(['{recipient}', '{new_content}'], ServiceFactory::userFields()->placeholders());
+$mailPlaceholders = array_merge(['{date}', '{recipient}', '{new_content}'], ServiceFactory::userFields()->placeholders());
 $style = $this->styleOverrides;
 ?>
 <?php echo \Joomla\CMS\Layout\LayoutHelper::render('pungamail.section_navigation', ['section' => 'design', 'active' => 'templates'], JPATH_ADMINISTRATOR . '/components/com_pungamail/layouts'); ?>
@@ -44,6 +44,7 @@ $style = $this->styleOverrides;
 					<div class="mb-3">
 						<label class="form-label" for="pt-subject"><?php echo Text::_('COM_PUNGAMAIL_EMAIL_SUBJECT'); ?></label>
 						<input class="form-control" id="pt-subject" name="subject" value="<?php echo htmlspecialchars((string) ($item->subject ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+						<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_SUBJECT_PLACEHOLDER_HELP'); ?></div>
 					</div>
 					<div>
 						<label class="form-label" for="pt-body"><?php echo Text::_('COM_PUNGAMAIL_NEWSLETTER_BODY_MARKDOWN'); ?></label>

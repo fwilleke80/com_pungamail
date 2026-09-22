@@ -212,6 +212,7 @@ final class DigestRepository
 			$this->replaceSimple('#__pungamail_digest_topics', $id, 'topic_id', (array) ($data['topic_ids'] ?? []), true);
 			$this->replaceSimple('#__pungamail_digest_groups', $id, 'group_id', (array) ($data['group_ids'] ?? []), true);
 			$this->replaceCategories($id, (array) ($data['categories'] ?? []));
+			$this->replaceFilters($id, (array) ($data['filters'] ?? []));
 			$this->db->transactionCommit();
 		}
 		catch (\Throwable $e)
@@ -254,6 +255,37 @@ final class DigestRepository
 		foreach ($this->db->setQuery($query)->loadObjectList() as $row)
 		{
 			$result[(string) $row->source_key][] = (int) $row->category_id;
+		}
+
+		return $result;
+	}
+
+	/** @return array<string,array<int,array{field:string,operator:string,value:mixed}>> */
+	public function getFilters(int $digestId): array
+	{
+		$query = $this->db->getQuery(true)
+			->select(['source_key', 'field_name', 'operator_name', 'filter_value'])
+			->from($this->db->quoteName('#__pungamail_digest_filters'))
+			->where($this->db->quoteName('digest_id') . ' = :id')
+			->order([$this->db->quoteName('source_key') . ' ASC', $this->db->quoteName('ordering') . ' ASC', $this->db->quoteName('id') . ' ASC'])
+			->bind(':id', $digestId, ParameterType::INTEGER);
+		$result = [];
+
+		foreach ($this->db->setQuery($query)->loadObjectList() as $row)
+		{
+			$value = (string) ($row->filter_value ?? '');
+			$decoded = json_decode($value, true);
+
+			if (is_array($decoded))
+			{
+				$value = $decoded;
+			}
+
+			$result[(string) $row->source_key][] = [
+				'field' => (string) $row->field_name,
+				'operator' => (string) $row->operator_name,
+				'value' => $value,
+			];
 		}
 
 		return $result;
@@ -429,7 +461,7 @@ final class DigestRepository
 			return 0;
 		}
 
-		foreach (['#__pungamail_digest_sources', '#__pungamail_digest_categories', '#__pungamail_digest_topics', '#__pungamail_digest_groups', '#__pungamail_digest_runs'] as $table)
+		foreach (['#__pungamail_digest_sources', '#__pungamail_digest_categories', '#__pungamail_digest_filters', '#__pungamail_digest_topics', '#__pungamail_digest_groups', '#__pungamail_digest_runs'] as $table)
 		{
 			$delete = $this->db->getQuery(true)->delete($this->db->quoteName($table))->whereIn($this->db->quoteName('digest_id'), $deleteIds);
 			$this->db->setQuery($delete)->execute();
@@ -467,6 +499,34 @@ final class DigestRepository
 		{
 			$row = (object) ['digest_id' => $digestId, $column => $value];
 			$this->db->insertObject($table, $row);
+		}
+	}
+
+	/** @return void */
+	private function replaceFilters(int $digestId, array $filters): void
+	{
+		$delete = $this->db->getQuery(true)
+			->delete($this->db->quoteName('#__pungamail_digest_filters'))
+			->where($this->db->quoteName('digest_id') . ' = :id')
+			->bind(':id', $digestId, ParameterType::INTEGER);
+		$this->db->setQuery($delete)->execute();
+		$filters = DigestContentFilter::normalize($filters);
+
+		foreach ($filters as $sourceKey => $rules)
+		{
+			foreach ($rules as $ordering => $rule)
+			{
+				$value = $rule['value'];
+				$row = (object) [
+					'digest_id' => $digestId,
+					'source_key' => (string) $sourceKey,
+					'field_name' => (string) $rule['field'],
+					'operator_name' => (string) $rule['operator'],
+					'filter_value' => is_array($value) ? json_encode(array_values($value), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : (string) $value,
+					'ordering' => (int) $ordering,
+				];
+				$this->db->insertObject('#__pungamail_digest_filters', $row);
+			}
 		}
 	}
 

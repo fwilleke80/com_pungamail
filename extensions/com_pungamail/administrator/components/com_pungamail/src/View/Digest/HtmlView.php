@@ -27,6 +27,8 @@ final class HtmlView extends BaseHtmlView
 	public array $topicIds = [];
 	public array $groupIds = [];
 	public array $categories = [];
+	public array $filters = [];
+	public array $filterFields = [];
 	public array $runs = [];
 
 	/** @return void */
@@ -48,11 +50,19 @@ final class HtmlView extends BaseHtmlView
 		$this->topicIds = $model->getTopicIds();
 		$this->groupIds = $model->getGroupIds();
 		$this->categories = $model->getCategories();
+		$this->filters = $model->getFilters();
+		$this->filterFields = $model->getFilterFields();
 		$this->runs = $model->getRuns();
 		ToolbarHelper::title(Text::_((int) ($this->item->id ?? 0) > 0 ? 'COM_PUNGAMAIL_EDIT_DIGEST' : 'COM_PUNGAMAIL_NEW_DIGEST'), 'clock');
 		ToolbarHelper::apply('digest.save');
 		ToolbarHelper::save('digest.save2close');
 		ToolbarHelper::cancel('digest.cancel');
+		ToolbarHelper::custom('digest.sendTest', 'mail', '', Text::_('COM_PUNGAMAIL_SEND_TEST_AUTOMATIC'), false);
+
+		Factory::getApplication()->getDocument()->getWebAssetManager()->addInlineStyle(
+			'#toolbar-mail { margin-inline-start: auto; }'
+		);
+
 		parent::display($tpl);
 	}
 }
