@@ -142,7 +142,7 @@ final class ContentTypeService
 	 *
 	 * @param string $sourceKey Registered content type alias.
 	 *
-	 * @return array<int,array{name:string,label:string,kind:string,date_like:bool,options:array<int,array{value:string,label:string}>}>
+	 * @return array<int,array{name:string,label:string,kind:string,input_kind:string,data_type:string,date_like:bool,number_step:string,number_min:?string,options:array<int,array{value:string,label:string}>}>
 	 */
 	public function getFilterFields(string $sourceKey): array
 	{
@@ -155,20 +155,33 @@ final class ContentTypeService
 
 		$result = [];
 		$seen = [];
+		$columns = $this->columnsForType($type);
+		$columnsByName = [];
+
+		foreach ($columns as $column)
+		{
+			$columnsByName[(string) $column['name']] = $column;
+		}
 
 		if ($type->catid !== null)
 		{
+			$categoryColumn = $columnsByName[(string) $type->catid] ?? ['type' => 'int', 'date_like' => false];
+			$typeName = (string) ($categoryColumn['type'] ?? 'int');
 			$result[] = [
 				'name' => 'catid',
 				'label' => Text::_('JCATEGORY'),
 				'kind' => 'number',
+				'input_kind' => 'number',
+				'data_type' => $this->dataTypeName($typeName),
 				'date_like' => false,
+				'number_step' => $this->numberStep($typeName),
+				'number_min' => $this->numberMin($typeName),
 				'options' => $this->categoryOptions($sourceKey),
 			];
 			$seen[(string) $type->catid] = true;
 		}
 
-		foreach ($this->columnsForType($type) as $column)
+		foreach ($columns as $column)
 		{
 			$name = (string) $column['name'];
 
@@ -177,7 +190,8 @@ final class ContentTypeService
 				continue;
 			}
 
-			$kind = $this->filterKind((string) $column['type'], (bool) $column['date_like']);
+			$typeName = (string) $column['type'];
+			$kind = $this->filterKind($typeName, (bool) $column['date_like']);
 			$options = [];
 
 			if ($kind === 'boolean')
@@ -200,7 +214,11 @@ final class ContentTypeService
 				'name' => $name,
 				'label' => $label,
 				'kind' => $kind,
+				'input_kind' => $this->filterInputKind($typeName, $kind),
+				'data_type' => $this->dataTypeName($typeName),
 				'date_like' => (bool) $column['date_like'],
+				'number_step' => $this->numberStep($typeName),
+				'number_min' => $this->numberMin($typeName),
 				'options' => $options,
 			];
 		}
@@ -318,22 +336,90 @@ final class ContentTypeService
 	/** @return string */
 	private function filterKind(string $type, bool $dateLike): string
 	{
+		$type = trim($type);
+
+		if (preg_match('/^(?:bool|boolean|tinyint\s*\(\s*1\s*\))/i', $type) === 1)
+		{
+			return 'boolean';
+		}
+
+		if (preg_match('/^(?:date|datetime|timestamp|time)(?:\b|\()/i', $type) === 1)
+		{
+			return 'date';
+		}
+
+		if (preg_match('/(?:int|decimal|numeric|float|double|real|bit|year)/i', $type) === 1)
+		{
+			return 'number';
+		}
+
 		if ($dateLike)
 		{
 			return 'date';
 		}
 
-		if (preg_match('/^(?:bool|boolean|tinyint\s*\(\s*1\s*\))/i', trim($type)) === 1)
+		return 'string';
+	}
+
+	/** @return string */
+	private function filterInputKind(string $type, string $kind): string
+	{
+		$type = strtolower(trim($type));
+
+		if (preg_match('/^date(?:\b|\()/i', $type) === 1)
 		{
-			return 'boolean';
+			return 'date';
 		}
 
-		if (preg_match('/(?:int|decimal|numeric|float|double|real|bit)/i', $type) === 1)
+		if (preg_match('/^(?:datetime|timestamp)(?:\b|\()/i', $type) === 1)
+		{
+			return 'datetime';
+		}
+
+		if (preg_match('/^time(?:\b|\()/i', $type) === 1)
+		{
+			return 'time';
+		}
+
+		if ($kind === 'number')
 		{
 			return 'number';
 		}
 
-		return 'string';
+		return 'text';
+	}
+
+	/** @return string */
+	private function dataTypeName(string $type): string
+	{
+		$type = strtolower(trim($type));
+
+		return $type !== '' ? $type : 'text';
+	}
+
+	/** @return string */
+	private function numberStep(string $type): string
+	{
+		$type = strtolower(trim($type));
+
+		if (preg_match('/(?:tinyint|smallint|mediumint|bigint|\bint\b|integer|year|bit)/i', $type) === 1)
+		{
+			return '1';
+		}
+
+		if (preg_match('/(?:decimal|numeric)\s*\(\s*\d+\s*,\s*(\d+)\s*\)/i', $type, $matches) === 1)
+		{
+			$scale = min(12, max(0, (int) $matches[1]));
+			return $scale === 0 ? '1' : '0.' . str_repeat('0', $scale - 1) . '1';
+		}
+
+		return 'any';
+	}
+
+	/** @return string|null */
+	private function numberMin(string $type): ?string
+	{
+		return stripos($type, 'unsigned') !== false ? '0' : null;
 	}
 
 	/**

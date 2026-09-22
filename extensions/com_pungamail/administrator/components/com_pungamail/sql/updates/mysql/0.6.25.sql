@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.25 adds type-aware Automatic Newsletter filter controls; no database schema change is required.

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.26 — 2026-09-22
+
+- Fixed a JavaScript parse regression in the Automatic Newsletter content-source filter editor introduced in 0.6.25. Existing filters are visible again, Add Filter works, and enabling a previously unchecked content type immediately reveals its filter/preview controls.
+- Added a release guard against literal escaped indentation leaking into the digest editor JavaScript.
+
+## 0.6.25 — 2026-09-22
+
+- Added type-aware Automatic Newsletter filter value controls based on each source table's actual SQL column metadata.
+- `DATE` fields now use Joomla's standard date picker; `DATETIME`/`TIMESTAMP` fields use Joomla's standard date-and-time picker; `TIME` follows Joomla's standard time-field behavior.
+- Numeric fields now use numeric-only inputs for single-value comparisons, including integer/decimal step handling and non-negative limits for unsigned columns.
+- Filter field choices now display the detected database type (for example, `Publish Up — datetime` or `Title — varchar(255)`) so raw field names are easier to understand.
+- Kept generic multi-value `in`/`not in` entry as comma-separated text where no predefined option list exists.
+- Added a no-schema-change 0.6.25 migration marker and release checks for the type-aware filter UI.
+
 ## 0.6.24 — 2026-09-22
 
 - Replaced Automatic Newsletter's raw per-source Category IDs box with generic per-content-type filters.

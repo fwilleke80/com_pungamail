@@ -33,6 +33,19 @@ $recurrenceValue = $storedRecurrenceUnit === 'legacy'
 $contentOrder = (string) ($item->content_order ?? 'newest') === 'oldest' ? 'oldest' : 'newest';
 $maxItems = max(0, (int) ($item->max_items ?? 0));
 $minimumItems = max(0, (int) ($item->minimum_items ?? 0));
+$filterDateControlTemplate = HTMLHelper::_('calendar', '', '__PM_FILTER_NAME__', '__PM_FILTER_ID__', '%Y-%m-%d', [
+	'class' => 'form-control form-control-sm',
+	'showTime' => false,
+	'todayBtn' => true,
+	'singleHeader' => true,
+]);
+$filterDateTimeControlTemplate = HTMLHelper::_('calendar', '', '__PM_FILTER_NAME__', '__PM_FILTER_ID__', '%Y-%m-%d %H:%M:%S', [
+	'class' => 'form-control form-control-sm',
+	'showTime' => true,
+	'timeFormat' => 24,
+	'todayBtn' => true,
+	'singleHeader' => true,
+]);
 
 $runStatus = static function (string $status): array
 {
@@ -306,6 +319,10 @@ $newsletterStatus = static function (?int $status): string
 <script>
 const pmDigestFilterFields = <?php echo json_encode($this->filterFields, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 const pmDigestFilters = <?php echo json_encode($this->filters, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+const pmDigestFilterControls = <?php echo json_encode([
+	'date' => $filterDateControlTemplate,
+	'datetime' => $filterDateTimeControlTemplate,
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 const pmDigestFilterText = <?php echo json_encode([
 	'field' => Text::_('COM_PUNGAMAIL_FILTER_FIELD'),
 	'operator' => Text::_('COM_PUNGAMAIL_FILTER_OPERATOR'),
@@ -349,6 +366,29 @@ document.addEventListener('DOMContentLoaded', function ()
 		option.selected = selected;
 		return option;
 	};
+	const fieldLabel = function (field)
+	{
+		const type = String(field?.data_type || '').trim();
+		return type === '' ? field.label : field.label + ' — ' + type;
+	};
+	const calendarControl = function (holder, kind, name, id, value)
+	{
+		const html = String(pmDigestFilterControls[kind] || '')
+			.replaceAll('__PM_FILTER_NAME__', name)
+			.replaceAll('__PM_FILTER_ID__', id);
+		const template = document.createElement('template');
+		template.innerHTML = html.trim();
+		const fragment = template.content.cloneNode(true);
+		const input = fragment.querySelector('input');
+		if (input)
+		{
+			const current = String(value == null ? '' : value).trim();
+			input.value = current;
+			input.setAttribute('data-alt-value', current);
+		}
+		holder.appendChild(fragment);
+		holder.dispatchEvent(new CustomEvent('joomla:updated', {bubbles: true}));
+	};
 	const renderValue = function (holder, sourceKey, index, field, operator, value)
 	{
 		holder.textContent = '';
@@ -364,11 +404,43 @@ document.addEventListener('DOMContentLoaded', function ()
 			holder.appendChild(select);
 			return;
 		}
+
+		const inputName = 'filters[' + sourceKey + '][' + index + '][value]';
+		const inputId = 'pm-digest-filter-' + index + '-' + String(sourceKey).replace(/[^A-Za-z0-9_-]/g, '-') + '-value';
+		const scalarValue = Array.isArray(value) ? value.join(', ') : String(value == null ? '' : value);
+		const listOperator = operator === 'in' || operator === 'not_in';
+
+		if (field && !listOperator && (field.input_kind === 'date' || field.input_kind === 'datetime'))
+		{
+			calendarControl(holder, field.input_kind, inputName, inputId, scalarValue);
+			return;
+		}
+
 		const input = document.createElement('input');
 		input.className = 'form-control form-control-sm';
-		input.name = 'filters[' + sourceKey + '][' + index + '][value]';
-		input.value = Array.isArray(value) ? value.join(', ') : String(value == null ? '' : value);
-		input.placeholder = operator === 'in' || operator === 'not_in' ? 'value1, value2' : '';
+		input.name = inputName;
+		input.id = inputId;
+		input.value = scalarValue;
+
+		if (field && !listOperator && field.input_kind === 'number')
+		{
+			input.type = 'number';
+			input.step = field.number_step || 'any';
+			if (field.number_min !== null && field.number_min !== undefined && field.number_min !== '') input.min = String(field.number_min);
+		}
+		else if (field && !listOperator && field.input_kind === 'time')
+		{
+			// Joomla's standard Time form field renders a native HTML time input.
+			input.type = 'time';
+			input.step = '1';
+		}
+		else
+		{
+			input.type = 'text';
+			input.placeholder = listOperator ? 'value1, value2' : '';
+			if (field && field.input_kind === 'number') input.inputMode = 'decimal';
+		}
+
 		holder.appendChild(input);
 	};
 	const addFilterRow = function (card, rule)
@@ -382,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function ()
 		row.className = 'row g-2 align-items-end mb-2 pm-digest-filter-row';
 		const fieldCol = document.createElement('div'); fieldCol.className = 'col-md-4';
 		const fieldSelect = document.createElement('select'); fieldSelect.className = 'form-select form-select-sm'; fieldSelect.name = 'filters[' + sourceKey + '][' + index + '][field]';
-		fields.forEach(function (field) { fieldSelect.appendChild(makeOption(field.name, field.label, field.name === (rule.field || fields[0].name))); });
+		fields.forEach(function (field) { fieldSelect.appendChild(makeOption(field.name, fieldLabel(field), field.name === (rule.field || fields[0].name))); });
 		fieldCol.appendChild(fieldSelect);
 		const opCol = document.createElement('div'); opCol.className = 'col-md-3';
 		const opSelect = document.createElement('select'); opSelect.className = 'form-select form-select-sm'; opSelect.name = 'filters[' + sourceKey + '][' + index + '][operator]'; opCol.appendChild(opSelect);

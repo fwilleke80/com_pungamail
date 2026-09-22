@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.26 fixes the Automatic Newsletter filter editor JavaScript; no database schema change is required.

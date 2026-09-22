@@ -135,7 +135,10 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.22.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.23.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.24.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.25.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.26.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestContentFilter.php",
+    "tools/test_filter_field_types.php",
     "tools/test_digest_filters.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/Permissions.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/DashboardController.php",
@@ -3475,6 +3478,8 @@ def main() -> int:
     check_v0622_content_range_formatters()
     check_v0623_site_language_dates()
     check_v0624_digest_filters()
+    check_v0625_filter_input_types()
+    check_v0626_digest_filter_javascript()
     print(f"[OK] Punga Mail {VERSION} release checks passed")
     return 0
 
@@ -3922,6 +3927,62 @@ def check_v0624_digest_filters() -> None:
             if values.get(key, "").strip() == "":
                 fail(f"0.6.24 is missing {locale} filter UX copy: {key}")
 
+
+
+def check_v0625_filter_input_types() -> None:
+    """Verify type-aware Automatic Newsletter filter value controls."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    content_types = (admin / "src/Service/ContentTypeService.php").read_text(encoding="utf-8")
+    layout = (admin / "tmpl/digest/default.php").read_text(encoding="utf-8")
+    migration = (admin / "sql/updates/mysql/0.6.25.sql").read_text(encoding="utf-8")
+
+    for token in ("'input_kind'", "'data_type'", "filterInputKind", "numberStep", "numberMin"):
+        if token not in content_types:
+            fail(f"0.6.25 filter metadata is missing {token!r}")
+
+    for token in (
+        "pmDigestFilterControls",
+        "HTMLHelper::_('calendar'",
+        "field.label + ' — ' + type",
+        "input.type = 'number'",
+        "input.type = 'time'",
+        "new CustomEvent('joomla:updated'",
+    ):
+        if token not in layout:
+            fail(f"0.6.25 type-aware filter UI is missing {token!r}")
+
+    if any(token in migration.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.6.25 is a filter-UX refinement; its version-marker migration must not change schema")
+
+    result = subprocess.run(["php", str(ROOT / "tools/test_filter_field_types.php")], cwd=ROOT, text=True, capture_output=True)
+    if result.returncode != 0:
+        fail("0.6.25 filter-field type regression failed: " + (result.stderr or result.stdout).strip())
+
+
+
+def check_v0626_digest_filter_javascript() -> None:
+    """Verify the Automatic Newsletter filter editor JavaScript hotfix."""
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    layout = (admin / "tmpl/digest/default.php").read_text(encoding="utf-8")
+    migration = (admin / "sql/updates/mysql/0.6.26.sql").read_text(encoding="utf-8")
+
+    for line_no, line in enumerate(layout.splitlines(), start=1):
+        if re.match(r"^\s*\\t(?=(?:const|let|var|if|for|while|return|document|card|row|input|holder|field|op|value|remove|template|fragment|select|option|source|output|try|catch|else|//|\{|\}))", line):
+            fail(f"0.6.26 digest editor contains literal escaped indentation on line {line_no}")
+
+    for token in (
+        "(pmDigestFilters[sourceKey] || []).forEach",
+        "card.querySelector('.pm-add-filter').addEventListener('click'",
+        "card.querySelector('.pm-digest-source-toggle').addEventListener('change'",
+        "updateSourceCard(card);",
+    ):
+        if token not in layout:
+            fail(f"0.6.26 digest filter editor hotfix is missing {token!r}")
+
+    if any(token in migration.upper() for token in ("ALTER TABLE", "CREATE TABLE", "DROP TABLE")):
+        fail("0.6.26 is a JavaScript hotfix; its version-marker migration must not change schema")
 
 if __name__ == "__main__":
     raise SystemExit(main())

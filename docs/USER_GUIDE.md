@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.24. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.26. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -930,4 +930,4 @@ Ask the named administrator to use Save & Close or Cancel. If the edit session w
 
 ## Per-source content filters
 
-Automatic Newsletters can filter each selected registered content type independently. Add rules inside a content-source card; all rules for that source must match. Punga Mail discovers fields from the registered content type and backing table, so filtering does not require source-specific Punga Mail integrations. Joomla category fields, booleans, and conventional sibling-table `*_id` relations receive friendlier controls where generic metadata can be resolved; other fields remain available with generic values. Use **Preview matching content** to inspect the current source, cutoff and audience-safe matches before sending a test or waiting for the real run.
+Automatic Newsletters can filter each selected registered content type independently. Add rules inside a content-source card; all rules for that source must match. Punga Mail discovers fields and SQL data types from the registered content type and backing table, so filtering does not require source-specific Punga Mail integrations. The field picker shows the detected database type; Joomla category fields, booleans, and conventional sibling-table `*_id` relations receive friendlier controls where generic metadata can be resolved. Numeric single-value comparisons use number inputs, `DATE` fields use Joomla’s date picker, `DATETIME`/`TIMESTAMP` fields use Joomla’s date-and-time picker, and `TIME` fields use the standard time control. Use **Preview matching content** to inspect the current source, cutoff and audience-safe matches before sending a test or waiting for the real run.
