@@ -69,6 +69,16 @@ namespace
 		throw new RuntimeException('Malformed campaign token was accepted.');
 	}
 
+
+	$actionUtm = $utm;
+	$actionUtm['utm_content'] = 'unsubscribe';
+	$actionToken = $service->createCampaignToken(42, 0, $actionUtm);
+	$actionData = $service->validateCampaignToken($actionToken, $actionUtm);
+	if ($actionData === null || (int) $actionData['link_index'] !== 0)
+	{
+		throw new RuntimeException('Reserved campaign action token did not round-trip.');
+	}
+
 	// 0.6.27-0.6.29 links used base64url(JSON).base64url(HMAC-SHA256).
 	// Keep one deterministic legacy vector here so already-sent newsletters remain valid.
 	$legacyPayload = json_encode([

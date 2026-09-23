@@ -135,7 +135,7 @@ final class ServiceFactory
 	/** @return MailService */
 	public static function mail(): MailService
 	{
-		return new MailService(Factory::getContainer()->get(MailerFactoryInterface::class), self::tokens(), new MarkdownRenderer(), self::renderer(), self::database(), self::mailConfiguration(), self::mailSettings());
+		return new MailService(Factory::getContainer()->get(MailerFactoryInterface::class), self::tokens(), new MarkdownRenderer(), self::renderer(), self::database(), self::mailConfiguration(), self::mailSettings(), self::campaignTracking());
 	}
 
 	/** @return QueueService */

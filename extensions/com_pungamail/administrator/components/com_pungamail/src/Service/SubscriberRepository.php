@@ -10,6 +10,10 @@ namespace Punga\Component\PungaMail\Administrator\Service;
 
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Date\Date;
+use Joomla\CMS\Factory;
+use Joomla\CMS\Uri\Uri;
+use Joomla\Event\DispatcherInterface;
+use Joomla\Event\Event;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Database\ParameterType;
 
@@ -264,6 +268,8 @@ final class SubscriberRepository
 		$normalized = Address::normalize($email);
 		$recipientName = trim($recipientName);
 		$eventSource = $eventSource === 'administrator' ? 'administrator' : 'profile';
+		$existingBefore = $this->findByUserId($userId) ?? $this->findByEmail($email);
+		$wasSubscribed = $existingBefore !== null && (int) $existingBefore->status === self::STATUS_SUBSCRIBED;
 		$now = (new Date('now', 'UTC'))->toSql();
 		$subscriber = $this->reconcileUserSubscriber($userId, $email);
 		$status = $subscribed ? self::STATUS_SUBSCRIBED : self::STATUS_UNSUBSCRIBED;
@@ -336,6 +342,11 @@ final class SubscriberRepository
 			$this->recordEvent($id, $eventSource . '_unsubscribed');
 		}
 
+		if ($subscribed !== $wasSubscribed)
+		{
+			$this->dispatchSubscriptionLifecycle($id, $subscribed, $eventSource);
+		}
+
 		return $id;
 	}
 
@@ -363,6 +374,7 @@ final class SubscriberRepository
 		$normalized = Address::normalize($email);
 		$now = (new Date('now', 'UTC'))->toSql();
 		$subscriber = $this->findByEmail($email);
+		$wasSubscribed = $subscriber !== null && (int) $subscriber->status === self::STATUS_SUBSCRIBED;
 
 		if ($subscriber === null)
 		{
@@ -413,6 +425,11 @@ final class SubscriberRepository
 
 		$this->removeSuppression($normalized);
 		$this->recordEvent($id, 'administrator_subscribed');
+
+		if (!$wasSubscribed)
+		{
+			$this->dispatchSubscriptionLifecycle($id, true, 'administrator');
+		}
 
 		return $id;
 	}
@@ -526,6 +543,7 @@ final class SubscriberRepository
 
 		$this->removeSuppression((string) $subscriber->email_normalized);
 		$this->recordEvent($id, 'confirmed');
+		$this->dispatchSubscriptionLifecycle($id, true, 'double-opt-in');
 
 		return $this->findById($id);
 	}
@@ -538,7 +556,7 @@ final class SubscriberRepository
 	 *
 	 * @return bool True if a subscriber existed.
 	 */
-	public function unsubscribe(int $subscriberId, string $reason = 'unsubscribed'): bool
+	public function unsubscribe(int $subscriberId, string $reason = 'unsubscribed', array $context = []): bool
 	{
 		$subscriber = $this->findById($subscriberId);
 
@@ -547,6 +565,7 @@ final class SubscriberRepository
 			return false;
 		}
 
+		$wasSubscribed = (int) $subscriber->status === self::STATUS_SUBSCRIBED;
 		$now = (new Date('now', 'UTC'))->toSql();
 		$unsubscribedStatus = self::STATUS_UNSUBSCRIBED;
 		$query = $this->db->getQuery(true)
@@ -563,7 +582,12 @@ final class SubscriberRepository
 			->bind(':id', $subscriberId, ParameterType::INTEGER);
 		$this->db->setQuery($query)->execute();
 		$this->suppress($subscriberId, (string) $subscriber->email_normalized, $reason);
-		$this->recordEvent($subscriberId, 'unsubscribed', null, null, ['reason' => $reason]);
+		$this->recordEvent($subscriberId, 'unsubscribed', null, null, ['reason' => $reason] + $context);
+
+		if ($wasSubscribed)
+		{
+			$this->dispatchSubscriptionLifecycle($subscriberId, false, $reason, $context);
+		}
 
 		return true;
 	}
@@ -697,6 +721,72 @@ final class SubscriberRepository
 			'created' => (new Date('now', 'UTC'))->toSql(),
 		];
 		$this->db->insertObject('#__pungamail_events', $row, 'id');
+	}
+
+
+	/**
+	 * Dispatches one subscription lifecycle event and the Punga Analytics bridge.
+	 * Email addresses are deliberately never included in either event payload.
+	 *
+	 * @param int                 $subscriberId Subscriber that changed state.
+	 * @param bool                $subscribed   New effective state.
+	 * @param string              $source       Transition source/reason.
+	 * @param array<string,mixed> $context      Optional newsletter/campaign context.
+	 *
+	 * @return void
+	 */
+	private function dispatchSubscriptionLifecycle(int $subscriberId, bool $subscribed, string $source, array $context = []): void
+	{
+		try
+		{
+			$app = Factory::getApplication();
+			$dispatcher = Factory::getContainer()->get(DispatcherInterface::class);
+			$newsletterId = max(0, (int) ($context['newsletter_id'] ?? 0));
+			$data = [
+				'subscriber_id' => $subscriberId,
+				'source' => trim($source),
+				'newsletter_id' => $newsletterId,
+				'channel_ids' => array_values(array_unique(array_filter(array_map('intval', (array) ($context['channel_ids'] ?? []))))),
+				'utm_source' => (string) ($context['utm_source'] ?? ''),
+				'utm_medium' => (string) ($context['utm_medium'] ?? ''),
+				'utm_campaign' => (string) ($context['utm_campaign'] ?? ''),
+				'utm_id' => (string) ($context['utm_id'] ?? ''),
+				'utm_content' => (string) ($context['utm_content'] ?? ''),
+				'timestamp_utc' => (new Date('now', 'UTC'))->toSql(),
+			];
+			$eventName = $subscribed ? 'onPungaMailSubscribed' : 'onPungaMailUnsubscribed';
+			$dispatcher->dispatch($eventName, new Event($eventName, ['data' => $data]));
+
+			$newsletterTitle = '';
+			if ($newsletterId > 0)
+			{
+				$query = $this->db->getQuery(true)
+					->select($this->db->quoteName('title'))
+					->from($this->db->quoteName('#__pungamail_newsletters'))
+					->where($this->db->quoteName('id') . ' = :id')
+					->bind(':id', $newsletterId, ParameterType::INTEGER);
+				$newsletterTitle = trim((string) $this->db->setQuery($query)->loadResult());
+			}
+
+			$itemId = $newsletterId > 0 ? (string) $newsletterId : trim($source);
+			$itemTitle = $newsletterId > 0 && $newsletterTitle !== '' ? $newsletterTitle : trim($source);
+			$dispatcher->dispatch(
+				'onPungaAnalyticsRecord',
+				new Event('onPungaAnalyticsRecord', [
+					'event_type' => $subscribed ? 'mail.subscribe' : 'mail.unsubscribe',
+					'component' => 'com_pungamail',
+					'view_name' => $app->getInput()->getCmd('view', ''),
+					'path' => (string) Uri::getInstance()->getPath(),
+					'item_type' => $newsletterId > 0 ? 'pungamail.newsletter' : 'pungamail.subscription',
+					'item_id' => $itemId,
+					'item_title' => $itemTitle,
+				])
+			);
+		}
+		catch (\Throwable)
+		{
+			// Subscription changes must never fail because an optional analytics listener failed.
+		}
 	}
 
 	/**

@@ -193,9 +193,13 @@ final class SubscriptionController extends BaseController
 			return;
 		}
 
-		$repo->unsubscribe($id, 'unsubscribed');
-		$newsletterId = $input->post->getInt('mid');
-		$repo->recordEvent($id, 'unsubscribe_completed', $input->server->getString('REMOTE_ADDR'), $input->server->getString('HTTP_USER_AGENT'), ['newsletter_id' => $newsletterId]);
+		$context = $this->unsubscribeCampaignContext(true);
+		$wasSubscribed = (int) $subscriber->status === SubscriberRepository::STATUS_SUBSCRIBED;
+		$repo->unsubscribe($id, 'unsubscribed', $context);
+		if ($wasSubscribed)
+		{
+			$repo->recordEvent($id, 'unsubscribe_completed', $input->server->getString('REMOTE_ADDR'), $input->server->getString('HTTP_USER_AGENT'), $context);
+		}
 		$this->setRedirect(Route::_('index.php?option=com_pungamail&view=message&type=unsubscribed', false));
 	}
 
@@ -312,6 +316,14 @@ final class SubscriptionController extends BaseController
 			{
 				$link .= '&mid=' . $newsletterId;
 			}
+			foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_id', 'utm_content', 'pm_track'] as $name)
+			{
+				$value = $input->getString($name);
+				if ($value !== '')
+				{
+					$link .= '&' . $name . '=' . rawurlencode($value);
+				}
+			}
 
 			$this->setRedirect(Route::_($link, false));
 			return;
@@ -324,10 +336,62 @@ final class SubscriptionController extends BaseController
 			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_ONE_CLICK_REQUEST'), 400);
 		}
 
-		$repo->unsubscribe($id, 'one-click');
-		$repo->recordEvent($id, 'one_click_unsubscribe', $input->server->getString('REMOTE_ADDR'), $input->server->getString('HTTP_USER_AGENT'), ['newsletter_id' => $newsletterId]);
+		$context = $this->unsubscribeCampaignContext(false);
+		$wasSubscribed = (int) $subscriber->status === SubscriberRepository::STATUS_SUBSCRIBED;
+		$repo->unsubscribe($id, 'one-click', $context);
+		if ($wasSubscribed)
+		{
+			$repo->recordEvent($id, 'one_click_unsubscribe', $input->server->getString('REMOTE_ADDR'), $input->server->getString('HTTP_USER_AGENT'), $context);
+		}
 		$app->setHeader('Status', '204 No Content', true);
 		$app->close();
+	}
+
+	/**
+	 * Returns trusted newsletter campaign attribution for an unsubscribe action.
+	 * Older links without pm_track retain their historical mid attribution, while
+	 * current links must authenticate the visible UTM values and newsletter ID.
+	 *
+	 * @param bool $post Read values from POST for the visible confirmation form.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function unsubscribeCampaignContext(bool $post): array
+	{
+		$input = Factory::getApplication()->getInput();
+		$newsletterId = $post ? $input->post->getInt('mid') : $input->getInt('mid');
+		if ($newsletterId <= 0)
+		{
+			return [];
+		}
+
+		$token = trim($post ? $input->post->getString('pm_track') : $input->getString('pm_track'));
+		if ($token === '')
+		{
+			return ['newsletter_id' => $newsletterId, 'attribution' => 'legacy'];
+		}
+
+		$utm = [];
+		foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_id', 'utm_content'] as $name)
+		{
+			$utm[$name] = $post ? $input->post->getString($name) : $input->getString($name);
+		}
+		$data = ServiceFactory::tokens()->validateCampaignToken($token, $utm);
+		if ($data === null
+			|| (int) ($data['newsletter_id'] ?? 0) !== $newsletterId
+			|| (int) ($data['link_index'] ?? -1) !== 0)
+		{
+			return [];
+		}
+		foreach ($utm as $name => $value)
+		{
+			if ((string) ($data[$name] ?? '') !== $value)
+			{
+				return [];
+			}
+		}
+
+		return ['newsletter_id' => $newsletterId, 'attribution' => 'signed'] + $utm;
 	}
 
 	/** @return void */

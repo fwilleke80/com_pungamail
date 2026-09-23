@@ -23,6 +23,66 @@ final class StatisticsService
 	{
 	}
 
+
+	/**
+	 * Resets accumulated reporting data while preserving newsletters, queue rows,
+	 * delivery history, bounces, subscribers and audit events. A reporting
+	 * baseline is stored so historical records no longer contribute to dashboard
+	 * totals after the reset.
+	 *
+	 * @return string UTC SQL timestamp of the new reporting baseline.
+	 */
+	public function reset(): string
+	{
+		$resetAt = (new Date('now', 'UTC'))->toSql();
+		$this->db->transactionStart();
+		try
+		{
+			$this->db->setQuery('DELETE FROM ' . $this->db->quoteName('#__pungamail_campaign_clicks'))->execute();
+			$id = 1;
+			$existsQuery = $this->db->getQuery(true)
+				->select('COUNT(*)')
+				->from($this->db->quoteName('#__pungamail_statistics_state'))
+				->where($this->db->quoteName('id') . ' = :id')
+				->bind(':id', $id, ParameterType::INTEGER);
+			if ((int) $this->db->setQuery($existsQuery)->loadResult() > 0)
+			{
+				$query = $this->db->getQuery(true)
+					->update($this->db->quoteName('#__pungamail_statistics_state'))
+					->set($this->db->quoteName('reset_at') . ' = :resetAt')
+					->where($this->db->quoteName('id') . ' = :id')
+					->bind(':resetAt', $resetAt)
+					->bind(':id', $id, ParameterType::INTEGER);
+				$this->db->setQuery($query)->execute();
+			}
+			else
+			{
+				$this->db->insertObject('#__pungamail_statistics_state', (object) ['id' => 1, 'reset_at' => $resetAt]);
+			}
+			$this->db->transactionCommit();
+		}
+		catch (\Throwable $e)
+		{
+			$this->db->transactionRollback();
+			throw $e;
+		}
+
+		return $resetAt;
+	}
+
+	/** @return string|null UTC SQL timestamp of the most recent reset. */
+	public function resetAt(): ?string
+	{
+		$query = $this->db->getQuery(true)
+			->select($this->db->quoteName('reset_at'))
+			->from($this->db->quoteName('#__pungamail_statistics_state'))
+			->where($this->db->quoteName('id') . ' = 1');
+		$value = $this->db->setQuery($query)->loadResult();
+		$value = $value !== null ? trim((string) $value) : '';
+
+		return $value !== '' && $value !== '0000-00-00 00:00:00' ? $value : null;
+	}
+
 	/** @return array<string,int> */
 	public function forNewsletter(object $newsletter): array
 	{
@@ -189,15 +249,19 @@ final class StatisticsService
 			return null;
 		}
 
-		$links = $this->linkPerformance($newsletterId);
+		$cutoff = $this->resetAt();
+		$links = $this->linkPerformance($newsletterId, $cutoff);
+		$delivery = $this->forNewsletter($newsletter);
+		$delivery['unsubscribes'] = $this->newsletterUnsubscribeCount($newsletterId, $cutoff);
 
 		return [
 			'newsletter' => $newsletter,
-			'delivery' => $this->forNewsletter($newsletter),
-			'clicks' => $this->campaignClickTotals($newsletterId, null),
+			'delivery' => $delivery,
+			'clicks' => $this->campaignClickTotals($newsletterId, $cutoff),
 			'links' => $links,
-			'daily_clicks' => $this->dailyClicks($newsletterId, null),
+			'daily_clicks' => $this->dailyClicks($newsletterId, $cutoff),
 			'click_map_html' => $this->clickMapHtml($newsletter, $links),
+			'reset_at' => $cutoff,
 		];
 	}
 
@@ -374,8 +438,25 @@ final class StatisticsService
 		return (int) $this->db->setQuery($query)->loadResult();
 	}
 
+
+	/** @return int */
+	private function newsletterUnsubscribeCount(int $newsletterId, ?string $cutoff): int
+	{
+		$query = $this->db->getQuery(true)
+			->select('COUNT(*)')
+			->from($this->db->quoteName('#__pungamail_events'))
+			->where($this->db->quoteName('newsletter_id') . ' = :newsletterId')
+			->whereIn($this->db->quoteName('event_type'), ['unsubscribe_completed', 'one_click_unsubscribe'], ParameterType::STRING)
+			->bind(':newsletterId', $newsletterId, ParameterType::INTEGER);
+		if ($cutoff !== null)
+		{
+			$query->where($this->db->quoteName('created') . ' >= :newsletterEventCutoff')->bind(':newsletterEventCutoff', $cutoff);
+		}
+		return (int) $this->db->setQuery($query)->loadResult();
+	}
+
 	/** @return array<int,object> */
-	private function linkPerformance(int $newsletterId): array
+	private function linkPerformance(int $newsletterId, ?string $cutoff = null): array
 	{
 		$query = $this->db->getQuery(true)
 			->select([
@@ -394,6 +475,10 @@ final class StatisticsService
 			->group($this->db->quoteName('link_index'))
 			->order('clicks DESC, ' . $this->db->quoteName('link_index') . ' ASC')
 			->bind(':id', $newsletterId, ParameterType::INTEGER);
+		if ($cutoff !== null)
+		{
+			$query->where($this->db->quoteName('clicked_at') . ' >= :linkCutoff')->bind(':linkCutoff', $cutoff);
+		}
 		return $this->db->setQuery($query)->loadObjectList();
 	}
 
@@ -429,13 +514,24 @@ final class StatisticsService
 	/** @return string|null */
 	private function periodCutoff(int $days): ?string
 	{
-		if ($days <= 0)
+		$period = null;
+		if ($days > 0)
 		{
-			return null;
+			$date = new Date('now', 'UTC');
+			$date->modify('-' . $days . ' days');
+			$period = $date->toSql();
 		}
-		$date = new Date('now', 'UTC');
-		$date->modify('-' . $days . ' days');
-		return $date->toSql();
+		$reset = $this->resetAt();
+		if ($period === null)
+		{
+			return $reset;
+		}
+		if ($reset === null)
+		{
+			return $period;
+		}
+
+		return strcmp($period, $reset) >= 0 ? $period : $reset;
 	}
 
 	/** @return string|null */

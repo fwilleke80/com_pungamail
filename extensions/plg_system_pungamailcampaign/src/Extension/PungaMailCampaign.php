@@ -69,6 +69,14 @@ final class PungaMailCampaign extends CMSPlugin implements SubscriberInterface
 			}
 		}
 
+		// Link index 0 is reserved for authenticated newsletter actions such as
+		// Unsubscribe. The action controller records its own lifecycle event after
+		// the action succeeds; merely opening the confirmation page is not a click.
+		if ((int) ($data['link_index'] ?? 0) === 0)
+		{
+			return;
+		}
+
 		$visit = $data + [
 			'url' => Uri::getInstance()->toString(),
 			'path' => Uri::getInstance()->getPath(),

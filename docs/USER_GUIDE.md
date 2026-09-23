@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.31. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.32. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -155,6 +155,10 @@ Tracking URLs never contain a subscriber ID, email address, or other recipient i
 
 Punga Mail dispatches both the domain event `onPungaMailCampaignVisit` and the standard Punga Analytics bridge `onPungaAnalyticsRecord` with `event_type=mail.click` and `component=com_pungamail`. Punga Analytics therefore does not need to listen for the Punga Mail-specific event.
 
+Real sent Newsletters also campaign-tag the footer unsubscribe URL and RFC 8058 one-click URL. These use a signed `pm_track` **action** token with reserved link index `0`, so merely opening the unsubscribe confirmation page is not counted as a normal click. When the subscriber actually changes from Subscribed to Unsubscribed, Punga Mail attributes that conversion to the originating Newsletter/campaign. Repeated use of the same unsubscribe link does not create another subscription-state event.
+
+Subscription state transitions dispatch domain events `onPungaMailSubscribed` and `onPungaMailUnsubscribed`. Punga Mail also emits Punga Analytics bridge events `mail.subscribe` and `mail.unsubscribe`. These lifecycle events contain operational context such as source and, for campaign-attributed unsubscribes, Newsletter/campaign identity, but no email address.
+
 ### Mail layout
 
 These values form the global mail layout. A Template can override each individual value, and a Newsletter can override it again:
@@ -251,11 +255,12 @@ When an Automatic Newsletter is configured to **Create draft**, Punga Mail can e
 
 ### Maintenance / Data
 
-| Setting | What it controls |
+| Setting / action | What it controls |
 | --- | --- |
+| Reset statistics | Deletes accumulated Punga Mail campaign-click measurements and starts a new Statistics reporting baseline from the reset moment. Existing Newsletters, queue/delivery history, bounces, subscribers and audit history are preserved. Historical records before the baseline stop contributing to the Statistics overview. Punga Analytics stores its own data separately and is not reset here. |
 | Uninstall: Remove database tables | **No**, the default, preserves all Punga Mail data when the extension is uninstalled. **Yes** permanently removes subscriber, suppression, topic, newsletter, queue, history, and related data during uninstall. |
 
-Leave this at **No** unless permanent deletion is intentional and a suitable backup exists.
+**Reset statistics** is a destructive Punga Mail reporting action and therefore requires confirmation. Leave **Remove database tables** at **No** unless permanent deletion during uninstall is intentional and a suitable backup exists.
 
 ### Permissions
 
@@ -741,9 +746,9 @@ Newsletters sharing the same `utm_campaign` are also rolled up under **Observed 
 
 External links may carry UTM parameters when **All links** is selected, but only links returning to this Joomla site can become trusted Punga Mail clicks. Measure external destinations with analytics running there.
 
-### Punga Analytics setup for Newsletter clicks
+### Punga Analytics setup for Newsletter activity
 
-Punga Mail emits Punga Analytics custom event **`mail.click`**. Add a Custom Event definition in Punga Analytics with these recommended values:
+Punga Mail emits three Punga Analytics custom events through the standard `onPungaAnalyticsRecord` bridge: **`mail.click`**, **`mail.subscribe`**, and **`mail.unsubscribe`**. Add Custom Event definitions as needed. For Newsletter clicks, use these recommended values:
 
 | Setting | Value |
 | --- | --- |
@@ -758,6 +763,39 @@ Punga Mail emits Punga Analytics custom event **`mail.click`**. Add a Custom Eve
 | Ranking title | `Most clicked newsletter links` |
 | Report title | `Newsletter clicks` |
 | Icon | Link |
+
+For subscriptions, a useful definition is:
+
+| Setting | Value |
+| --- | --- |
+| Event identifier | `mail.subscribe` |
+| Title | `Newsletter subscriptions` |
+| Source component | `com_pungamail` |
+| Record | Yes |
+| Show summary | Yes |
+| Show trend | Yes |
+| Show time | Yes |
+| Show ranking | No |
+| Report title | `Newsletter subscriptions` |
+| Icon | User |
+
+For unsubscribes, use:
+
+| Setting | Value |
+| --- | --- |
+| Event identifier | `mail.unsubscribe` |
+| Title | `Newsletter unsubscribes` |
+| Source component | `com_pungamail` |
+| Record | Yes |
+| Show summary | Yes |
+| Show trend | Yes |
+| Show time | Yes |
+| Show ranking | Yes |
+| Ranking title | `Newsletters causing unsubscribes` |
+| Report title | `Newsletter unsubscribes` |
+| Icon | User |
+
+When an unsubscribe is campaign-attributed, Punga Analytics receives the originating Newsletter as the event item, so ranking can show which sent Newsletters produced unsubscribes. Subscription events without a Newsletter context are counted without exposing subscriber identity.
 
 If Punga Analytics is set to **Record all valid custom events**, the definition mainly controls presentation. If it records configured events only, create the definition before testing. Its own Do Not Track, visitor-exclusion, and bot rules still apply independently.
 

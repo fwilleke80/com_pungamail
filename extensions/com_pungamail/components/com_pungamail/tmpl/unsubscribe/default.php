@@ -11,6 +11,7 @@ use Joomla\CMS\Router\Route;
 $input = Factory::getApplication()->getInput();
 $token = $input->getString('token');
 $newsletterId = $input->getInt('mid');
+$campaignFields = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_id', 'utm_content', 'pm_track'];
 ?>
 <div class="pungamail-unsubscribe">
 <?php if ($this->subscriber === null) : ?>
@@ -23,6 +24,12 @@ $newsletterId = $input->getInt('mid');
 		<input type="hidden" name="id" value="<?php echo (int) $this->subscriber->id; ?>">
 		<input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
 		<input type="hidden" name="mid" value="<?php echo $newsletterId; ?>">
+<?php foreach ($campaignFields as $campaignField) : ?>
+<?php $campaignValue = $input->getString($campaignField); ?>
+<?php if ($campaignValue !== '') : ?>
+		<input type="hidden" name="<?php echo htmlspecialchars($campaignField, ENT_QUOTES, 'UTF-8'); ?>" value="<?php echo htmlspecialchars($campaignValue, ENT_QUOTES, 'UTF-8'); ?>">
+<?php endif; ?>
+<?php endforeach; ?>
 		<button class="btn btn-danger" type="submit"><?php echo Text::_('COM_PUNGAMAIL_UNSUBSCRIBE_BUTTON'); ?></button>
 		<?php echo HTMLHelper::_('form.token'); ?>
 	</form>

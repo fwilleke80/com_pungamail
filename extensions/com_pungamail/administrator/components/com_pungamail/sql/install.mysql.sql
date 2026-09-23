@@ -420,3 +420,12 @@ CREATE TABLE IF NOT EXISTS `#__pungamail_campaign_clicks` (
   KEY `idx_pungamail_campaign_click_time` (`clicked_at`),
   KEY `idx_pungamail_campaign_click_link` (`newsletter_id`, `link_index`, `is_automated`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE IF NOT EXISTS `#__pungamail_statistics_state` (
+  `id` TINYINT UNSIGNED NOT NULL,
+  `reset_at` DATETIME NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `#__pungamail_statistics_state` (`id`, `reset_at`) VALUES (1, NULL);

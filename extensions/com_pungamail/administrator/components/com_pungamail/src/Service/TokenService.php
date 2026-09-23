@@ -89,7 +89,7 @@ final class TokenService
 	public function createCampaignToken(int $newsletterId, int $linkIndex, array $utm): string
 	{
 		$newsletterId = max(0, $newsletterId);
-		$linkIndex = max(1, $linkIndex);
+		$linkIndex = max(0, $linkIndex);
 		$newsletterPart = base_convert((string) $newsletterId, 10, 36);
 		$linkPart = base_convert((string) $linkIndex, 10, 36);
 		$payload = $this->campaignSignaturePayload($newsletterId, $linkIndex, $utm);
@@ -141,7 +141,7 @@ final class TokenService
 
 		$newsletterId = (int) base_convert($parts[1], 36, 10);
 		$linkIndex = (int) base_convert($parts[2], 36, 10);
-		if ($newsletterId <= 0 || $linkIndex <= 0)
+		if ($newsletterId <= 0 || $linkIndex < 0)
 		{
 			return null;
 		}

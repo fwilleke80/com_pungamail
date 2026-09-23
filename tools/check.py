@@ -140,6 +140,13 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.25.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.26.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.27.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.28.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.29.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.30.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.31.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.32.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/StatisticsController.php",
+    "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/ResetstatisticsField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestContentFilter.php",
     "tools/test_filter_field_types.php",
     "tools/test_digest_filters.php",
@@ -1836,7 +1843,7 @@ def check_release_fix_0403() -> None:
             fail(f"0.4.3 unsubscribe endpoint is missing dual GET/POST behavior: {token!r}")
 
     get_pos = subscription.find("if ($method === 'GET')")
-    unsubscribe_pos = subscription.find("$repo->unsubscribe($id, 'one-click')")
+    unsubscribe_pos = subscription.find("$repo->unsubscribe($id, 'one-click'")
     if get_pos < 0 or unsubscribe_pos < 0 or get_pos > unsubscribe_pos:
         fail("0.4.3 manual GET handling must occur before one-click unsubscribe mutation")
 
@@ -3491,6 +3498,7 @@ def main() -> int:
     check_v0629_validation_and_first_run_cutoff()
     check_v0630_compact_campaign_tokens()
     check_v0631_preview_tracking_and_statistics_copy()
+    check_v0632_statistics_reset_and_subscription_events()
     print(f"[OK] Punga Mail {VERSION} release checks passed")
     return 0
 
@@ -4215,6 +4223,74 @@ def check_v0631_preview_tracking_and_statistics_copy() -> None:
     result = subprocess.run(["php", str(ROOT / "tools/test_campaign_tracking.php")], cwd=ROOT, text=True, capture_output=True)
     if result.returncode != 0:
         fail("0.6.31 preview/test campaign URL regression failed: " + (result.stderr or result.stdout).strip())
+
+
+
+def check_v0632_statistics_reset_and_subscription_events() -> None:
+    """Verify Statistics reset, unsubscribe attribution, and lifecycle analytics events."""
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    config = (admin / "config.xml").read_text(encoding="utf-8")
+    stats = (admin / "src/Service/StatisticsService.php").read_text(encoding="utf-8")
+    stats_controller = (admin / "src/Controller/StatisticsController.php").read_text(encoding="utf-8")
+    reset_field = (admin / "src/Field/ResetstatisticsField.php").read_text(encoding="utf-8")
+    subscribers = (admin / "src/Service/SubscriberRepository.php").read_text(encoding="utf-8")
+    mail = (admin / "src/Service/MailService.php").read_text(encoding="utf-8")
+    tracking = (admin / "src/Service/CampaignTrackingService.php").read_text(encoding="utf-8")
+    token = (admin / "src/Service/TokenService.php").read_text(encoding="utf-8")
+    site_controller = (ROOT / "extensions/com_pungamail/components/com_pungamail/src/Controller/SubscriptionController.php").read_text(encoding="utf-8")
+    unsubscribe_tmpl = (ROOT / "extensions/com_pungamail/components/com_pungamail/tmpl/unsubscribe/default.php").read_text(encoding="utf-8")
+    plugin = (ROOT / "extensions/plg_system_pungamailcampaign/src/Extension/PungaMailCampaign.php").read_text(encoding="utf-8")
+    install = (admin / "sql/install.mysql.sql").read_text(encoding="utf-8")
+    purge = (admin / "sql/purge.mysql.sql").read_text(encoding="utf-8")
+    migration = (admin / "sql/updates/mysql/0.6.32.sql").read_text(encoding="utf-8")
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    test_guide = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+
+    for expected in ('type="resetstatistics"', 'name="reset_statistics"'):
+        if expected not in config:
+            fail(f"0.6.32 Maintenance & data reset control is missing {expected!r}")
+    for expected in ("public function reset()", "#__pungamail_statistics_state", "DELETE FROM", "periodCutoff"):
+        if expected not in stats:
+            fail(f"0.6.32 Statistics reset service is missing {expected!r}")
+    for expected in ("Permissions::requireConfigure()", "Session::checkToken()", "statistics()->reset()"):
+        if expected not in stats_controller:
+            fail(f"0.6.32 Statistics reset controller is missing {expected!r}")
+    for expected in ("statistics.reset", "COM_PUNGAMAIL_STATISTICS_RESET_CONFIRM", "btn-outline-danger"):
+        if expected not in reset_field:
+            fail(f"0.6.32 Statistics reset field is missing {expected!r}")
+    for expected in ("onPungaMailSubscribed", "onPungaMailUnsubscribed", "'mail.subscribe'", "'mail.unsubscribe'", "dispatchSubscriptionLifecycle"):
+        if expected not in subscribers:
+            fail(f"0.6.32 subscription lifecycle event contract is missing {expected!r}")
+    lifecycle_start = subscribers.find('private function dispatchSubscriptionLifecycle')
+    lifecycle_end = subscribers.find('public function suppress(', lifecycle_start)
+    lifecycle = subscribers[lifecycle_start:lifecycle_end if lifecycle_end >= 0 else None]
+    if lifecycle_start < 0 or "'email' =>" in lifecycle:
+        fail("0.6.32 subscription lifecycle events must not expose an email address")
+    for expected in ("actionUrl", "'unsubscribe'", "campaignTracking"):
+        if expected not in mail + tracking:
+            fail(f"0.6.32 unsubscribe campaign tracking is missing {expected!r}")
+    if "max(0, $linkIndex)" not in token or "link_index'] ?? 0) === 0" not in plugin:
+        fail("0.6.32 reserved campaign action token index 0 is incomplete")
+    for expected in ("unsubscribeCampaignContext", "attribution' => 'signed'", "link_index'] ?? -1) !== 0"):
+        if expected not in site_controller:
+            fail(f"0.6.32 trusted unsubscribe attribution is missing {expected!r}")
+    for expected in ("pm_track", "utm_campaign", "campaignFields"):
+        if expected not in unsubscribe_tmpl:
+            fail(f"0.6.32 unsubscribe confirmation does not preserve {expected!r}")
+    for contents, label in ((install, "install schema"), (migration, "0.6.32 migration")):
+        if "#__pungamail_statistics_state" not in contents:
+            fail(f"0.6.32 {label} does not contain Statistics baseline storage")
+    for table in ("#__pungamail_statistics_state", "#__pungamail_campaign_clicks"):
+        if table not in purge:
+            fail(f"0.6.32 purge schema does not remove {table}")
+    for expected in ("mail.subscribe", "mail.unsubscribe", "Reset statistics", "onPungaMailSubscribed", "onPungaMailUnsubscribed"):
+        if expected not in guide + test_guide:
+            fail(f"0.6.32 documentation is missing {expected!r}")
+
+    for test_name in ("test_campaign_token.php", "test_campaign_tracking.php"):
+        result = subprocess.run(["php", str(ROOT / "tools" / test_name)], cwd=ROOT, text=True, capture_output=True)
+        if result.returncode != 0:
+            fail(f"0.6.32 {test_name} regression failed: " + (result.stderr or result.stdout).strip())
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -37,7 +37,8 @@ final class MailService
 		private readonly NewsletterRenderer $renderer,
 		private readonly DatabaseInterface $db,
 		private readonly MailConfigurationService $mailConfiguration,
-		private readonly MailSettingsRepository $mailSettings
+		private readonly MailSettingsRepository $mailSettings,
+		private readonly CampaignTrackingService $campaignTracking
 	)
 	{
 	}
@@ -67,7 +68,12 @@ final class MailService
 			isset($recipient->user_id) && $recipient->user_id !== null ? (int) $recipient->user_id : null
 		);
 		$newsletterId = (int) $newsletter->id;
-		$unsubscribeUrl = $this->unsubscribeUrl((int) $recipient->subscriber_id, $newsletterId);
+		$unsubscribeUrl = $this->campaignTracking->actionUrl(
+			$this->unsubscribeUrl((int) $recipient->subscriber_id, $newsletterId),
+			$newsletter,
+			'unsubscribe',
+			true
+		);
 		$html = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, htmlspecialchars($unsubscribeUrl, ENT_QUOTES, 'UTF-8'), $personalized['html']);
 		$text = str_replace(NewsletterRenderer::UNSUBSCRIBE_PLACEHOLDER, $unsubscribeUrl, $personalized['text']);
 		$browserUrl = (int) ($newsletter->snapshot_browser_enabled ?? 0) === 1
@@ -75,7 +81,12 @@ final class MailService
 			: '#';
 		$html = str_replace(NewsletterRenderer::BROWSER_PLACEHOLDER, htmlspecialchars($browserUrl, ENT_QUOTES, 'UTF-8'), $html);
 		$text = str_replace(NewsletterRenderer::BROWSER_PLACEHOLDER, $browserUrl, $text);
-		$oneClickUrl = $this->oneClickUnsubscribeUrl((int) $recipient->subscriber_id, $newsletterId);
+		$oneClickUrl = $this->campaignTracking->actionUrl(
+			$this->oneClickUnsubscribeUrl((int) $recipient->subscriber_id, $newsletterId),
+			$newsletter,
+			'unsubscribe',
+			true
+		);
 		$headers = ['List-Unsubscribe' => '<' . $oneClickUrl . '>'];
 
 		if (trim((string) ($newsletter->snapshot_list_id ?? '')) !== '')

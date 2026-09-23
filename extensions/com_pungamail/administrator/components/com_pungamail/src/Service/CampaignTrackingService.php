@@ -98,6 +98,68 @@ final class CampaignTrackingService
 		];
 	}
 
+
+	/**
+	 * Adds the newsletter campaign context to a trusted internal action URL.
+	 * Action links use link index 0 so they are authenticated but never counted
+	 * as ordinary newsletter-link clicks.
+	 *
+	 * @param string $url                 Absolute or site-relative internal URL.
+	 * @param object $newsletter          Newsletter row/snapshot.
+	 * @param string $content             Action label for utm_content.
+	 * @param bool   $includeTrustedToken Whether pm_track should be emitted.
+	 *
+	 * @return string
+	 */
+	public function actionUrl(string $url, object $newsletter, string $content, bool $includeTrustedToken = true): string
+	{
+		$settings = $this->settings($newsletter);
+		if ($settings['scope'] === self::SCOPE_DISABLED || !$this->trackable($url))
+		{
+			return $url;
+		}
+
+		$uri = new Uri($url);
+		$host = strtolower((string) $uri->getHost());
+		$siteHost = strtolower((string) (new Uri(Uri::root()))->getHost());
+		$internal = $host === '' || $host === $siteHost;
+		if (!$internal)
+		{
+			return $url;
+		}
+
+		$context = [
+			'{newsletter_id}' => (string) max(0, (int) ($newsletter->id ?? 0)),
+			'{newsletter_title}' => trim((string) ($newsletter->title ?? $newsletter->subject ?? '')),
+			'{link_index}' => '0',
+			'{link_host}' => $host,
+			'{link_path}' => (string) $uri->getPath(),
+		];
+		$utm = [];
+		foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_id'] as $name)
+		{
+			$value = trim(strtr((string) $settings[$name], $context));
+			if ($value !== '')
+			{
+				$utm[$name] = $value;
+				$uri->setVar($name, $value);
+			}
+		}
+		$content = trim($content);
+		if ($content !== '')
+		{
+			$utm['utm_content'] = $content;
+			$uri->setVar('utm_content', $content);
+		}
+
+		if ($includeTrustedToken && (int) ($newsletter->id ?? 0) > 0)
+		{
+			$uri->setVar('pm_track', $this->tokens->createCampaignToken((int) $newsletter->id, 0, $utm));
+		}
+
+		return $uri->toString();
+	}
+
 	/** @return string */
 	private function trackedUrl(string $url, object $newsletter, array $settings, int &$linkIndex, array &$map, bool $includeTrustedToken): string
 	{

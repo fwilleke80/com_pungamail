@@ -140,6 +140,25 @@ namespace
 		throw new RuntimeException('Preview/test tracking must not emit trusted pm_track tokens.');
 	}
 
+
+	ComponentHelper::$values['campaign_tracking_scope'] = 'all';
+	$unsubscribe = $service->actionUrl('https://example.test/newsletter/unsubscribe?id=2&mid=42', $newsletter, 'unsubscribe', true);
+	if (!str_contains($unsubscribe, 'utm_source=newsletter') || !str_contains($unsubscribe, 'utm_content=unsubscribe') || !str_contains($unsubscribe, 'pm_track='))
+	{
+		throw new RuntimeException('Tracked unsubscribe action did not receive campaign parameters and pm_track.');
+	}
+	parse_str((string) parse_url($unsubscribe, PHP_URL_QUERY), $unsubscribeVars);
+	$unsubscribeUtm = [];
+	foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_id', 'utm_content'] as $name)
+	{
+		$unsubscribeUtm[$name] = (string) ($unsubscribeVars[$name] ?? '');
+	}
+	$unsubscribeData = (new TokenService())->validateCampaignToken((string) ($unsubscribeVars['pm_track'] ?? ''), $unsubscribeUtm);
+	if ($unsubscribeData === null || (int) $unsubscribeData['newsletter_id'] !== 42 || (int) $unsubscribeData['link_index'] !== 0)
+	{
+		throw new RuntimeException('Tracked unsubscribe action did not use the reserved authenticated action token.');
+	}
+
 	ComponentHelper::$values['campaign_tracking_scope'] = 'internal';
 	$internalOnly = $service->apply($html, $text, $newsletter);
 	if (!str_contains($internalOnly['html'], 'outside.example/path">Outside'))

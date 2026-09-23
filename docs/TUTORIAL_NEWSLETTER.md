@@ -131,6 +131,8 @@ The Newsletter inherits campaign defaults from **Punga Mail → Options → Camp
 
 When internal tracking is active, Punga Mail adds the ordinary UTM parameters plus a compact authenticated `pm_track` token. The UTM values stay readable in the URL; `pm_track` contains only the Newsletter/link identity and a shortened HMAC-SHA256 authenticator, so those visible values cannot be changed without invalidating the token. The System - Punga Mail Campaign Tracking plugin validates both before dispatching `onPungaMailCampaignVisit`, which optional analytics extensions such as Punga Analytics can record. External links can receive UTM parameters under **All links**, but never the trusted internal token. Tracking URLs contain no subscriber ID or email address. Preview and test messages show the configured UTM parameters but omit `pm_track`; the trusted token is added only to the frozen Newsletter used for real delivery.
 
+The unsubscribe link in a real sent Newsletter uses the same campaign source/medium/campaign/id and `utm_content=unsubscribe`, plus a signed action `pm_track`. Opening the confirmation page is not counted as a content click. If the recipient actually unsubscribes, the Newsletter report records an attributed unsubscribe and Punga Mail emits the subscription lifecycle/analytics events. RFC 8058 one-click unsubscribe uses the same attribution path.
+
 ## 8. Select recipients
 
 In **Recipients**:

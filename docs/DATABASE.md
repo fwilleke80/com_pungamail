@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.6.31 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.6.32 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -73,6 +73,11 @@ SMTP handoff and DB update cannot be one distributed transaction. A crash after 
 ## `#__pungamail_mail_settings`
 
 Singleton storage for Punga Mail-specific mail-account secrets and returned-mail status. The returned-mail IMAP password and optional Custom SMTP password are encrypted. 0.6.2 stores only the **latest** returned-mail check timestamp/status, a compact JSON counter summary, and a sanitized failure message. 0.6.4 adds the timestamp of the latest returned-mail result acknowledged on the Dashboard so a reviewed warning can stay hidden while a later check still creates a fresh attention item. Joomla Scheduled Tasks remains the authoritative task-execution history; Punga Mail does not create an unbounded duplicate run-history table merely to render the Delivery/Dashboard status.
+
+
+## `#__pungamail_statistics_state`
+
+Stores the single Statistics reporting baseline (`id=1`, `reset_at`). **Reset statistics** deletes accumulated campaign-click rows and advances this baseline instead of deleting Newsletter, queue, bounce, subscriber, or audit history. Dashboard period queries use the later of the selected period cutoff and this reset baseline.
 
 ## `#__pungamail_events`
 
@@ -162,6 +167,7 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 - `0.6.26.sql` — version marker for the Automatic Newsletter filter-editor JavaScript hotfix; no schema change.
 - `0.6.27.sql` — adds campaign-tracking scope and UTM override columns to ordinary and Automatic Newsletters. It also ships generic registered-content fixes for Joomla `"null"` mappings and legacy zero publication dates without introducing source-specific schema.
 - `0.6.28.sql` — adds aggregate/link-level trusted internal campaign-click storage used by Punga Mail Statistics.
+- `0.6.32.sql` — adds the Statistics reset-baseline state table; unsubscribe campaign attribution and lifecycle events reuse existing event/campaign storage.
 
 
 ### Automatic Newsletter first-run cutoff

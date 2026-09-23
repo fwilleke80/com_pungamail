@@ -22,11 +22,11 @@ It is designed for websites that want to manage newsletters directly inside Joom
 - Use Joomla's outgoing mail settings or a separate Punga Mail-specific SMTP account.
 - Handle undeliverable mail, show the latest returned-mail check on Delivery/Dashboard, and stop repeatedly sending to addresses that can no longer be reached.
 - Show delivery statistics, recent activity, upcoming mail and other useful status information on the Dashboard.
-- Inspect privacy-conscious **Newsletter and campaign statistics** with trusted clicks, scanner-like clicks separated, link rankings, timelines, campaign roll-ups, and a click map.
+- Inspect **Newsletter and campaign statistics** with trusted clicks, scanner-like clicks separated, attributed unsubscribes, link rankings, timelines, campaign roll-ups, and a click map.
 - Import and export recipient data as CSV.
 - Use grouped administrator navigation for Newsletters/Automatic Newsletters, Audience, Design, and Tools workflows.
 - Generate browser-view and unsubscribe links for newsletters.
-- Optionally add configurable UTM campaign parameters to internal or all newsletter links; trusted internal campaign visits are recorded for Punga Mail Statistics and dispatch Joomla integration events that analytics extensions such as Punga Analytics can consume without putting recipient identity into URLs.
+- Optionally add configurable UTM campaign parameters to internal or all newsletter links; trusted internal campaign visits and campaign-attributed unsubscribe actions feed Punga Mail Statistics, while Joomla integration events expose `mail.click`, `mail.subscribe`, and `mail.unsubscribe` to analytics extensions such as Punga Analytics without putting recipient identity into URLs.
 - Use Joomla's language system; Punga Mail currently includes **English and German**.
 
 By default, Punga Mail uses Joomla's configured mail transport. Administrators can instead select **Custom SMTP** in Punga Mail Options when newsletters should use a separate outgoing account; Joomla system mail remains unchanged.

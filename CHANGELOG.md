@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.32 — 2026-09-23
+
+- Added a guarded **Reset statistics** action under Component Options → Maintenance & data. Resetting deletes Punga Mail campaign-click measurements and establishes a new reporting baseline while preserving Newsletters, delivery history, bounces, subscribers and audit history. Punga Analytics data is independent and is not changed.
+- Added campaign attribution to the visible footer unsubscribe URL and RFC 8058 one-click unsubscribe URL for real sent Newsletters. The links carry the same UTM campaign context plus a signed `pm_track` action token; previews/test messages remain non-tracking.
+- Reserved campaign-token link index `0` for authenticated newsletter actions. Opening an unsubscribe confirmation URL is not counted as `mail.click`; the unsubscribe is recorded only when the subscription state actually changes.
+- Added subscription lifecycle Joomla events `onPungaMailSubscribed` and `onPungaMailUnsubscribed`. Events are emitted once per real state transition and exclude email addresses from their event payload.
+- Added Punga Analytics bridge events `mail.subscribe` and `mail.unsubscribe` through `onPungaAnalyticsRecord`, alongside existing `mail.click`. Campaign-attributed unsubscribes use the originating Newsletter as the analytics item when available.
+- Hardened unsubscribe attribution so current links require a valid signed campaign token before UTM/newsletter attribution is trusted; already-sent legacy unsubscribe links keep their historical `mid` attribution.
+- Added regression coverage for authenticated unsubscribe action URLs, reserved action tokens, lifecycle-event contracts, Statistics reset storage and the 0.6.32 schema migration.
+
 ## 0.6.31 — 2026-09-23
 
 - Made campaign-link behavior consistent across previews and test messages: Newsletter Preview, Automatic Newsletter Preview, and both test-send paths keep the configured UTM parameters but deliberately omit trusted `pm_track` tokens. Only the frozen/queued Newsletter used for real delivery receives `pm_track`, preventing administrator preview/test clicks from polluting campaign statistics.

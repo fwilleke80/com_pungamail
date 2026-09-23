@@ -1,4 +1,4 @@
-# Punga Mail 0.6.31 Live Acceptance Test Guide
+# Punga Mail 0.6.32 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -1307,10 +1307,13 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Steps:**
 
-1. Unsubscribe a controlled recipient using a link from a specific sent Newsletter.
-2. Inspect that Newsletter’s statistics/history.
+1. Send a controlled Newsletter with campaign tracking enabled.
+2. Inspect the footer unsubscribe URL and confirm it contains the configured UTM values, `utm_content=unsubscribe`, and a compact `pm_track`.
+3. Open the link but do not confirm; inspect click statistics.
+4. Confirm the unsubscribe and inspect that Newsletter’s statistics/history.
+5. Submit the same valid unsubscribe action again if practical.
 
-**Expected:** Unsubscribe is attributed where the feature records it without changing unrelated historic recipient rows.
+**Expected:** Opening the unsubscribe confirmation page does not increment ordinary trusted-click counts. The successful state transition is attributed once to the originating Newsletter. Repeating the unsubscribe does not create another lifecycle conversion. The RFC 8058 one-click endpoint uses the same campaign attribution when invoked by a mail client.
 
 ### PM-182 — Browser view integrity
 
@@ -1586,10 +1589,21 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 ### PM-223 — Punga Analytics bridge
 
-1. Define Punga Analytics custom event `mail.click` with source component `com_pungamail`, recording enabled, and ranking/trend/time presentation enabled.
+1. Define Punga Analytics custom events `mail.click`, `mail.subscribe`, and `mail.unsubscribe`, all with source component `com_pungamail` and recording enabled.
 2. Follow a valid internal Punga Mail campaign link.
+3. Complete one real subscription transition and one real unsubscribe transition.
 
-**Expected:** Punga Analytics records `mail.click` with Newsletter+link item identity/title. No `onPungaMailCampaignVisit` configuration is needed because Punga Mail emits `onPungaAnalyticsRecord`.
+**Expected:** Punga Analytics records the three event types through `onPungaAnalyticsRecord`. Campaign-attributed `mail.unsubscribe` uses the originating Newsletter as its item. No subscriber email address is sent in the analytics bridge. No `onPungaMailCampaignVisit`, `onPungaMailSubscribed`, or `onPungaMailUnsubscribed` configuration is required inside Punga Analytics.
+
+### PM-224 — Reset Statistics baseline
+
+1. Ensure Punga Mail Statistics contains at least one sent Newsletter and one trusted campaign click.
+2. Open **Options → Maintenance & data** and choose **Reset statistics**.
+3. Accept the destructive confirmation and reopen Statistics using **All time**.
+4. Inspect existing Newsletters, Delivery history, Bounces and Subscribers.
+5. Generate a new trusted click after the reset.
+
+**Expected:** Existing Punga Mail campaign-click rows are cleared and the Statistics overview starts from the reset moment. Newsletter/delivery/bounce/subscriber/audit records remain intact. New post-reset activity is counted. Data already recorded by Punga Analytics is unaffected.
 
 ### PM-230 — Delivery page overview and diagnostics
 

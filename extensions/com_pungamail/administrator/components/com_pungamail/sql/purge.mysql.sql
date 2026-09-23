@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS `#__pungamail_statistics_state`;
+DROP TABLE IF EXISTS `#__pungamail_campaign_clicks`;
 DROP TABLE IF EXISTS `#__pungamail_content_layouts`;
 DROP TABLE IF EXISTS `#__pungamail_events`;
 DROP TABLE IF EXISTS `#__pungamail_digest_runs`;
