@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.6.32 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.6.33 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -168,8 +168,9 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 - `0.6.27.sql` — adds campaign-tracking scope and UTM override columns to ordinary and Automatic Newsletters. It also ships generic registered-content fixes for Joomla `"null"` mappings and legacy zero publication dates without introducing source-specific schema.
 - `0.6.28.sql` — adds aggregate/link-level trusted internal campaign-click storage used by Punga Mail Statistics.
 - `0.6.32.sql` — adds the Statistics reset-baseline state table; unsubscribe campaign attribution and lifecycle events reuse existing event/campaign storage.
+- `0.6.33.sql` — repairs Automatic Newsletter history/cutoff state from existing genuinely sent generated newsletters. No schema columns are added.
 
 
 ### Automatic Newsletter first-run cutoff
 
-`#__pungamail_digests.first_run_cutoff_mode` stores `recurrence`, `lookback`, or `all`. `first_run_lookback_hours` stores the custom recent-period duration. These fields are consulted only while `last_cutoff_at` is empty; after a successful run, the persisted `last_cutoff_at` is authoritative.
+`#__pungamail_digests.first_run_cutoff_mode` stores `recurrence`, `lookback`, or `all`. `first_run_lookback_hours` stores the custom recent-period duration. These fields are consulted only while `last_cutoff_at` is empty. `last_cutoff_at` is advanced only after a generated Automatic Newsletter actually reaches a sent state with at least one delivered recipient; draft creation, queue creation, skipped/no-content runs, trashing, and deleting an unsent draft do not advance it. The stored cutoff uses the generation completion time of the sent Automatic Newsletter, so sending an older generated draft later cannot move the cutoff backwards.

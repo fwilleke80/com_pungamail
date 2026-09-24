@@ -81,7 +81,7 @@ final class DigestService
 			{
 				if ($runId !== null)
 				{
-					$this->digests->finishRun($digestId, $runId, 'failed', null, 0, ErrorMessage::sanitize($e), false);
+					$this->digests->finishRun($digestId, $runId, 'failed', null, 0, ErrorMessage::sanitize($e));
 				}
 
 				$result['failed']++;
@@ -289,7 +289,7 @@ final class DigestService
 				$message .= ' ' . $blockedCount . ' additional item(s) were excluded by Joomla access permissions.';
 			}
 
-			$this->digests->finishRun((int) $digest->id, $runId, 'below_minimum', null, $availableCount, $message, false);
+			$this->digests->finishRun((int) $digest->id, $runId, 'below_minimum', null, $availableCount, $message);
 			return 'no_content';
 		}
 
@@ -298,7 +298,7 @@ final class DigestService
 			$message = $blockedCount > 0
 				? $blockedCount . ' matching item(s) were excluded by Joomla access permissions.'
 				: 'No matching new content was available.';
-			$this->digests->finishRun((int) $digest->id, $runId, 'no_content', null, 0, $message, true);
+			$this->digests->finishRun((int) $digest->id, $runId, 'no_content', null, 0, $message);
 			return 'no_content';
 		}
 
@@ -340,7 +340,7 @@ final class DigestService
 		{
 			$this->queue->queue($newsletterId);
 			$message = $blockedCount > 0 ? $blockedCount . ' inaccessible item(s) were excluded.' : '';
-			$this->digests->finishRun((int) $digest->id, $runId, 'queued', $newsletterId, count($items), $message, true);
+			$this->digests->finishRun((int) $digest->id, $runId, 'queued', $newsletterId, count($items), $message);
 			return 'queued';
 		}
 
@@ -354,7 +354,7 @@ final class DigestService
 			$message = trim($message . ' ' . $notificationError);
 		}
 
-		$this->digests->finishRun((int) $digest->id, $runId, 'draft', $newsletterId, count($items), $message, true);
+		$this->digests->finishRun((int) $digest->id, $runId, 'draft', $newsletterId, count($items), $message);
 
 		return 'drafts';
 	}

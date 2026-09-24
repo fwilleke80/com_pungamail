@@ -153,7 +153,7 @@ final class ServiceFactory
 	/** @return QueueProcessor */
 	public static function processor(): QueueProcessor
 	{
-		return new QueueProcessor(self::database(), self::newsletters(), self::mail());
+		return new QueueProcessor(self::database(), self::newsletters(), self::mail(), self::digests());
 	}
 
 	/** @return ScheduledSendService */

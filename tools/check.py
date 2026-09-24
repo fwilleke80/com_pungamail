@@ -145,6 +145,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.30.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.31.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.32.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.33.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/StatisticsController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/ResetstatisticsField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestContentFilter.php",
@@ -3499,6 +3500,7 @@ def main() -> int:
     check_v0630_compact_campaign_tokens()
     check_v0631_preview_tracking_and_statistics_copy()
     check_v0632_statistics_reset_and_subscription_events()
+    check_v0633_sent_digest_cutoffs()
     print(f"[OK] Punga Mail {VERSION} release checks passed")
     return 0
 
@@ -4291,6 +4293,70 @@ def check_v0632_statistics_reset_and_subscription_events() -> None:
         result = subprocess.run(["php", str(ROOT / "tools" / test_name)], cwd=ROOT, text=True, capture_output=True)
         if result.returncode != 0:
             fail(f"0.6.32 {test_name} regression failed: " + (result.stderr or result.stdout).strip())
+
+
+def check_v0633_sent_digest_cutoffs() -> None:
+    """Verify sent-only Automatic Newsletter cutoffs and preview/draft selection parity."""
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    digest_service = (admin / "src/Service/DigestService.php").read_text(encoding="utf-8")
+    digest_repository = (admin / "src/Service/DigestRepository.php").read_text(encoding="utf-8")
+    queue_processor = (admin / "src/Service/QueueProcessor.php").read_text(encoding="utf-8")
+    service_factory = (admin / "src/Service/ServiceFactory.php").read_text(encoding="utf-8")
+    digest_layout = (admin / "tmpl/digest/default.php").read_text(encoding="utf-8")
+    migration = (admin / "sql/updates/mysql/0.6.33.sql").read_text(encoding="utf-8")
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    tutorial = (ROOT / "docs/TUTORIAL_DIGEST.md").read_text(encoding="utf-8")
+
+    if "bool $advanceCutoff" in digest_repository or "last_cutoff_at') . ($advanceCutoff" in digest_repository:
+        fail("0.6.33 digest generation can still advance the cutoff before delivery")
+    for expected in (
+        "public function confirmNewsletterSent(int $newsletterId)",
+        "NewsletterRepository::STATUS_SENT",
+        "NewsletterRepository::STATUS_SENT_WITH_FAILURES",
+        "(int) $run->sent_count <= 0",
+        "'sent_with_failures'",
+        "'sent'",
+        "last_cutoff_at",
+        ":cutoffCompare",
+        ":cutoffValue",
+    ):
+        if expected not in digest_repository:
+            fail(f"0.6.33 sent-only cutoff confirmation is missing {expected!r}")
+    if "confirmNewsletterSent((int) $newsletterId)" not in queue_processor:
+        fail("0.6.33 queue completion does not confirm Automatic Newsletter delivery")
+    if "self::digests()" not in service_factory:
+        fail("0.6.33 QueueProcessor is not wired to the digest repository")
+
+    # Preview and real generation must share the exact same candidate preparation path.
+    if digest_service.count("$prepared = $this->prepare($digest, $now);") < 3:
+        fail("0.6.33 Automatic Newsletter preview/test/generation do not share prepare()")
+    if "$this->selectionArrays($items)" not in digest_service:
+        fail("0.6.33 generated drafts do not persist the prepared item selection")
+    for expected in ("DigestContentFilter::apply", "filterForRecipients", "DigestContentSelection::apply"):
+        if expected not in digest_service:
+            fail(f"0.6.33 shared Automatic Newsletter selection pipeline is missing {expected!r}")
+
+    # Permanently deleted unsent review drafts should disappear from Previous runs.
+    for expected in ("r.status", "quote('draft')", "r.newsletter_id", "n.id"):
+        if expected not in digest_repository:
+            fail(f"0.6.33 deleted-draft history filter is missing {expected!r}")
+    for expected in ("COM_PUNGAMAIL_DIGEST_RUN_SENT", "COM_PUNGAMAIL_DIGEST_RUN_SENT_WITH_FAILURES"):
+        if expected not in digest_layout:
+            fail(f"0.6.33 Automatic Newsletter run-history UI is missing {expected!r}")
+
+    for expected in (
+        "UPDATE `#__pungamail_digest_runs`",
+        "`n`.`status` IN (3, 4)",
+        "`n`.`sent_count` > 0",
+        "MAX(`completed_at`)",
+        "`d`.`last_cutoff_at` = `sent_runs`.`last_sent_cutoff`",
+    ):
+        if expected not in migration:
+            fail(f"0.6.33 Automatic Newsletter cutoff repair is missing {expected!r}")
+
+    for contents, label in ((guide, "user guide"), (tutorial, "Automatic Newsletter tutorial")):
+        if "actually sent" not in contents and "actually been delivered" not in contents:
+            fail(f"0.6.33 {label} does not explain sent-only cutoff semantics")
 
 if __name__ == "__main__":
     raise SystemExit(main())

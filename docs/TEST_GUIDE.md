@@ -1,4 +1,4 @@
-# Punga Mail 0.6.32 Live Acceptance Test Guide
+# Punga Mail 0.6.33 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -1354,12 +1354,14 @@ Keep the global queue paused except where a test explicitly says to resume it.
 
 **Steps:**
 
-1. Configure **Since last successful run**.
-2. Run once with eligible content.
-3. Run at the next due time without adding content.
-4. Add a new eligible item and run again.
+1. Configure **Content since the previous automatic newsletter** in draft/review mode.
+2. Let the task create a draft with eligible content, but do not send it.
+3. Run/preview again and verify the earlier content is still eligible.
+4. Trash and permanently delete the unsent draft, then preview again.
+5. Create another draft and actually send it to at least one recipient.
+6. Add a new eligible item and run/preview again.
 
-**Expected:** Already-consumed content is not repeatedly included. Cutoff advances only according to successful/defined behavior.
+**Expected:** Unsent or deleted drafts do not consume content. Only the generated Automatic Newsletter that was actually sent establishes the next cutoff, so its already-consumed content is not repeated while newer eligible content remains available.
 
 ### PM-203 — Rolling-period cutoff
 
@@ -2094,13 +2096,16 @@ The following checks cover the generic registered-content filter UI introduced i
 ### Automatic Newsletter first-run cutoff and ACL diagnostics
 
 1. Create a new Automatic Newsletter using **Content since the previous automatic newsletter**.
-2. Verify **Before the first successful run** offers recurrence interval, custom look-back days, and all available matching content.
+2. Verify **Before the first sent Automatic Newsletter** offers recurrence interval, custom look-back days, and all available matching content.
 3. Preview a source under each mode and confirm the displayed cutoff/matching set changes accordingly.
 4. Use content whose Joomla viewing access is not available to one intended recipient.
 5. Verify **Preview matching content** names the blocked item and its required viewing-access level.
-6. After a successful real run, verify the stored previous cutoff takes precedence over the first-run setting.
+6. Let the task create a review draft but do not send it. Verify a later Preview still uses the same pre-send cutoff.
+7. Trash and permanently delete that unsent draft. Verify it no longer appears as a review draft in **Previous runs**, and verify eligible content from before that draft generation is still considered.
+8. Generate another draft and send it to at least one recipient. Verify the run changes to **Sent** (or **Sent with delivery problems**) and the stored cutoff now takes precedence over the first-run setting.
+9. If practical, generate two overlapping drafts, send the newer one first and the older one second, and verify the older send does not move the cutoff backwards.
 
-**Expected:** First-run scope is explicit and configurable; established automations continue from their stored cutoff; ACL exclusions are diagnostic rather than opaque.
+**Expected:** First-run scope is explicit and configurable; only actually sent generated newsletters advance the normal cutoff; unsent/deleted drafts cannot consume content; ACL exclusions are diagnostic rather than opaque.
 
 ### Preview and test-message campaign tagging
 

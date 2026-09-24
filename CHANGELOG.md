@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.33 — 2026-09-24
+
+- Corrected **Content since the previous automatic newsletter** semantics. Creating a review draft, creating the send queue, or recording a skipped/no-content run no longer advances the Automatic Newsletter content cutoff.
+- The cutoff now advances only after a generated Automatic Newsletter actually finishes delivery with at least one sent recipient. It advances to that newsletter generation time, and the update is monotonic so sending an older generated draft later cannot move the cutoff backwards.
+- Added an upgrade repair that reconstructs existing Automatic Newsletter cutoffs from generated newsletters that genuinely reached a sent state, undoing cutoffs previously consumed by unsent drafts or no-content runs.
+- Automatic Newsletter history now records generated newsletters as **Sent** / **Sent with delivery problems** once delivery completes. Permanently deleted unsent review drafts are omitted from **Previous runs** instead of leaving a broken historical newsletter link.
+- Re-verified that Automatic Newsletter Preview and real draft generation use the same `prepare()` content-selection pipeline, including cutoff, sources, categories, generic filters, audience/access filtering, ordering, maximum items, and minimum items. With unchanged site content/settings between preview and generation, the selected item set and ordering are identical.
+- Confirmed the 0.6.32 features requested alongside this change remain present: Statistics reset under **Maintenance & data**, campaign-attributed unsubscribe actions, `onPungaMailSubscribed` / `onPungaMailUnsubscribed` plus `mail.subscribe` / `mail.unsubscribe`, and optional email notification when an Automatic Newsletter creates a review draft.
+
 ## 0.6.32 — 2026-09-23
 
 - Added a guarded **Reset statistics** action under Component Options → Maintenance & data. Resetting deletes Punga Mail campaign-click measurements and establishes a new reporting baseline while preserving Newsletters, delivery history, bounces, subscribers and audit history. Punga Analytics data is independent and is not changed.

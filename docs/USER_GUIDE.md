@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.32. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.33. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -695,7 +695,7 @@ Automatic Newsletters also provide three selection controls: **Order** chooses n
 | --- | --- |
 | Next run | Earliest date/time at which the digest task should run this definition, displayed in Joomla's site timezone. |
 | Repeat every | Number plus unit for the recurrence: days, weeks, or calendar months. Months are real calendar months rather than a fixed 30-day approximation, so monthly schedules do not drift. |
-| Content cutoff: Since last | Uses the previous successful automatic-newsletter cutoff so the same item is not intentionally repeated. Before the first successful run, choose whether to start one recurrence interval back (default), use a custom look-back period, or include all available matching content. After the first successful run this first-run choice is ignored and the stored cutoff is used. |
+| Content cutoff: Since last | Uses the cutoff of the most recent Automatic Newsletter that was actually sent, so creating or deleting review drafts does not consume content. Before the first sent Automatic Newsletter, choose whether to start one recurrence interval back (default), use a custom look-back period, or include all available matching content. Once a generated newsletter is really delivered, its generation cutoff becomes the stored starting point for later runs. |
 | Content from a recent time period | Uses a fixed recent window on every run. Selecting it reveals **Look back … days**. Overlapping windows can intentionally repeat content. |
 | Look back … days | Shown only for the fixed recent-period mode. Default: 7 days. |
 | Create draft | Safe default. Generates an editable newsletter and stops. |
@@ -724,7 +724,7 @@ An automatic-send definition also requires **Punga Mail — Send pending newslet
 
 If Component Options → Automatic newsletters → **Notify reviewer about new drafts** is enabled, a successful draft run also sends the configured reviewer a direct administrator link. Automatic-send runs do not send this review notification.
 
-The editor's history table shows the latest runs with a plain-language result (draft created, queued, skipped, or failed), the generated Newsletter title/link and its current lifecycle state, content-item count, duration, and details such as access exclusions or errors. A **Skipped — not enough content** result also confirms that the rolling cutoff was retained.
+The editor's history table shows the latest runs with a plain-language result (draft created, queued, sent, skipped, or failed), the generated Newsletter title/link and its current lifecycle state, content-item count, duration, and details such as access exclusions or errors. A permanently deleted unsent review draft is omitted from this list. Draft creation, no-content runs, and queue creation do not advance the **Since last** cutoff; only a generated newsletter that actually reaches a sent state with at least one delivered recipient does so.
 
 Only enabled digests run. Editing a digest does not itself generate a newsletter.
 

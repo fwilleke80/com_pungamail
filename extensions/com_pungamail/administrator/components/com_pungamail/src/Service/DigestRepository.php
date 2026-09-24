@@ -348,6 +348,9 @@ final class DigestRepository
 			->from($this->db->quoteName('#__pungamail_digest_runs', 'r'))
 			->leftJoin($this->db->quoteName('#__pungamail_newsletters', 'n') . ' ON n.id = r.newsletter_id')
 			->where($this->db->quoteName('r.digest_id') . ' = :id')
+			->where('(' . $this->db->quoteName('r.status') . ' <> ' . $this->db->quote('draft')
+				. ' OR ' . $this->db->quoteName('r.newsletter_id') . ' IS NULL'
+				. ' OR ' . $this->db->quoteName('n.id') . ' IS NOT NULL)')
 			->order($this->db->quoteName('r.started_at') . ' DESC')
 			->bind(':id', $digestId, ParameterType::INTEGER);
 
@@ -372,7 +375,7 @@ final class DigestRepository
 	}
 
 	/** @return void */
-	public function finishRun(int $digestId, int $runId, string $status, ?int $newsletterId, int $itemCount, string $message, bool $advanceCutoff): void
+	public function finishRun(int $digestId, int $runId, string $status, ?int $newsletterId, int $itemCount, string $message): void
 	{
 		$digest = $this->find($digestId);
 
@@ -437,7 +440,6 @@ final class DigestRepository
 			$updateDigest = $this->db->getQuery(true)
 				->update($this->db->quoteName('#__pungamail_digests'))
 				->set($this->db->quoteName('last_run_at') . ' = :lastRunAt')
-				->set($this->db->quoteName('last_cutoff_at') . ($advanceCutoff ? ' = :lastCutoffAt' : ' = ' . $this->db->quoteName('last_cutoff_at')))
 				->set($this->db->quoteName('next_run_at') . ' = :nextRunAt')
 				->set($this->db->quoteName('modified') . ' = :modified')
 				->where($this->db->quoteName('id') . ' = :id')
@@ -446,11 +448,91 @@ final class DigestRepository
 				->bind(':modified', $now)
 				->bind(':id', $digestId, ParameterType::INTEGER);
 
-			if ($advanceCutoff)
-			{
-				$updateDigest->bind(':lastCutoffAt', $now);
-			}
+			$this->db->setQuery($updateDigest)->execute();
+			$this->db->transactionCommit();
+		}
+		catch (\Throwable $e)
+		{
+			$this->db->transactionRollback();
+			throw $e;
+		}
+	}
 
+	/**
+	 * Confirms that a generated Automatic Newsletter was actually delivered.
+	 *
+	 * The content cutoff advances to the generation time of the newest generated
+	 * Newsletter that has reached a sent state with at least one delivered row.
+	 * Merely creating, queueing, trashing, or deleting a review draft therefore
+	 * cannot consume content from the next Automatic Newsletter.
+	 *
+	 * @param int $newsletterId Newsletter ID whose queue state was refreshed.
+	 *
+	 * @return void
+	 */
+	public function confirmNewsletterSent(int $newsletterId): void
+	{
+		if ($newsletterId <= 0)
+		{
+			return;
+		}
+
+		$query = $this->db->getQuery(true)
+			->select([
+				'r.id AS run_id',
+				'r.digest_id',
+				'r.completed_at',
+				'n.status AS newsletter_status',
+				'n.sent_count',
+			])
+			->from($this->db->quoteName('#__pungamail_digest_runs', 'r'))
+			->innerJoin($this->db->quoteName('#__pungamail_newsletters', 'n') . ' ON n.id = r.newsletter_id')
+			->where($this->db->quoteName('r.newsletter_id') . ' = :newsletterId')
+			->order($this->db->quoteName('r.id') . ' DESC')
+			->bind(':newsletterId', $newsletterId, ParameterType::INTEGER);
+		$run = $this->db->setQuery($query, 0, 1)->loadObject();
+
+		if ($run === null
+			|| empty($run->completed_at)
+			|| (int) $run->sent_count <= 0
+			|| !in_array((int) $run->newsletter_status, [NewsletterRepository::STATUS_SENT, NewsletterRepository::STATUS_SENT_WITH_FAILURES], true))
+		{
+			return;
+		}
+
+		$runId = (int) $run->run_id;
+		$digestId = (int) $run->digest_id;
+		$cutoffAt = (string) $run->completed_at;
+		$runStatus = (int) $run->newsletter_status === NewsletterRepository::STATUS_SENT_WITH_FAILURES
+			? 'sent_with_failures'
+			: 'sent';
+		$now = (new Date('now', 'UTC'))->toSql();
+		$this->db->transactionStart();
+
+		try
+		{
+			$updateRun = $this->db->getQuery(true)
+				->update($this->db->quoteName('#__pungamail_digest_runs'))
+				->set($this->db->quoteName('status') . ' = :status')
+				->where($this->db->quoteName('id') . ' = :runId')
+				->bind(':status', $runStatus)
+				->bind(':runId', $runId, ParameterType::INTEGER);
+			$this->db->setQuery($updateRun)->execute();
+
+			$updateDigest = $this->db->getQuery(true)
+				->update($this->db->quoteName('#__pungamail_digests'))
+				->set(
+					$this->db->quoteName('last_cutoff_at') . ' = CASE'
+					. ' WHEN ' . $this->db->quoteName('last_cutoff_at') . ' IS NULL'
+					. ' OR ' . $this->db->quoteName('last_cutoff_at') . ' < :cutoffCompare'
+					. ' THEN :cutoffValue ELSE ' . $this->db->quoteName('last_cutoff_at') . ' END'
+				)
+				->set($this->db->quoteName('modified') . ' = :modified')
+				->where($this->db->quoteName('id') . ' = :digestId')
+				->bind(':cutoffCompare', $cutoffAt)
+				->bind(':cutoffValue', $cutoffAt)
+				->bind(':modified', $now)
+				->bind(':digestId', $digestId, ParameterType::INTEGER);
 			$this->db->setQuery($updateDigest)->execute();
 			$this->db->transactionCommit();
 		}

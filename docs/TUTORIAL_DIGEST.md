@@ -87,9 +87,9 @@ Choose **Preview matching content** on a source to see what the current cutoff, 
 
 ### Since last
 
-Use **Since last** for a normal “what is new” digest. After a successful run, the next run starts from the preceding successful cutoff. This prevents routine repetition.
+Use **Since last** for a normal “what is new” digest. The next run starts from the cutoff of the most recent generated Automatic Newsletter that was actually sent. Creating, trashing, or permanently deleting a review draft does not move this cutoff, so an unsent draft cannot make later content disappear.
 
-Before the first successful run there is no stored cutoff, so the editor exposes a separate **Before the first successful run** choice. The default is **One recurrence interval before the first run**; an every-2-month Automatic Newsletter therefore initially considers the previous 2 calendar months. You can instead choose **A custom recent period** and enter the number of days, or **All available matching content** when the first newsletter should establish a complete baseline. This first-run setting stops mattering as soon as a successful run stores the normal previous cutoff.
+Before the first sent Automatic Newsletter there is no stored cutoff, so the editor exposes a separate **Before the first sent Automatic Newsletter** choice. The default is **One recurrence interval before the first run**; an every-2-month Automatic Newsletter therefore initially considers the previous 2 calendar months. You can instead choose **A custom recent period** and enter the number of days, or **All available matching content** when the first newsletter should establish a complete baseline. This first-run setting stops mattering only after a generated newsletter has actually been delivered.
 
 If you instead choose **Content from a recent time period**, the separate **Look back … days** field controls a fixed rolling window on every run.
 

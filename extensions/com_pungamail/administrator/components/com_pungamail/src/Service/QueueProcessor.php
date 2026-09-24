@@ -22,11 +22,13 @@ final class QueueProcessor
 	 * @param DatabaseInterface    $db          Database connection.
 	 * @param NewsletterRepository $newsletters Newsletter repository.
 	 * @param MailService          $mail        Mail service.
+	 * @param DigestRepository     $digests     Automatic Newsletter history/cutoff repository.
 	 */
 	public function __construct(
 		private readonly DatabaseInterface $db,
 		private readonly NewsletterRepository $newsletters,
-		private readonly MailService $mail
+		private readonly MailService $mail,
+		private readonly DigestRepository $digests
 	)
 	{
 	}
@@ -97,6 +99,7 @@ final class QueueProcessor
 		foreach (array_keys($newsletterIds) as $newsletterId)
 		{
 			$this->newsletters->refreshQueueCounters((int) $newsletterId);
+			$this->digests->confirmNewsletterSent((int) $newsletterId);
 		}
 
 		return $result;
