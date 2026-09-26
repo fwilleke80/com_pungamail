@@ -8,7 +8,7 @@ Punga Mail is a focused, self-hosted Joomla! 6 newsletter extension. Its primary
 
 It is not intended to become a behavioural marketing/analytics platform.
 
-## Implemented through 0.6.33
+## Implemented through 0.6.37
 - Joomla User subscriber Channel eligibility updates immediately before save by resolving the selected Joomla account ID from Joomla's real hidden User field value.
 
 ### Lists, automation and access safety
@@ -137,7 +137,7 @@ A future optional provider hook is acceptable only as an escape hatch for unusua
 - richer category/subcategory selectors per registered content type where the source exposes categories
 - richer subscriber audit-history UI
 - explicit retry controls/diagnostics for terminal queue failures
-- a full public archive built on immutable sent-newsletter browser views
+- a public Newsletter Archive built on immutable sent snapshots, with explicit publication visibility and Joomla menu routing
 - additional mail-design conveniences discovered through real-world use
 
 
@@ -155,6 +155,8 @@ Returned-mail suppression warnings on the Dashboard are operational attention it
 Campaign tracking is deliberately split into interoperable URL attribution and trusted Joomla-side events. Component defaults may add `utm_source`, `utm_medium`, `utm_campaign`, `utm_id`, and `utm_content` to internal links only or to all HTTP(S) links; ordinary and Automatic Newsletters can override the scope and individual values. External links can carry standard UTM parameters but are never treated as trusted Punga Mail visits because their destination request does not pass through this Joomla installation.
 
 Internal tagged links additionally carry a compact authenticated `pm_track` token. Since 0.6.30 the token contains only a format marker, Newsletter ID, link index and a 128-bit truncated HMAC-SHA256 signature. The visible UTM values are authenticated by that signature instead of being duplicated inside the token; the token is neither encryption nor a CRC/checksum. The System - Punga Mail Campaign Tracking plugin validates the token against the visible UTM values before recording the trusted visit and dispatching `onPungaMailCampaignVisit`. The resulting event is campaign/link oriented (`newsletter_id`, `link_index`, UTM values, URL/path, UTC timestamp) and deliberately excludes subscriber identity, email address and IP-derived identity. The validator remains compatible with the longer 0.6.27–0.6.29 token format so already-sent newsletters continue to work. Punga Mail itself does not depend on Punga Analytics. It additionally dispatches the standard `onPungaAnalyticsRecord` bridge with `event_type=mail.click` and `component=com_pungamail`, matching the generic integration contract used by other Punga extensions. Real subscription-state transitions also dispatch `onPungaMailSubscribed` / `onPungaMailUnsubscribed` and bridge them as `mail.subscribe` / `mail.unsubscribe`. Campaign-attributed unsubscribe links use reserved signed action token index `0`, which is validated but not counted as an ordinary click.
+
+Tracked query parameters are serialized with RFC 3986 percent encoding after logical UTM values and the trusted token have been calculated. This keeps human-readable campaign values independent of URL syntax while ensuring spaces, Unicode punctuation and reserved query characters cannot produce malformed email links. The receiving plugin validates the decoded values, so encoding does not change the authentication contract.
 
 The renderer owns link tagging so HTML and plain-text variants share the same attribution rules. The system plugin owns trusted incoming-visit recognition, keeping analytics integration outside mail rendering and avoiding a mandatory redirect endpoint for ordinary internal links.
 

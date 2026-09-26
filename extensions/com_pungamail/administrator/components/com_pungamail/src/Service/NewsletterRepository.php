@@ -105,6 +105,7 @@ final class NewsletterRepository
 		$headingMode = in_array((string) ($options['heading_mode'] ?? 'inherit'), ['inherit', 'custom', 'site', 'none'], true) ? (string) ($options['heading_mode'] ?? 'inherit') : 'inherit';
 		$mailHeading = trim((string) ($options['mail_heading'] ?? ''));
 		$browserView = in_array((int) ($options['browser_view'] ?? -1), [-1, 0, 1], true) ? (int) ($options['browser_view'] ?? -1) : -1;
+		$archiveVisibility = in_array((int) ($options['archive_visibility'] ?? -1), [-1, 0, 1], true) ? (int) ($options['archive_visibility'] ?? -1) : -1;
 		$replyToMode = in_array((string) ($options['reply_to_mode'] ?? 'inherit'), ['inherit', 'custom', 'none'], true) ? (string) ($options['reply_to_mode'] ?? 'inherit') : 'inherit';
 		$replyToEmail = trim((string) ($options['reply_to_email'] ?? ''));
 		$replyToName = trim((string) ($options['reply_to_name'] ?? ''));
@@ -135,6 +136,7 @@ final class NewsletterRepository
 					'heading_mode' => $headingMode,
 					'mail_heading' => $mailHeading !== '' ? $mailHeading : null,
 					'browser_view' => $browserView,
+					'archive_visibility' => $archiveVisibility,
 					'reply_to_mode' => $replyToMode,
 					'reply_to_email' => $replyToEmail !== '' ? $replyToEmail : null,
 					'reply_to_name' => $replyToName !== '' ? $replyToName : null,
@@ -190,6 +192,7 @@ final class NewsletterRepository
 					->set($this->db->quoteName('heading_mode') . ' = :headingMode')
 					->set($this->db->quoteName('mail_heading') . ($mailHeading === '' ? ' = NULL' : ' = :mailHeading'))
 					->set($this->db->quoteName('browser_view') . ' = :browserView')
+					->set($this->db->quoteName('archive_visibility') . ' = :archiveVisibility')
 					->set($this->db->quoteName('reply_to_mode') . ' = :replyToMode')
 					->set($this->db->quoteName('reply_to_email') . ($replyToEmail === '' ? ' = NULL' : ' = :replyToEmail'))
 					->set($this->db->quoteName('reply_to_name') . ($replyToName === '' ? ' = NULL' : ' = :replyToName'))
@@ -209,6 +212,7 @@ final class NewsletterRepository
 					->bind(':includeSubscribers', $includeSubscribers, ParameterType::BOOLEAN)
 					->bind(':headingMode', $headingMode)
 					->bind(':browserView', $browserView, ParameterType::INTEGER)
+					->bind(':archiveVisibility', $archiveVisibility, ParameterType::INTEGER)
 					->bind(':replyToMode', $replyToMode)
 					->bind(':campaignScope', $campaignScope)
 					->bind(':modified', $now)
@@ -284,6 +288,39 @@ final class NewsletterRepository
 		}
 
 		return $id;
+	}
+
+
+	/**
+	 * Changes public archive visibility without mutating the immutable sent snapshot.
+	 *
+	 * @param int $newsletterId Newsletter ID.
+	 * @param int $visibility   -1 inherit, 0 hide, 1 show.
+	 *
+	 * @return void
+	 */
+	public function setArchiveVisibility(int $newsletterId, int $visibility): void
+	{
+		if ($newsletterId <= 0 || !in_array($visibility, [-1, 0, 1], true))
+		{
+			throw new \InvalidArgumentException(Text::_('COM_PUNGAMAIL_ERROR_ARCHIVE_VISIBILITY'));
+		}
+
+		$modified = (new Date('now', 'UTC'))->toSql();
+		$query = $this->db->getQuery(true)
+			->update($this->db->quoteName('#__pungamail_newsletters'))
+			->set($this->db->quoteName('archive_visibility') . ' = :visibility')
+			->set($this->db->quoteName('modified') . ' = :modified')
+			->where($this->db->quoteName('id') . ' = :id')
+			->bind(':visibility', $visibility, ParameterType::INTEGER)
+			->bind(':modified', $modified)
+			->bind(':id', $newsletterId, ParameterType::INTEGER);
+		$this->db->setQuery($query)->execute();
+
+		if ($this->db->getAffectedRows() === 0 && $this->find($newsletterId) === null)
+		{
+			throw new \RuntimeException(Text::_('COM_PUNGAMAIL_ERROR_NEWSLETTER_NOT_FOUND'));
+		}
 	}
 
 	/** @return array<int,object> */
@@ -793,6 +830,7 @@ final class NewsletterRepository
 				'heading_mode' => (string) ($newsletter->heading_mode ?? 'inherit'),
 				'mail_heading' => (string) ($newsletter->mail_heading ?? ''),
 				'browser_view' => (int) ($newsletter->browser_view ?? -1),
+				'archive_visibility' => (int) ($newsletter->archive_visibility ?? -1),
 				'reply_to_mode' => (string) ($newsletter->reply_to_mode ?? 'inherit'),
 				'reply_to_email' => (string) ($newsletter->reply_to_email ?? ''),
 				'reply_to_name' => (string) ($newsletter->reply_to_name ?? ''),

@@ -71,13 +71,48 @@ namespace Joomla\CMS\Uri
 
 		public function getHost(): string { return $this->host; }
 		public function getPath(): string { return $this->path; }
+		public function getFragment(): string { return $this->fragment; }
+		public function getQuery(bool $toArray = false): array|string
+		{
+			if ($toArray)
+			{
+				return $this->query;
+			}
+
+			$parts = [];
+			foreach ($this->query as $name => $value)
+			{
+				$parts[] = (string) $name . '=' . (string) $value;
+			}
+
+			return implode('&', $parts);
+		}
 		public function setVar(string $name, string $value): void { $this->query[$name] = $value; }
 
-		public function toString(): string
+		public function toString(array $parts = ['scheme', 'user', 'pass', 'host', 'port', 'path', 'query', 'fragment']): string
 		{
-			$base = ($this->scheme !== '' ? $this->scheme . '://' . $this->host : '') . $this->path;
-			if ($this->query !== []) { $base .= '?' . http_build_query($this->query, '', '&', PHP_QUERY_RFC3986); }
-			if ($this->fragment !== '') { $base .= '#' . $this->fragment; }
+			$base = '';
+			if (in_array('scheme', $parts, true) && $this->scheme !== '')
+			{
+				$base .= $this->scheme . '://';
+			}
+			if (in_array('host', $parts, true))
+			{
+				$base .= $this->host;
+			}
+			if (in_array('path', $parts, true))
+			{
+				$base .= $this->path;
+			}
+			if (in_array('query', $parts, true) && $this->query !== [])
+			{
+				$base .= '?' . $this->getQuery(false);
+			}
+			if (in_array('fragment', $parts, true) && $this->fragment !== '')
+			{
+				$base .= '#' . $this->fragment;
+			}
+
 			return $base;
 		}
 	}
@@ -128,6 +163,47 @@ namespace
 	if (!str_contains($result['html'], '#part'))
 	{
 		throw new RuntimeException('Tracked internal URL lost its fragment.');
+	}
+
+	$specialTitle = 'Test-Digest — 25. September 2026 — copy & + Übergröß';
+	$specialNewsletter = clone $newsletter;
+	$specialNewsletter->title = $specialTitle;
+	$specialResult = $service->apply('<a href="https://example.test/article?existing=one#section">Special</a>', '', $specialNewsletter);
+	if (!preg_match('/href="([^"]+)"/', $specialResult['html'], $specialMatch))
+	{
+		throw new RuntimeException('Could not extract tracked special-character URL.');
+	}
+	$specialUrl = html_entity_decode((string) $specialMatch[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+	if (filter_var($specialUrl, FILTER_VALIDATE_URL) === false)
+	{
+		throw new RuntimeException('Tracked URL with Unicode campaign title is not a syntactically valid URL: ' . $specialUrl);
+	}
+	if (!str_contains($specialUrl, 'utm_campaign=Test-Digest%20%E2%80%94%2025.%20September%202026%20%E2%80%94%20copy%20%26%20%2B%20%C3%9Cbergr%C3%B6%C3%9F'))
+	{
+		throw new RuntimeException('Campaign UTM value was not RFC 3986 encoded.');
+	}
+	if (str_contains($specialUrl, ' ') || str_contains($specialUrl, '—'))
+	{
+		throw new RuntimeException('Tracked URL still contains unescaped spaces or Unicode punctuation.');
+	}
+	if (!str_ends_with($specialUrl, '#section'))
+	{
+		throw new RuntimeException('RFC 3986 query serialization lost the URL fragment.');
+	}
+	parse_str((string) parse_url($specialUrl, PHP_URL_QUERY), $specialVars);
+	if (($specialVars['existing'] ?? '') !== 'one' || ($specialVars['utm_campaign'] ?? '') !== $specialTitle)
+	{
+		throw new RuntimeException('RFC 3986 query serialization did not preserve existing or decoded campaign values.');
+	}
+	$specialUtm = [];
+	foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_id', 'utm_content'] as $name)
+	{
+		$specialUtm[$name] = (string) ($specialVars[$name] ?? '');
+	}
+	$specialData = (new TokenService())->validateCampaignToken((string) ($specialVars['pm_track'] ?? ''), $specialUtm);
+	if ($specialData === null || (int) $specialData['newsletter_id'] !== 42 || (int) $specialData['link_index'] !== 1)
+	{
+		throw new RuntimeException('Encoded UTM values no longer validate against pm_track.');
 	}
 
 	$preview = $service->apply($html, $text, $newsletter, false);

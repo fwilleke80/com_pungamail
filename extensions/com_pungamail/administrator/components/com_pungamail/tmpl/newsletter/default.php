@@ -3,6 +3,7 @@
 
 defined('_JEXEC') or die;
 
+use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
@@ -26,6 +27,8 @@ foreach ($this->selectedItems as $selected)
 $cutoffDateValue = $this->contentCutoffStart ? substr((string) $this->contentCutoffStart, 0, 10) : '';
 $cutoffDisplay = $cutoffDateValue !== '' ? HTMLHelper::_('date', $cutoffDateValue, Text::_('DATE_FORMAT_LC4')) : Text::_('COM_PUNGAMAIL_BEGINNING');
 $style = $this->styleOverrides;
+$archiveDefault = (int) ComponentHelper::getParams('com_pungamail')->get('public_archive_default', 0);
+$archiveVisibility = (int) ($item->archive_visibility ?? -1);
 
 $siteTimezone = (string) Factory::getApplication()->get('offset', 'UTC');
 $statusKey = match ((int) ($item->status ?? NewsletterRepository::STATUS_DRAFT))
@@ -76,6 +79,22 @@ $recallTabs = $requestedTab === '';
 		<h2 class="h5 mb-2"><?php echo htmlspecialchars((string) $item->title, ENT_QUOTES, 'UTF-8'); ?></h2>
 		<p><strong><?php echo Text::_('COM_PUNGAMAIL_SUBJECT'); ?>:</strong> <?php echo htmlspecialchars((string) ($this->snapshotPreview['subject'] ?? $item->snapshot_subject), ENT_QUOTES, 'UTF-8'); ?></p>
 		<p><strong><?php echo Text::_('COM_PUNGAMAIL_RECIPIENTS'); ?>:</strong> <?php echo (int) $item->recipient_count; ?> &nbsp; <strong><?php echo Text::_('COM_PUNGAMAIL_SENT'); ?>:</strong> <?php echo (int) $item->sent_count; ?> &nbsp; <strong><?php echo Text::_('COM_PUNGAMAIL_FAILED'); ?>:</strong> <?php echo (int) $item->failed_count; ?></p>
+	</div></div>
+	<div class="card mb-3"><div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_PUBLIC_ARCHIVE'); ?></strong></div><div class="card-body">
+		<form action="<?php echo Route::_('index.php?option=com_pungamail&task=newsletter.setArchiveVisibility'); ?>" method="post" class="row g-2 align-items-end">
+			<input type="hidden" name="id" value="<?php echo (int) $item->id; ?>">
+			<div class="col-md-8">
+				<label class="form-label" for="pm-archive-visibility-sent"><?php echo Text::_('COM_PUNGAMAIL_ARCHIVE_VISIBILITY'); ?></label>
+				<select class="form-select" id="pm-archive-visibility-sent" name="archive_visibility">
+					<option value="-1" <?php echo $archiveVisibility === -1 ? 'selected' : ''; ?>><?php echo Text::sprintf('COM_PUNGAMAIL_ARCHIVE_VISIBILITY_INHERIT', Text::_($archiveDefault === 1 ? 'JSHOW' : 'JHIDE')); ?></option>
+					<option value="1" <?php echo $archiveVisibility === 1 ? 'selected' : ''; ?>><?php echo Text::_('JSHOW'); ?></option>
+					<option value="0" <?php echo $archiveVisibility === 0 ? 'selected' : ''; ?>><?php echo Text::_('JHIDE'); ?></option>
+				</select>
+				<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_ARCHIVE_VISIBILITY_HELP'); ?></div>
+			</div>
+			<div class="col-md-4"><button class="btn btn-outline-primary w-100" type="submit"><?php echo Text::_('JSAVE'); ?></button></div>
+			<?php echo HTMLHelper::_('form.token'); ?>
+		</form>
 	</div></div>
 	<?php if ($this->statistics !== []) : ?><div class="card mb-3"><div class="card-header"><strong><?php echo Text::_('COM_PUNGAMAIL_DELIVERY_STATISTICS'); ?></strong></div><div class="card-body"><div class="row g-3"><?php foreach ($this->statistics as $key => $value) : ?><div class="col-6 col-md-3"><div class="small text-muted"><?php echo Text::_('COM_PUNGAMAIL_STAT_' . strtoupper($key)); ?></div><div class="fs-4"><?php echo (int) $value; ?></div></div><?php endforeach; ?></div><p class="small text-muted mt-3 mb-0"><?php echo Text::_('COM_PUNGAMAIL_TRANSPORT_ACCEPTED_HELP'); ?></p></div></div><?php endif; ?>
 	<?php if ($item->snapshot_html) : ?>
@@ -355,6 +374,15 @@ $recallTabs = $requestedTab === '';
 						<div class="mb-3">
 							<div class="small text-muted"><?php echo Text::_('JSTATUS'); ?></div>
 							<div class="fw-semibold"><?php echo Text::_($statusKey); ?><?php if ($item !== null && (int) $item->state === 2) : ?> <span class="badge bg-secondary ms-1"><?php echo Text::_('COM_PUNGAMAIL_ARCHIVED_NOTE'); ?></span><?php endif; ?></div>
+						</div>
+						<div>
+							<label class="form-label" for="pm-archive-visibility"><?php echo Text::_('COM_PUNGAMAIL_ARCHIVE_VISIBILITY'); ?></label>
+							<select class="form-select" id="pm-archive-visibility" name="archive_visibility">
+								<option value="-1" <?php echo $archiveVisibility === -1 ? 'selected' : ''; ?>><?php echo Text::sprintf('COM_PUNGAMAIL_ARCHIVE_VISIBILITY_INHERIT', Text::_($archiveDefault === 1 ? 'JSHOW' : 'JHIDE')); ?></option>
+								<option value="1" <?php echo $archiveVisibility === 1 ? 'selected' : ''; ?>><?php echo Text::_('JSHOW'); ?></option>
+								<option value="0" <?php echo $archiveVisibility === 0 ? 'selected' : ''; ?>><?php echo Text::_('JHIDE'); ?></option>
+							</select>
+							<div class="form-text"><?php echo Text::_('COM_PUNGAMAIL_ARCHIVE_VISIBILITY_HELP'); ?></div>
 						</div>
 					</div>
 				</div>

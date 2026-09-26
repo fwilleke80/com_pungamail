@@ -28,7 +28,7 @@ final class ResetstatisticsField extends FormField
 		$onclick = "if(!window.confirm('" . addslashes(Text::_('COM_PUNGAMAIL_STATISTICS_RESET_CONFIRM')) . "')){return false;}const task=this.form.querySelector('input[name=task]');if(task){task.value='statistics.reset';}";
 		$onclick = htmlspecialchars($onclick, ENT_QUOTES, 'UTF-8');
 
-		return '<div class="alert alert-warning mb-3">' . $help . '</div>'
-			. '<button class="btn btn-outline-danger" type="submit" formmethod="post" formaction="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" onclick="' . $onclick . '">' . $label . '</button>';
+		return '<div class="pungamail-reset-statistics"><button class="btn btn-outline-danger" type="submit" formmethod="post" formaction="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" onclick="' . $onclick . '">' . $label . '</button>'
+			. '<div class="form-text mt-2">' . $help . '</div></div>';
 	}
 }

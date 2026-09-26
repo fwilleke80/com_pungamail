@@ -277,7 +277,7 @@ foreach ($chart as $point)
 						<div class="pm-dashboard-bar-wrap" title="<?php echo htmlspecialchars((string) $point['day'] . ': ' . $total, ENT_QUOTES, 'UTF-8'); ?>"><div class="pm-dashboard-bar" style="height:<?php echo $height; ?>%"></div></div>
 					<?php endforeach; ?>
 					</div>
-					<div class="d-flex justify-content-between small text-muted"><span><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_30_DAYS_AGO'); ?></span><span><?php echo Text::_('JTODAY'); ?></span></div>
+					<div class="d-flex justify-content-between small text-muted"><span><?php echo Text::_('COM_PUNGAMAIL_DASHBOARD_30_DAYS_AGO'); ?></span><span><?php echo Text::_('COM_PUNGAMAIL_TODAY'); ?></span></div>
 				</div>
 			</div>
 		</div>

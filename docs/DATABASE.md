@@ -1,6 +1,6 @@
 # Punga Mail database architecture
 
-Punga Mail 0.6.33 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
+Punga Mail 0.6.37 uses the normalized topic membership, digest automation/history, preference requests, bounce history, delivery metadata, encrypted mailbox settings and Joomla-compatible editor checkout metadata introduced by earlier 0.3.x releases. Application timestamps are stored in UTC using Joomla's SQL date representation. Punga Mail deliberately avoids cross-extension foreign keys so Joomla extensions can be upgraded/uninstalled independently; application transactions, indexed identifiers and immutable snapshots maintain relationships.
 
 Topic membership uses `#__pungamail_topics`, `#__pungamail_subscriber_topics`, and `#__pungamail_newsletter_topics`. Digest definitions use normalized source/category/topic/group relations and append execution outcomes to `#__pungamail_digest_runs`. `#__pungamail_bounces` retains delivery-status history; address-level suppression remains authoritative in `#__pungamail_suppressions`.
 
@@ -33,7 +33,7 @@ Two state concepts remain separate:
 - Joomla `state`: `1` active, `2` archived, `-2` trashed.
 - Delivery `status`: `0` draft, `1` queued, `2` sending, `3` sent, `4` sent with failures.
 
-0.2.0 adds `template_id`, layered style/custom-CSS data, and `reminder_sent_at`. `content_cutoff_start` is the editor-selected discovery lower bound; `content_cutoff_end` is frozen at queue time and becomes the default for the next newsletter. 0.6.27 adds `campaign_scope` plus nullable `utm_source`, `utm_medium`, `utm_campaign`, `utm_id`, and `utm_content` overrides. Empty UTM override values inherit Component Options at render time.
+0.2.0 adds `template_id`, layered style/custom-CSS data, and `reminder_sent_at`. `content_cutoff_start` is the editor-selected discovery lower bound; `content_cutoff_end` is frozen at queue time and becomes the default for the next newsletter. 0.6.27 adds `campaign_scope` plus nullable `utm_source`, `utm_medium`, `utm_campaign`, `utm_id`, and `utm_content` overrides. Empty UTM override values inherit Component Options at render time. 0.6.34 adds `archive_visibility` (`-1` inherit, `0` hide, `1` show) so public archive publication can be controlled independently from the token-protected browser view.
 
 ## `#__pungamail_newsletter_items`
 
@@ -169,6 +169,7 @@ Component Options → **Maintenance & Data → Uninstall: Remove database tables
 - `0.6.28.sql` — adds aggregate/link-level trusted internal campaign-click storage used by Punga Mail Statistics.
 - `0.6.32.sql` — adds the Statistics reset-baseline state table; unsubscribe campaign attribution and lifecycle events reuse existing event/campaign storage.
 - `0.6.33.sql` — repairs Automatic Newsletter history/cutoff state from existing genuinely sent generated newsletters. No schema columns are added.
+- `0.6.34.sql` — adds per-Newsletter `archive_visibility`; existing records inherit the conservative component default and therefore do not become public merely because the extension was updated.
 
 
 ### Automatic Newsletter first-run cutoff

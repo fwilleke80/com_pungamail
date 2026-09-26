@@ -1,65 +1,91 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <config>
 	<inlinehelp button="show"/>
 	<fieldset name="mail" label="COM_PUNGAMAIL_CONFIG_MAIL">
-		<field name="from_name" type="text" label="COM_PUNGAMAIL_CONFIG_FROM_NAME" description="COM_PUNGAMAIL_CONFIG_FROM_NAME_DESC" />
-		<field name="from_email" type="email" label="COM_PUNGAMAIL_CONFIG_FROM_EMAIL" description="COM_PUNGAMAIL_CONFIG_FROM_EMAIL_DESC" />
-		<field name="outgoing_mail_configuration" type="outgoingmail" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" hiddenLabel="true" />
-		<field name="reply_to_mode" type="list" default="none" label="COM_PUNGAMAIL_REPLY_TO_MODE" description="COM_PUNGAMAIL_REPLY_TO_MODE_DESC">
-			<option value="none">COM_PUNGAMAIL_REPLY_TO_NONE</option>
-			<option value="custom">COM_PUNGAMAIL_REPLY_TO_CUSTOM</option>
-		</field>
-		<field name="reply_to_email" type="email" label="COM_PUNGAMAIL_REPLY_TO_EMAIL" />
-		<field name="reply_to_name" type="text" label="COM_PUNGAMAIL_REPLY_TO_NAME" />
-		<field name="default_user_subscribed" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_DEFAULT_USER_SUBSCRIBED" description="COM_PUNGAMAIL_CONFIG_DEFAULT_USER_SUBSCRIBED_DESC">
-			<option value="0">JNO</option><option value="1">JYES</option>
-		</field>
+		<fieldset name="mail_outgoing" label="COM_PUNGAMAIL_CONFIG_OUTGOING_MAIL_SECTION" description="COM_PUNGAMAIL_CONFIG_OUTGOING_MAIL_SECTION_DESC">
+			<field name="from_name" type="text" label="COM_PUNGAMAIL_CONFIG_FROM_NAME" description="COM_PUNGAMAIL_CONFIG_FROM_NAME_DESC" />
+			<field name="from_email" type="email" label="COM_PUNGAMAIL_CONFIG_FROM_EMAIL" description="COM_PUNGAMAIL_CONFIG_FROM_EMAIL_DESC" />
+			<field name="outgoing_mail_configuration" type="outgoingmail" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" hiddenLabel="true" description="COM_PUNGAMAIL_CONFIG_OUTGOING_MAIL_DESC" />
+			<field name="reply_to_mode" type="list" default="none" label="COM_PUNGAMAIL_REPLY_TO_MODE" description="COM_PUNGAMAIL_REPLY_TO_MODE_DESC">
+				<option value="none">COM_PUNGAMAIL_REPLY_TO_NONE</option>
+				<option value="custom">COM_PUNGAMAIL_REPLY_TO_CUSTOM</option>
+			</field>
+			<field name="reply_to_email" type="email" label="COM_PUNGAMAIL_REPLY_TO_EMAIL" description="COM_PUNGAMAIL_REPLY_TO_EMAIL_DESC" />
+			<field name="reply_to_name" type="text" label="COM_PUNGAMAIL_REPLY_TO_NAME" description="COM_PUNGAMAIL_REPLY_TO_NAME_DESC" />
+		</fieldset>
+		<fieldset name="mail_bounce" label="COM_PUNGAMAIL_CONFIG_RETURNED_MAIL_SECTION" description="COM_PUNGAMAIL_CONFIG_RETURNED_MAIL_SECTION_DESC">
+			<field name="bounce_mailbox_configuration" type="bouncemailbox" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" hiddenLabel="true" description="COM_PUNGAMAIL_CONFIG_BOUNCE_MAILBOX_DESC" />
+			<field name="soft_bounce_threshold" type="number" default="3" min="1" max="20" label="COM_PUNGAMAIL_SOFT_BOUNCE_THRESHOLD" description="COM_PUNGAMAIL_SOFT_BOUNCE_THRESHOLD_DESC" />
+		</fieldset>
 	</fieldset>
 	<fieldset name="layout" label="COM_PUNGAMAIL_CONFIG_LAYOUT">
-		<field name="layout_page_heading" type="spacer" label="COM_PUNGAMAIL_LAYOUT_PAGE" hr="true" />
-		<field name="design_content_width" type="number" default="680" min="320" max="1200" label="COM_PUNGAMAIL_STYLE_CONTENT_WIDTH" />
-		<field name="design_outer_background" type="color" default="#f4f4f4" label="COM_PUNGAMAIL_STYLE_OUTER_BACKGROUND" />
-
+		<field name="layout_page_heading" type="spacer" label="COM_PUNGAMAIL_LAYOUT_PAGE" />
+		<field name="design_content_width" type="number" default="680" min="320" max="1200" label="COM_PUNGAMAIL_STYLE_CONTENT_WIDTH" description="COM_PUNGAMAIL_STYLE_CONTENT_WIDTH_DESC" />
+		<field name="design_outer_background" type="color" default="#f4f4f4" label="COM_PUNGAMAIL_STYLE_OUTER_BACKGROUND" description="COM_PUNGAMAIL_STYLE_OUTER_BACKGROUND_DESC" />
 		<field name="layout_browser_heading" type="spacer" label="COM_PUNGAMAIL_LAYOUT_BROWSER_BAR" hr="true" />
-		<field name="browser_view_enabled" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_BROWSER_VIEW_ENABLED" description="COM_PUNGAMAIL_BROWSER_VIEW_ENABLED_DESC"><option value="0">JNO</option><option value="1">JYES</option></field>
-		<field name="design_browser_background" type="color" default="#ffffff" label="COM_PUNGAMAIL_LAYOUT_BACKGROUND" />
-		<field name="design_browser_link_color" type="color" default="#666666" label="COM_PUNGAMAIL_LAYOUT_LINK_COLOR" />
-		<field name="design_browser_alignment" type="list" default="center" label="COM_PUNGAMAIL_LAYOUT_ALIGNMENT"><option value="left">COM_PUNGAMAIL_LAYOUT_LEFT</option><option value="center">COM_PUNGAMAIL_LAYOUT_CENTER</option><option value="right">COM_PUNGAMAIL_LAYOUT_RIGHT</option></field>
-		<field name="design_browser_padding" type="number" default="6" min="0" max="48" label="COM_PUNGAMAIL_LAYOUT_PADDING" />
-
+		<field name="browser_view_enabled" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_BROWSER_VIEW_ENABLED" description="COM_PUNGAMAIL_BROWSER_VIEW_ENABLED_DESC">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+		<field name="design_browser_background" type="color" default="#ffffff" label="COM_PUNGAMAIL_LAYOUT_BACKGROUND" description="COM_PUNGAMAIL_LAYOUT_BROWSER_BACKGROUND_DESC" />
+		<field name="design_browser_link_color" type="color" default="#666666" label="COM_PUNGAMAIL_LAYOUT_LINK_COLOR" description="COM_PUNGAMAIL_LAYOUT_BROWSER_LINK_COLOR_DESC" />
+		<field name="design_browser_alignment" type="list" default="center" label="COM_PUNGAMAIL_LAYOUT_ALIGNMENT" description="COM_PUNGAMAIL_LAYOUT_BROWSER_ALIGNMENT_DESC">
+			<option value="left">COM_PUNGAMAIL_LAYOUT_LEFT</option>
+			<option value="center">COM_PUNGAMAIL_LAYOUT_CENTER</option>
+			<option value="right">COM_PUNGAMAIL_LAYOUT_RIGHT</option>
+		</field>
+		<field name="design_browser_padding" type="number" default="6" min="0" max="48" label="COM_PUNGAMAIL_LAYOUT_PADDING" description="COM_PUNGAMAIL_LAYOUT_BROWSER_PADDING_DESC" />
 		<field name="layout_header_heading" type="spacer" label="COM_PUNGAMAIL_LAYOUT_HEADER" hr="true" />
 		<field name="mail_heading" type="text" default="{site_name}" label="COM_PUNGAMAIL_MAIL_BODY_HEADING" description="COM_PUNGAMAIL_MAIL_BODY_HEADING_GLOBAL_DESC" />
 		<field name="design_heading_background" type="color" format="hex" default="" label="COM_PUNGAMAIL_STYLE_HEADING_BACKGROUND" description="COM_PUNGAMAIL_STYLE_HEADING_BACKGROUND_DESC" />
 		<field name="design_header_background_image" type="media" types="images" preview="tooltip" label="COM_PUNGAMAIL_LAYOUT_HEADER_BACKGROUND_IMAGE" description="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_DESC" />
-		<field name="design_header_background_image_behavior" type="list" default="cover" label="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_BEHAVIOR" description="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_BEHAVIOR_DESC"><option value="cover">COM_PUNGAMAIL_LAYOUT_BG_COVER</option><option value="contain">COM_PUNGAMAIL_LAYOUT_BG_CONTAIN</option><option value="tile">COM_PUNGAMAIL_LAYOUT_BG_TILE</option><option value="tile_x">COM_PUNGAMAIL_LAYOUT_BG_TILE_X</option><option value="tile_y">COM_PUNGAMAIL_LAYOUT_BG_TILE_Y</option><option value="original">COM_PUNGAMAIL_LAYOUT_BG_ORIGINAL</option></field>
+		<field name="design_header_background_image_behavior" type="list" default="cover" label="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_BEHAVIOR" description="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_BEHAVIOR_DESC">
+			<option value="cover">COM_PUNGAMAIL_LAYOUT_BG_COVER</option>
+			<option value="contain">COM_PUNGAMAIL_LAYOUT_BG_CONTAIN</option>
+			<option value="tile">COM_PUNGAMAIL_LAYOUT_BG_TILE</option>
+			<option value="tile_x">COM_PUNGAMAIL_LAYOUT_BG_TILE_X</option>
+			<option value="tile_y">COM_PUNGAMAIL_LAYOUT_BG_TILE_Y</option>
+			<option value="original">COM_PUNGAMAIL_LAYOUT_BG_ORIGINAL</option>
+		</field>
 		<field name="design_mail_heading_color" type="color" format="hex" default="" label="COM_PUNGAMAIL_STYLE_MAIL_HEADING_COLOR" description="COM_PUNGAMAIL_STYLE_MAIL_HEADING_COLOR_DESC" />
-		<field name="design_header_alignment" type="list" default="left" label="COM_PUNGAMAIL_LAYOUT_ALIGNMENT"><option value="left">COM_PUNGAMAIL_LAYOUT_LEFT</option><option value="center">COM_PUNGAMAIL_LAYOUT_CENTER</option><option value="right">COM_PUNGAMAIL_LAYOUT_RIGHT</option></field>
-		<field name="design_header_padding" type="number" default="20" min="0" max="96" label="COM_PUNGAMAIL_LAYOUT_PADDING" />
+		<field name="design_header_alignment" type="list" default="left" label="COM_PUNGAMAIL_LAYOUT_ALIGNMENT" description="COM_PUNGAMAIL_LAYOUT_HEADER_ALIGNMENT_DESC">
+			<option value="left">COM_PUNGAMAIL_LAYOUT_LEFT</option>
+			<option value="center">COM_PUNGAMAIL_LAYOUT_CENTER</option>
+			<option value="right">COM_PUNGAMAIL_LAYOUT_RIGHT</option>
+		</field>
+		<field name="design_header_padding" type="number" default="20" min="0" max="96" label="COM_PUNGAMAIL_LAYOUT_PADDING" description="COM_PUNGAMAIL_LAYOUT_HEADER_PADDING_DESC" />
 		<field name="design_header_gap" type="number" default="12" min="0" max="48" label="COM_PUNGAMAIL_LAYOUT_HEADER_GAP" description="COM_PUNGAMAIL_LAYOUT_HEADER_GAP_DESC" />
 		<field name="design_logo_url" type="media" types="images" preview="tooltip" label="COM_PUNGAMAIL_STYLE_LOGO_URL" description="COM_PUNGAMAIL_STYLE_LOGO_URL_DESC" />
-		<field name="design_logo_width" type="number" default="180" min="40" max="600" label="COM_PUNGAMAIL_STYLE_LOGO_WIDTH" />
-		<field name="design_logo_position" type="list" default="above" label="COM_PUNGAMAIL_LAYOUT_LOGO_POSITION"><option value="above">COM_PUNGAMAIL_LAYOUT_LOGO_ABOVE</option><option value="below">COM_PUNGAMAIL_LAYOUT_LOGO_BELOW</option></field>
-
+		<field name="design_logo_width" type="number" default="180" min="40" max="600" label="COM_PUNGAMAIL_STYLE_LOGO_WIDTH" description="COM_PUNGAMAIL_STYLE_LOGO_WIDTH_DESC" />
+		<field name="design_logo_position" type="list" default="above" label="COM_PUNGAMAIL_LAYOUT_LOGO_POSITION" description="COM_PUNGAMAIL_LAYOUT_LOGO_POSITION_DESC">
+			<option value="above">COM_PUNGAMAIL_LAYOUT_LOGO_ABOVE</option>
+			<option value="below">COM_PUNGAMAIL_LAYOUT_LOGO_BELOW</option>
+		</field>
 		<field name="layout_content_heading" type="spacer" label="COM_PUNGAMAIL_LAYOUT_CONTENT" hr="true" />
-		<field name="design_content_background" type="color" default="#ffffff" label="COM_PUNGAMAIL_STYLE_CONTENT_BACKGROUND" />
-		<field name="design_text_color" type="color" default="#222222" label="COM_PUNGAMAIL_STYLE_TEXT_COLOR" />
-		<field name="design_heading_color" type="color" default="#111111" label="COM_PUNGAMAIL_STYLE_HEADING_COLOR" />
-		<field name="design_link_color" type="color" default="#2457a6" label="COM_PUNGAMAIL_STYLE_LINK_COLOR" />
-		<field name="design_font_family" type="text" default="Arial, Helvetica, sans-serif" label="COM_PUNGAMAIL_STYLE_FONT_FAMILY" />
-		<field name="design_font_size" type="number" default="16" min="10" max="28" label="COM_PUNGAMAIL_STYLE_FONT_SIZE" />
-		<field name="design_content_padding" type="number" default="32" min="0" max="96" label="COM_PUNGAMAIL_STYLE_CONTENT_PADDING" />
-
+		<field name="design_content_background" type="color" default="#ffffff" label="COM_PUNGAMAIL_STYLE_CONTENT_BACKGROUND" description="COM_PUNGAMAIL_STYLE_CONTENT_BACKGROUND_DESC" />
+		<field name="design_text_color" type="color" default="#222222" label="COM_PUNGAMAIL_STYLE_TEXT_COLOR" description="COM_PUNGAMAIL_STYLE_TEXT_COLOR_DESC" />
+		<field name="design_heading_color" type="color" default="#111111" label="COM_PUNGAMAIL_STYLE_HEADING_COLOR" description="COM_PUNGAMAIL_STYLE_HEADING_COLOR_DESC" />
+		<field name="design_link_color" type="color" default="#2457a6" label="COM_PUNGAMAIL_STYLE_LINK_COLOR" description="COM_PUNGAMAIL_STYLE_LINK_COLOR_DESC" />
+		<field name="design_font_family" type="text" default="Arial, Helvetica, sans-serif" label="COM_PUNGAMAIL_STYLE_FONT_FAMILY" description="COM_PUNGAMAIL_STYLE_FONT_FAMILY_DESC" />
+		<field name="design_font_size" type="number" default="16" min="10" max="28" label="COM_PUNGAMAIL_STYLE_FONT_SIZE" description="COM_PUNGAMAIL_STYLE_FONT_SIZE_DESC" />
+		<field name="design_content_padding" type="number" default="32" min="0" max="96" label="COM_PUNGAMAIL_STYLE_CONTENT_PADDING" description="COM_PUNGAMAIL_STYLE_CONTENT_PADDING_DESC" />
 		<field name="layout_footer_heading" type="spacer" label="COM_PUNGAMAIL_LAYOUT_FOOTER" hr="true" />
-		<field name="design_footer_background" type="color" default="#ffffff" label="COM_PUNGAMAIL_LAYOUT_BACKGROUND" />
+		<field name="design_footer_background" type="color" default="#ffffff" label="COM_PUNGAMAIL_LAYOUT_BACKGROUND" description="COM_PUNGAMAIL_LAYOUT_FOOTER_BACKGROUND_DESC" />
 		<field name="design_footer_background_image" type="media" types="images" preview="tooltip" label="COM_PUNGAMAIL_LAYOUT_FOOTER_BACKGROUND_IMAGE" description="COM_PUNGAMAIL_LAYOUT_BACKGROUND_IMAGE_DESC" />
-		<field name="design_footer_color" type="color" default="#666666" label="COM_PUNGAMAIL_STYLE_FOOTER_COLOR" />
-		<field name="design_footer_link_color" type="color" default="#2457a6" label="COM_PUNGAMAIL_LAYOUT_LINK_COLOR" />
-		<field name="design_footer_alignment" type="list" default="left" label="COM_PUNGAMAIL_LAYOUT_ALIGNMENT"><option value="left">COM_PUNGAMAIL_LAYOUT_LEFT</option><option value="center">COM_PUNGAMAIL_LAYOUT_CENTER</option><option value="right">COM_PUNGAMAIL_LAYOUT_RIGHT</option></field>
-		<field name="design_footer_padding" type="number" default="24" min="0" max="96" label="COM_PUNGAMAIL_LAYOUT_PADDING" />
-		<field name="design_footer_divider" type="radio" layout="joomla.form.field.radio.switcher" default="1" label="COM_PUNGAMAIL_LAYOUT_FOOTER_DIVIDER"><option value="0">JHIDE</option><option value="1">JSHOW</option></field>
-		<field name="design_footer_divider_color" type="color" default="#dddddd" label="COM_PUNGAMAIL_LAYOUT_DIVIDER_COLOR" />
+		<field name="design_footer_color" type="color" default="#666666" label="COM_PUNGAMAIL_STYLE_FOOTER_COLOR" description="COM_PUNGAMAIL_STYLE_FOOTER_COLOR_DESC" />
+		<field name="design_footer_link_color" type="color" default="#2457a6" label="COM_PUNGAMAIL_LAYOUT_LINK_COLOR" description="COM_PUNGAMAIL_LAYOUT_FOOTER_LINK_COLOR_DESC" />
+		<field name="design_footer_alignment" type="list" default="left" label="COM_PUNGAMAIL_LAYOUT_ALIGNMENT" description="COM_PUNGAMAIL_LAYOUT_FOOTER_ALIGNMENT_DESC">
+			<option value="left">COM_PUNGAMAIL_LAYOUT_LEFT</option>
+			<option value="center">COM_PUNGAMAIL_LAYOUT_CENTER</option>
+			<option value="right">COM_PUNGAMAIL_LAYOUT_RIGHT</option>
+		</field>
+		<field name="design_footer_padding" type="number" default="24" min="0" max="96" label="COM_PUNGAMAIL_LAYOUT_PADDING" description="COM_PUNGAMAIL_LAYOUT_FOOTER_PADDING_DESC" />
+		<field name="design_footer_divider" type="radio" layout="joomla.form.field.radio.switcher" default="1" label="COM_PUNGAMAIL_LAYOUT_FOOTER_DIVIDER" description="COM_PUNGAMAIL_LAYOUT_FOOTER_DIVIDER_DESC">
+			<option value="0">JHIDE</option>
+			<option value="1">JSHOW</option>
+		</field>
+		<field name="design_footer_divider_color" type="color" default="#dddddd" label="COM_PUNGAMAIL_LAYOUT_DIVIDER_COLOR" description="COM_PUNGAMAIL_LAYOUT_DIVIDER_COLOR_DESC" />
 		<field name="mail_footer_reason" type="mailfooter" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" filter="raw" rows="6" label="COM_PUNGAMAIL_CONFIG_FOOTER_REASON" description="COM_PUNGAMAIL_CONFIG_FOOTER_REASON_DESC" />
-
 		<field name="layout_advanced_heading" type="spacer" label="COM_PUNGAMAIL_LAYOUT_ADVANCED" hr="true" />
 		<field name="design_custom_css" type="textarea" filter="raw" rows="8" label="COM_PUNGAMAIL_STYLE_CUSTOM_CSS" description="COM_PUNGAMAIL_STYLE_CUSTOM_CSS_DESC" />
 	</fieldset>
@@ -69,45 +95,63 @@
 			<option value="internal">COM_PUNGAMAIL_CAMPAIGN_SCOPE_INTERNAL</option>
 			<option value="all">COM_PUNGAMAIL_CAMPAIGN_SCOPE_ALL</option>
 		</field>
-		<field name="campaign_utm_source" type="text" default="pungamail" label="COM_PUNGAMAIL_CAMPAIGN_UTM_SOURCE" />
-		<field name="campaign_utm_medium" type="text" default="email" label="COM_PUNGAMAIL_CAMPAIGN_UTM_MEDIUM" />
-		<field name="campaign_utm_campaign" type="text" default="{newsletter_title}" label="COM_PUNGAMAIL_CAMPAIGN_UTM_CAMPAIGN" />
-		<field name="campaign_utm_id" type="text" default="{newsletter_id}" label="COM_PUNGAMAIL_CAMPAIGN_UTM_ID" />
-		<field name="campaign_utm_content" type="text" default="link-{link_index}" label="COM_PUNGAMAIL_CAMPAIGN_UTM_CONTENT" description="COM_PUNGAMAIL_CAMPAIGN_PLACEHOLDER_HELP" />
+		<field name="campaign_utm_source" type="text" default="pungamail" label="COM_PUNGAMAIL_CAMPAIGN_UTM_SOURCE" description="COM_PUNGAMAIL_CAMPAIGN_UTM_SOURCE_DESC" />
+		<field name="campaign_utm_medium" type="text" default="email" label="COM_PUNGAMAIL_CAMPAIGN_UTM_MEDIUM" description="COM_PUNGAMAIL_CAMPAIGN_UTM_MEDIUM_DESC" />
+		<field name="campaign_utm_campaign" type="text" default="{newsletter_title}" label="COM_PUNGAMAIL_CAMPAIGN_UTM_CAMPAIGN" description="COM_PUNGAMAIL_CAMPAIGN_UTM_CAMPAIGN_DESC" />
+		<field name="campaign_utm_id" type="text" default="{newsletter_id}" label="COM_PUNGAMAIL_CAMPAIGN_UTM_ID" description="COM_PUNGAMAIL_CAMPAIGN_UTM_ID_DESC" />
+		<field name="campaign_utm_content" type="text" default="link-{link_index}" label="COM_PUNGAMAIL_CAMPAIGN_UTM_CONTENT" description="COM_PUNGAMAIL_CAMPAIGN_UTM_CONTENT_DESC" />
 	</fieldset>
-	<fieldset name="subscription" label="COM_PUNGAMAIL_CONFIG_SUBSCRIPTION">
+	<fieldset name="subscription" label="COM_PUNGAMAIL_CONFIG_SUBSCRIPTION" description="COM_PUNGAMAIL_CONFIG_SUBSCRIPTION_DESC">
+		<field name="default_user_subscribed" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_DEFAULT_USER_SUBSCRIBED" description="COM_PUNGAMAIL_CONFIG_DEFAULT_USER_SUBSCRIBED_DESC">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
 		<field name="confirmation_hours" type="number" default="48" min="1" max="168" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_HOURS" description="COM_PUNGAMAIL_CONFIG_CONFIRMATION_HOURS_DESC" />
 		<field name="signup_ip_hourly_limit" type="number" default="12" min="1" max="500" label="COM_PUNGAMAIL_CONFIG_SIGNUP_IP_LIMIT" description="COM_PUNGAMAIL_CONFIG_SIGNUP_IP_LIMIT_DESC" />
 		<field name="resend_minutes" type="number" default="10" min="1" max="1440" label="COM_PUNGAMAIL_CONFIG_RESEND_MINUTES" description="COM_PUNGAMAIL_CONFIG_RESEND_MINUTES_DESC" />
 		<field name="confirmation_subject" type="text" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_SUBJECT" description="COM_PUNGAMAIL_CONFIG_CONFIRMATION_SUBJECT_DESC" />
 		<field name="confirmation_markdown" type="markdown" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" filter="raw" rows="12" placeholders="{confirmation_url}|{site_name}|{email}" helpkeys="COM_PUNGAMAIL_CONFIG_CONFIRMATION_MARKDOWN_DESC|COM_PUNGAMAIL_MARKDOWN_HELP|COM_PUNGAMAIL_MARKDOWN_IMAGE_HELP|COM_PUNGAMAIL_MARKDOWN_TABLE_HELP" label="COM_PUNGAMAIL_CONFIG_CONFIRMATION_MARKDOWN" description="COM_PUNGAMAIL_CONFIG_CONFIRMATION_MARKDOWN_DESC" />
 	</fieldset>
-	<fieldset name="queue" label="COM_PUNGAMAIL_CONFIG_QUEUE">
-		<field name="queue_paused" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_QUEUE_PAUSED" description="COM_PUNGAMAIL_QUEUE_PAUSED_DESC"><option value="0">JNO</option><option value="1">JYES</option></field>
+	<fieldset name="archive" label="COM_PUNGAMAIL_CONFIG_PUBLIC_ARCHIVE">
+		<field name="public_archive_default" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_PUBLIC_ARCHIVE_DEFAULT" description="COM_PUNGAMAIL_CONFIG_PUBLIC_ARCHIVE_DEFAULT_DESC">
+			<option value="0">JHIDE</option>
+			<option value="1">JSHOW</option>
+		</field>
+	</fieldset>
+	<fieldset name="queue" label="COM_PUNGAMAIL_CONFIG_QUEUE" description="COM_PUNGAMAIL_CONFIG_QUEUE_DESC">
+		<field name="queue_paused" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_QUEUE_PAUSED" description="COM_PUNGAMAIL_QUEUE_PAUSED_DESC">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
 		<field name="batch_size" type="number" default="25" min="1" max="250" label="COM_PUNGAMAIL_CONFIG_BATCH_SIZE" description="COM_PUNGAMAIL_CONFIG_BATCH_SIZE_DESC" />
 		<field name="max_attempts" type="number" default="3" min="1" max="10" label="COM_PUNGAMAIL_CONFIG_MAX_ATTEMPTS" description="COM_PUNGAMAIL_CONFIG_MAX_ATTEMPTS_DESC" />
 		<field name="retry_minutes" type="number" default="15" min="1" max="1440" label="COM_PUNGAMAIL_CONFIG_RETRY_MINUTES" description="COM_PUNGAMAIL_CONFIG_RETRY_MINUTES_DESC" />
 	</fieldset>
-	<fieldset name="bounce" label="COM_PUNGAMAIL_CONFIG_BOUNCE">
-		<field name="bounce_mailbox_configuration" type="bouncemailbox" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" hiddenLabel="true" />
-		<field name="soft_bounce_threshold" type="number" default="3" min="1" max="20" label="COM_PUNGAMAIL_SOFT_BOUNCE_THRESHOLD" description="COM_PUNGAMAIL_SOFT_BOUNCE_THRESHOLD_DESC" />
-	</fieldset>
-	<fieldset name="reminder" label="COM_PUNGAMAIL_CONFIG_REMINDER">
-		<field name="reminder_note" type="note" class="alert alert-info" label="" description="COM_PUNGAMAIL_CONFIG_REMINDER_NOTE" />
-		<field name="reminder_enabled" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_REMINDER_ENABLED" description="COM_PUNGAMAIL_CONFIG_REMINDER_ENABLED_DESC"><option value="0">JNO</option><option value="1">JYES</option></field>
-		<field name="reminder_days" type="number" default="30" min="1" max="3650" label="COM_PUNGAMAIL_CONFIG_REMINDER_DAYS" description="COM_PUNGAMAIL_CONFIG_REMINDER_DAYS_DESC" />
-		<field name="reminder_email" type="email" label="COM_PUNGAMAIL_CONFIG_REMINDER_EMAIL" description="COM_PUNGAMAIL_CONFIG_REMINDER_EMAIL_DESC" />
-		<field name="reminder_subject" type="text" label="COM_PUNGAMAIL_CONFIG_REMINDER_SUBJECT" description="COM_PUNGAMAIL_CONFIG_REMINDER_SUBJECT_DESC" />
-		<field name="reminder_markdown" type="markdown" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" filter="raw" rows="8" placeholders="{days}|{last_newsletter}|{last_sent_date}|{site_name}" helpkeys="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN_DESC|COM_PUNGAMAIL_MARKDOWN_HELP|COM_PUNGAMAIL_MARKDOWN_IMAGE_HELP|COM_PUNGAMAIL_MARKDOWN_TABLE_HELP" label="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN" description="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN_DESC" />
-	</fieldset>
-	<fieldset name="automatic" label="COM_PUNGAMAIL_CONFIG_AUTOMATIC_NEWSLETTERS">
-		<field name="automatic_note" type="note" class="alert alert-info" label="" description="COM_PUNGAMAIL_CONFIG_AUTOMATIC_NOTE" />
-		<field name="automatic_draft_notification_enabled" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_NOTIFY" description="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_NOTIFY_DESC"><option value="0">JNO</option><option value="1">JYES</option></field>
-		<field name="automatic_draft_notification_email" type="email" showon="automatic_draft_notification_enabled:1" label="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_EMAIL" description="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_EMAIL_DESC" />
+	<fieldset name="notifications" label="COM_PUNGAMAIL_CONFIG_NOTIFICATIONS">
+		<fieldset name="reminder" label="COM_PUNGAMAIL_CONFIG_REMINDER" description="COM_PUNGAMAIL_CONFIG_REMINDER_NOTE">
+			<field name="reminder_enabled" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_REMINDER_ENABLED" description="COM_PUNGAMAIL_CONFIG_REMINDER_ENABLED_DESC">
+				<option value="0">JNO</option>
+				<option value="1">JYES</option>
+			</field>
+			<field name="reminder_days" type="number" default="30" min="1" max="3650" label="COM_PUNGAMAIL_CONFIG_REMINDER_DAYS" description="COM_PUNGAMAIL_CONFIG_REMINDER_DAYS_DESC" />
+			<field name="reminder_email" type="email" label="COM_PUNGAMAIL_CONFIG_REMINDER_EMAIL" description="COM_PUNGAMAIL_CONFIG_REMINDER_EMAIL_DESC" />
+			<field name="reminder_subject" type="text" label="COM_PUNGAMAIL_CONFIG_REMINDER_SUBJECT" description="COM_PUNGAMAIL_CONFIG_REMINDER_SUBJECT_DESC" />
+			<field name="reminder_markdown" type="markdown" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" filter="raw" rows="8" placeholders="{days}|{last_newsletter}|{last_sent_date}|{site_name}" helpkeys="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN_DESC|COM_PUNGAMAIL_MARKDOWN_HELP|COM_PUNGAMAIL_MARKDOWN_IMAGE_HELP|COM_PUNGAMAIL_MARKDOWN_TABLE_HELP" label="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN" description="COM_PUNGAMAIL_CONFIG_REMINDER_MARKDOWN_DESC" />
+		</fieldset>
+		<fieldset name="automatic_draft_notifications" label="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_NOTIFICATIONS" description="COM_PUNGAMAIL_CONFIG_AUTOMATIC_NOTE">
+			<field name="automatic_draft_notification_enabled" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_NOTIFY" description="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_NOTIFY_DESC">
+				<option value="0">JNO</option>
+				<option value="1">JYES</option>
+			</field>
+			<field name="automatic_draft_notification_email" type="email" showon="automatic_draft_notification_enabled:1" label="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_EMAIL" description="COM_PUNGAMAIL_CONFIG_AUTOMATIC_DRAFT_EMAIL_DESC" />
+		</fieldset>
 	</fieldset>
 	<fieldset name="maintenance" label="COM_PUNGAMAIL_CONFIG_MAINTENANCE">
-		<field name="reset_statistics" type="resetstatistics" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" hiddenLabel="true" />
-		<field name="remove_tables_on_uninstall" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_REMOVE_TABLES" description="COM_PUNGAMAIL_CONFIG_REMOVE_TABLES_DESC"><option value="0">JNO</option><option value="1">JYES</option></field>
+		<field name="reset_statistics" type="resetstatistics" addfieldprefix="Punga\Component\PungaMail\Administrator\Field" hiddenLabel="true" description="COM_PUNGAMAIL_STATISTICS_RESET_DESC" />
+		<field name="remove_tables_on_uninstall" type="radio" layout="joomla.form.field.radio.switcher" default="0" label="COM_PUNGAMAIL_CONFIG_REMOVE_TABLES" description="COM_PUNGAMAIL_CONFIG_REMOVE_TABLES_DESC">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
 	</fieldset>
 	<fieldset name="permissions" label="JCONFIG_PERMISSIONS_LABEL" description="JCONFIG_PERMISSIONS_DESC">
 		<field name="rules" type="rules" label="JCONFIG_PERMISSIONS_LABEL" class="inputbox" validate="rules" filter="rules" component="com_pungamail" section="component" />

@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.33. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.37. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -115,6 +115,10 @@ Open **Options** from the toolbar on Punga Mail's main backend sections. Joomla'
 
 ### Mail
 
+The **Mail** tab is divided into two Joomla option groups: **Outgoing mail** and **Returned / undeliverable mail**. This keeps both directions of mail configuration together without mixing their credentials or behavior.
+
+#### Outgoing mail
+
 | Setting | What it controls |
 | --- | --- |
 | From name | The sender name displayed by mail clients. Leave blank to use Joomla's global sender name. The resolved sender is used with either outgoing transport mode. |
@@ -128,11 +132,31 @@ Open **Options** from the toolbar on Punga Mail's main backend sections. Joomla'
 | Reply-To mode | **None** omits a Reply-To address. **Custom** uses the Reply-To fields below. Templates and newsletters may inherit, replace, or disable this choice. |
 | Reply-To email | The address that receives ordinary reader replies when custom Reply-To is enabled. It is validated before sending. |
 | Reply-To name | The optional display name for the Reply-To address. |
-| New Joomla users subscribed by default | Controls Joomla users who have no explicit Punga Mail preference. **No** is the consent-safe default. When **Yes**, eligible users selected through Joomla groups may receive mail unless they have opted out or the address is suppressed. |
 
 **Use Joomla settings** is the backward-compatible default. Select **Custom SMTP** only when Punga Mail should use a separate outgoing account, for example `newsletter@example.com`, while Joomla system messages continue through another account. Punga Mail still creates the mailer through Joomla's mail API; the custom mode supplies a Punga Mail-specific SMTP configuration to that mailer.
 
 The SMTP password is intentionally not stored in Joomla's ordinary component-parameter JSON. Use **Save outgoing mail settings** inside the outgoing-mail section after entering or changing the Custom SMTP connection. The normal Joomla Options **Save** button stores ordinary component fields such as From name, From email, and Reply-To. **Send test mail** in the outgoing-mail section tests the values currently shown there; a blank password reuses the saved encrypted password.
+
+#### Returned / undeliverable mail
+
+Punga Mail uses PHP IMAP to read unseen delivery-status notifications from a dedicated mailbox. The returned-mail mailbox is independent of the outgoing transport: it can be used whether Punga Mail sends through Joomla settings or Custom SMTP.
+
+| Setting | What it controls |
+| --- | --- |
+| Server | IMAP host name supplied by the mailbox provider. |
+| Port | IMAP port, commonly 993 for SSL. Use the provider's value. |
+| Security | SSL, TLS, or none, as required by the provider. |
+| Mailbox folder | Folder to inspect, normally `INBOX`. |
+| Username | Mailbox login name, often the full email address. |
+| Password | Mailbox password. An existing password is never shown. Leave the field blank to keep the stored password. |
+| Bounce address | Return/envelope address Punga Mail asks Joomla's mail layer to use where the active transport supports it. Supplying a value does not guarantee that every transport or upstream provider permits envelope-sender changes. |
+| Validate certificate | Verifies the mail server's TLS certificate. Keep enabled for normal secure use. |
+| Temporary failures before blocking address | Number of temporary/soft delivery failures after which an address is suppressed. Default: 3; allowed range: 1–20. This threshold applies **only** to temporary failures. A permanent/hard failure blocks delivery immediately after the first confirmed hard bounce. |
+
+Use **Save mailbox settings** inside this section. The ordinary Joomla Options save button does not store the password field. **Test connection** tries a read-only connection and reports the result. Testing and processing require the PHP IMAP extension.
+
+Punga Mail marks processed or unparseable unseen messages as seen. Use a dedicated mailbox so unrelated unread mail is not consumed by this process.
+
 
 ### Campaign tracking
 
@@ -148,6 +172,8 @@ Campaign tracking is optional and disabled by default. Component Options provide
 | `utm_content` | Identifies the concrete link. Default: `link-{link_index}`. |
 
 UTM values may use `{newsletter_id}`, `{newsletter_title}`, `{link_index}`, `{link_host}`, and `{link_path}`. Newsletter and Automatic Newsletter editors can inherit the component defaults or override the scope and individual UTM values. Leaving an individual override empty inherits its component value.
+
+Punga Mail percent-encodes all UTM query values according to RFC 3986 when building tracked URLs. Human-readable values may therefore safely contain spaces, Unicode characters, punctuation, `&`, `+`, and similar characters; mail clients receive a syntactically valid URL while analytics sees the original decoded value.
 
 When tracking includes an **internal** URL, Punga Mail also adds a compact authenticated `pm_track` token. The token contains the Newsletter ID and link index plus a shortened HMAC-SHA256 authenticator; the UTM values stay visible in the URL and are covered by the authenticator instead of being copied into the token. It is not encrypted data and it is not a CRC/checksum. The System - Punga Mail Campaign Tracking plugin validates the token against the visible UTM values before dispatching Joomla event `onPungaMailCampaignVisit`. Links generated by Punga Mail 0.6.27–0.6.29 remain valid. External links can receive the ordinary UTM parameters when **All links** is selected, but they do not receive the trusted internal token because the destination request does not pass through this Joomla site. Newsletter and Automatic Newsletter browser previews, as well as test messages, keep the configured UTM parameters for inspection but deliberately omit `pm_track`; trusted tokens are added only when a real Newsletter is frozen for delivery so administrator testing cannot create campaign clicks.
 
@@ -194,8 +220,11 @@ Template and newsletter message options can also override the heading, browser v
 
 ### Subscriptions and confirmation
 
+This tab controls the public subscription and email-confirmation flow: the default state for Joomla users without an explicit preference, confirmation-link lifetime, signup throttling, resend timing, and the confirmation message itself.
+
 | Setting | What it controls |
 | --- | --- |
+| Users without an explicit preference are subscribed | Controls Joomla users who have no explicit Punga Mail preference. **No** is the consent-safe default. When **Yes**, eligible users selected through Joomla groups may receive mail unless they have opted out or the address is suppressed. |
 | Confirmation validity in hours | How long an email confirmation link remains usable. Default: 48 hours; allowed range: 1–168. |
 | Signup requests per IP per hour | Rate limit for public signup requests from one IP address. Default: 12; allowed range: 1–500. |
 | Minimum resend interval | Minimum time before another confirmation message may be requested. Default: 10 minutes; allowed range: 1–1440. |
@@ -204,7 +233,17 @@ Template and newsletter message options can also override the heading, browser v
 
 Email-only visitors and email-only Channel changes require email confirmation. A request does not become active until the recipient uses the confirmation link.
 
-### Send queue
+### Public archive
+
+| Setting | What it controls |
+| --- | --- |
+| Public archive default | Default publication state for sent Newsletters in the public Newsletter Archive. **Hide** is the conservative upgrade default: installing or updating Punga Mail never makes historic sent mail public automatically. Each Newsletter can override this setting with **Inherit**, **Show**, or **Hide**. This setting has no effect until a published **Punga Mail → Newsletter archive** menu item exists. |
+
+Public archive visibility and **Open in browser** are deliberately independent. A Newsletter may be public in the archive while its email browser-view control is disabled, or may have a token-protected browser view while remaining absent from the public archive.
+
+### Delivery queue
+
+These settings are the global policy for Punga Mail’s persistent outgoing queue. The Joomla Scheduled Task **Punga Mail — Send pending newsletters** controls *when* queue processing runs; these options control *how* each run behaves. The same policy is used by manual **Process queue** actions.
 
 | Setting | What it controls |
 | --- | --- |
@@ -215,27 +254,11 @@ Email-only visitors and email-only Channel changes require email confirmation. A
 
 Do not increase the batch size without considering your mail provider's limits and the frequency of the Scheduled Task.
 
-### Bounce / return mailbox
+### Notifications
 
-Punga Mail uses PHP IMAP to read unseen delivery-status notifications from a dedicated mailbox. The returned-mail mailbox is independent of the outgoing transport: it can be used whether Punga Mail sends through Joomla settings or Custom SMTP.
+The **Notifications** tab groups administrative email notifications. It does not define Automatic Newsletter schedules or delivery behavior.
 
-| Setting | What it controls |
-| --- | --- |
-| Server | IMAP host name supplied by the mailbox provider. |
-| Port | IMAP port, commonly 993 for SSL. Use the provider's value. |
-| Security | SSL, TLS, or none, as required by the provider. |
-| Mailbox folder | Folder to inspect, normally `INBOX`. |
-| Username | Mailbox login name, often the full email address. |
-| Password | Mailbox password. An existing password is never shown. Leave the field blank to keep the stored password. |
-| Bounce address | Return/envelope address Punga Mail asks Joomla's mail layer to use where the active transport supports it. Supplying a value does not guarantee that every transport or upstream provider permits envelope-sender changes. |
-| Validate certificate | Verifies the mail server's TLS certificate. Keep enabled for normal secure use. |
-| Temporary failures before blocking address | Number of temporary/soft delivery failures after which an address is suppressed. Default: 3; allowed range: 1–20. This threshold applies **only** to temporary failures. A permanent/hard failure blocks delivery immediately after the first confirmed hard bounce. |
-
-Use **Save mailbox settings** inside this section. The ordinary Joomla Options save button does not store the password field. **Test connection** tries a read-only connection and reports the result. Testing and processing require the PHP IMAP extension.
-
-Punga Mail marks processed or unparseable unseen messages as seen. Use a dedicated mailbox so unrelated unread mail is not consumed by this process.
-
-### Newsletter reminder
+#### Newsletter reminder
 
 This optional feature alerts an administrator when no newsletter has been sent for a chosen period. The Component Options tab now begins with the same plain-language explanation shown here, and every reminder setting has Joomla inline-help text.
 
@@ -249,9 +272,9 @@ This optional feature alerts an administrator when no newsletter has been sent f
 
 Run **Punga Mail — Newsletter reminder** daily. Punga Mail records the reminder for the current last-sent cycle so it does not send the same warning every day.
 
-### Automatic Newsletter draft notifications
+#### Automatic Newsletter draft notifications
 
-When an Automatic Newsletter is configured to **Create draft**, Punga Mail can email the person who reviews newsletters as soon as a new draft is ready. Enable the notification and enter an explicit reviewer address under Component Options → Automatic newsletters. The message names the automation and draft, reports selected and access-excluded content counts, and links directly to the draft in Joomla administration. Automatic Newsletters configured to send immediately do not send this review notification.
+When an Automatic Newsletter is configured to **Create draft**, Punga Mail can email the person who reviews newsletters as soon as a new draft is ready. Enable the notification and enter an explicit reviewer address under Component Options → Notifications → Automatic Newsletter draft notifications. The message names the automation and draft, reports selected and access-excluded content counts, and links directly to the draft in Joomla administration. Automatic Newsletters configured to send immediately do not send this review notification.
 
 ### Maintenance / Data
 
@@ -552,7 +575,7 @@ Range formatters can take the **resolved value of another placeholder** as an ar
 
 - `date_range` formats one localized date when start and end fall on the same day, otherwise a localized range. Compatible day-first same-month site formats are compacted, for example `22–24 September 2026`.
 - `time_range` formats the two values as a time span, for example `19:00–21:00`.
-- `period` combines the two: when its optional all-day argument is true/non-zero it renders only the date range; otherwise it renders a localized date plus time range for a one-day item, or both date/time endpoints for a multi-day item. Omitting the all-day argument treats the period as timed.
+- `period` combines the two: when its optional all-day argument is true/non-zero it renders only the date range and treats a later end value as an **exclusive boundary**, matching the standard representation used by calendar all-day events. Thus an all-day event stored as `[24 December, 25 December)` displays as `24 December`, and `[12 October, 24 October)` displays as `12–23 October`. Otherwise it renders a localized date plus time range for a one-day item, or both date/time endpoints for a multi-day item. Omitting the all-day argument treats the period as timed.
 
 Formatter arguments are values, not hidden column-name references. `{end_at}` in the example is resolved exactly like an ordinary placeholder before the formatter runs. Literal values are also valid, e.g. `{start_at|date_range:2026-09-24 00:00:00}`. Punga Mail does not add `if`/`else` controls or calendar-specific placeholders for this feature.
 
@@ -662,6 +685,18 @@ The delivery statistics are historical and tied to that mailing:
 When enabled through the global/template/newsletter hierarchy, the email contains a browser-view link. The public page uses the immutable sent snapshot and a random public key. It does not expose a draft, subscriber token, unsubscribe token, or recipient-specific version.
 
 Keep a published Punga Mail subscription menu item so Joomla can produce a clean SEF route. The browser page is a single-mailing view, not a public archive.
+
+### Public Newsletter Archive
+
+Create a menu item of type **Punga Mail → Newsletter archive**. When that menu item is a child of the Newsletter subscription item, Joomla can produce a structure such as `/newsletter/archive`; individual public Newsletter pages use child routes such as `/newsletter/archive/14-september-newsletter-2026`.
+
+The archive lists only Newsletters that were actually sent, have an immutable sent snapshot, and are public according to the Newsletter's **Public archive** setting. The per-Newsletter choices are **Inherit**, **Show**, and **Hide**. **Inherit** follows **Options → Public archive → Public archive default**. Existing Newsletters inherit the default, which is **Hide** after installation/update until an administrator deliberately changes it.
+
+The archive menu item can configure an introductory text, page size, optional Channel restriction, and whether sent dates and Channel names are shown. Joomla's normal Browser Page Title and page-heading parameters remain available.
+
+Archive detail pages render the immutable sent snapshot rather than rebuilding the Newsletter from current content or Template settings. Recipient-only placeholders and actions are neutralized, and Punga Mail campaign tokens/UTM parameters are removed from archive links so anonymous archive browsing is not counted as an email campaign interaction.
+
+The token-protected **Open in browser** route remains separate (`/newsletter/browser?...`) and continues to work for old messages even when the public archive is disabled or a specific Newsletter is hidden from it.
 
 ## Automatic Newsletters
 
@@ -948,6 +983,8 @@ The page is a complete standalone subscription destination and acts as the Jooml
 - If no topics are published, the page still provides global newsletter signup and subscription management.
 
 Unlike the signup module, this menu page has no configured Channel subset: it offers every currently published Channel the current visitor is eligible to subscribe to.
+
+When Joomla can resolve a published **Newsletter archive** menu item that the current visitor is allowed to access, the subscription page also shows a **Previous newsletters** button in the page heading row. If there is no eligible archive menu item, Punga Mail omits the link entirely instead of generating a `/component/pungamail/...` fallback URL.
 
 Punga Mail follows Joomla's normal browser-title rules on frontend pages. The subscription page uses the menu item's **Browser Page Title** when one is configured, otherwise its normal menu/page title, and Joomla adds the site name according to **Global Configuration → SEO → Site Name in Page Titles**. Confirmation, unsubscribe, and status pages use their own translated titles. A sent newsletter opened through **View in browser** uses that newsletter's frozen subject as its browser-tab title.
 

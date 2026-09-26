@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS `#__pungamail_newsletters` (
   `heading_mode` VARCHAR(12) NOT NULL DEFAULT 'inherit',
   `mail_heading` VARCHAR(255) NULL,
   `browser_view` TINYINT NOT NULL DEFAULT -1,
+  `archive_visibility` TINYINT NOT NULL DEFAULT -1,
   `reply_to_mode` VARCHAR(12) NOT NULL DEFAULT 'inherit',
   `reply_to_email` VARCHAR(320) NULL,
   `reply_to_name` VARCHAR(255) NULL,

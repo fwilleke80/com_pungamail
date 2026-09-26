@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.36 fixes all-day period formatting; no schema changes.

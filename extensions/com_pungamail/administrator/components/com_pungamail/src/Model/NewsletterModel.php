@@ -65,6 +65,7 @@ final class NewsletterModel extends BaseDatabaseModel
 				'heading_mode' => 'heading_mode',
 				'mail_heading' => 'mail_heading',
 				'browser_view' => 'browser_view',
+				'archive_visibility' => 'archive_visibility',
 				'reply_to_mode' => 'reply_to_mode',
 				'reply_to_email' => 'reply_to_email',
 				'reply_to_name' => 'reply_to_name',

@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.35 reorganizes Component Options and improves frontend navigation; no schema changes.

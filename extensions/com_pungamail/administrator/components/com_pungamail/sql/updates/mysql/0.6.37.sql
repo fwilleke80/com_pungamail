@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.37 fixes campaign URL serialization; no schema changes.

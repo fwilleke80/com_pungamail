@@ -307,6 +307,27 @@ final class NewsletterController extends BaseController
 		}
 	}
 
+
+	/** @return void */
+	public function setArchiveVisibility(): void
+	{
+		$this->requireEditForInput();
+		$this->requireToken();
+		$input = Factory::getApplication()->getInput();
+		$id = $input->post->getInt('id');
+		$visibility = $input->post->getInt('archive_visibility', -1);
+
+		try
+		{
+			ServiceFactory::newsletters()->setArchiveVisibility($id, $visibility);
+			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), Text::_('COM_PUNGAMAIL_ARCHIVE_VISIBILITY_SAVED'));
+		}
+		catch (\Throwable $e)
+		{
+			$this->setRedirect(Route::_(AdministratorRoute::newsletter($id), false), ErrorMessage::sanitize($e), 'error');
+		}
+	}
+
 	/** @return void */
 	public function toggleMailingPause(): void
 	{
@@ -454,6 +475,7 @@ final class NewsletterController extends BaseController
 			'heading_mode' => $input->post->getCmd('heading_mode', 'inherit'),
 			'mail_heading' => trim($input->post->getString('mail_heading')),
 			'browser_view' => $input->post->getInt('browser_view', -1),
+			'archive_visibility' => $input->post->getInt('archive_visibility', -1),
 			'reply_to_mode' => $input->post->getCmd('reply_to_mode', 'inherit'),
 			'reply_to_email' => trim($input->post->getString('reply_to_email')),
 			'reply_to_name' => trim($input->post->getString('reply_to_name')),
@@ -506,6 +528,7 @@ final class NewsletterController extends BaseController
 				'heading_mode' => $data['heading_mode'],
 				'mail_heading' => $data['mail_heading'],
 				'browser_view' => $data['browser_view'],
+				'archive_visibility' => $data['archive_visibility'],
 				'reply_to_mode' => $data['reply_to_mode'],
 				'reply_to_email' => $data['reply_to_email'],
 				'reply_to_name' => $data['reply_to_name'],

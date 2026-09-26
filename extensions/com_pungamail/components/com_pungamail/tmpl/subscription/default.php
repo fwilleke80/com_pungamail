@@ -14,7 +14,12 @@ $topics = (array) ($state['topics'] ?? []);
 $selectedTopicIds = array_map('intval', (array) ($state['selected_topic_ids'] ?? []));
 ?>
 <div class="pungamail-subscription-page">
-	<h1><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIPTION_PAGE_HEADING'); ?></h1>
+	<div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+		<h1 class="mb-0"><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIPTION_PAGE_HEADING'); ?></h1>
+		<?php if ($this->archiveUrl !== null) : ?>
+			<a class="btn btn-outline-secondary align-self-start align-self-sm-auto" href="<?php echo htmlspecialchars($this->archiveUrl, ENT_QUOTES, 'UTF-8'); ?>"><?php echo Text::_('COM_PUNGAMAIL_PREVIOUS_NEWSLETTERS'); ?></a>
+		<?php endif; ?>
+	</div>
 	<p><?php echo Text::_('COM_PUNGAMAIL_SUBSCRIPTION_PAGE_INTRO'); ?></p>
 
 	<?php if (!$state['logged_in']) : ?>

@@ -146,6 +146,19 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.31.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.32.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.33.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.34.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.35.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.36.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.37.sql",
+    "extensions/com_pungamail/components/com_pungamail/src/Model/ArchiveModel.php",
+    "extensions/com_pungamail/components/com_pungamail/src/Model/ArchiveitemModel.php",
+    "extensions/com_pungamail/components/com_pungamail/src/Service/ArchiveRoute.php",
+    "extensions/com_pungamail/components/com_pungamail/src/Service/PublicSnapshot.php",
+    "extensions/com_pungamail/components/com_pungamail/src/View/Archive/HtmlView.php",
+    "extensions/com_pungamail/components/com_pungamail/src/View/Archiveitem/HtmlView.php",
+    "extensions/com_pungamail/components/com_pungamail/tmpl/archive/default.php",
+    "extensions/com_pungamail/components/com_pungamail/tmpl/archive/default.xml",
+    "extensions/com_pungamail/components/com_pungamail/tmpl/archiveitem/default.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Controller/StatisticsController.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Field/ResetstatisticsField.php",
     "extensions/com_pungamail/administrator/components/com_pungamail/src/Service/DigestContentFilter.php",
@@ -1585,7 +1598,7 @@ def check_release_ux_0313() -> None:
             fail(f"0.3.13 translated content-type labels are missing: {token}")
 
     for token in (
-        'name="reminder_note" type="note"',
+        'description="COM_PUNGAMAIL_CONFIG_REMINDER_NOTE"',
         'description="COM_PUNGAMAIL_CONFIG_REMINDER_ENABLED_DESC"',
         'description="COM_PUNGAMAIL_CONFIG_REMINDER_DAYS_DESC"',
         'description="COM_PUNGAMAIL_CONFIG_REMINDER_SUBJECT_DESC"',
@@ -3501,6 +3514,10 @@ def main() -> int:
     check_v0631_preview_tracking_and_statistics_copy()
     check_v0632_statistics_reset_and_subscription_events()
     check_v0633_sent_digest_cutoffs()
+    check_v0634_public_archive_and_help()
+    check_v0635_options_and_archive_polish()
+    check_v0636_all_day_period_end()
+    check_v0637_tracking_url_encoding()
     print(f"[OK] Punga Mail {VERSION} release checks passed")
     return 0
 
@@ -4357,6 +4374,240 @@ def check_v0633_sent_digest_cutoffs() -> None:
     for contents, label in ((guide, "user guide"), (tutorial, "Automatic Newsletter tutorial")):
         if "actually sent" not in contents and "actually been delivered" not in contents:
             fail(f"0.6.33 {label} does not explain sent-only cutoff semantics")
+
+
+
+def check_v0634_public_archive_and_help() -> None:
+    """Verify public Newsletter Archive routing/visibility and options polish."""
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    site = ROOT / "extensions/com_pungamail/components/com_pungamail"
+    install = (admin / "sql/install.mysql.sql").read_text(encoding="utf-8")
+    migration = (admin / "sql/updates/mysql/0.6.34.sql").read_text(encoding="utf-8")
+    config_path = admin / "config.xml"
+    config = config_path.read_text(encoding="utf-8")
+    repository = (admin / "src/Service/NewsletterRepository.php").read_text(encoding="utf-8")
+    dashboard = (admin / "tmpl/dashboard/default.php").read_text(encoding="utf-8")
+    reset_field = (admin / "src/Field/ResetstatisticsField.php").read_text(encoding="utf-8")
+    router = (site / "src/Service/Router.php").read_text(encoding="utf-8")
+    archive_route = (site / "src/Service/ArchiveRoute.php").read_text(encoding="utf-8")
+    archive_model = (site / "src/Model/ArchiveModel.php").read_text(encoding="utf-8")
+    archive_item = (site / "src/Model/ArchiveitemModel.php").read_text(encoding="utf-8")
+    public_snapshot = (site / "src/Service/PublicSnapshot.php").read_text(encoding="utf-8")
+    subscription_view = (site / "src/View/Subscription/HtmlView.php").read_text(encoding="utf-8")
+    subscription_tmpl = (site / "tmpl/subscription/default.php").read_text(encoding="utf-8")
+    browser_tmpl = (site / "tmpl/browser/default.php").read_text(encoding="utf-8")
+    archive_xml = (site / "tmpl/archive/default.xml").read_text(encoding="utf-8")
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    tests = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+
+    if install.count("`archive_visibility` TINYINT NOT NULL DEFAULT -1") != 1:
+        fail("0.6.34 fresh schema must add archive_visibility to Newsletters exactly once")
+    if "#__pungamail_newsletters" not in migration or "ADD COLUMN `archive_visibility`" not in migration:
+        fail("0.6.34 migration does not add Newsletter archive_visibility")
+    if "#__pungamail_templates" in migration:
+        fail("0.6.34 archive visibility must not modify Templates")
+
+    for expected in (
+        'name="public_archive_default"',
+        'default="0"',
+        'name="archive"',
+        'COM_PUNGAMAIL_CONFIG_PUBLIC_ARCHIVE',
+    ):
+        if expected not in config:
+            fail(f"0.6.34 public archive Component Option is missing {expected!r}")
+
+    import xml.etree.ElementTree as ET
+    root = ET.parse(config_path).getroot()
+    fields = root.findall(".//field")
+    missing_help = [field.get("name", "<unnamed>") for field in fields if not field.get("description") and field.get("type", "").lower() not in {"hidden", "rules", "spacer"}]
+    if missing_help:
+        fail(f"0.6.34 Component Options fields lack inline help: {missing_help}")
+
+    for expected in ("COM_PUNGAMAIL_TODAY", "archive_visibility", "setArchiveVisibility"):
+        if expected not in dashboard + repository:
+            fail(f"0.6.34 administrator implementation is missing {expected!r}")
+    if "JTODAY" in dashboard:
+        fail("0.6.34 Dashboard still exposes the JTODAY language key")
+    if "form-text" not in reset_field or "alert alert-warning" in reset_field:
+        fail("0.6.34 Reset statistics help is not visually attached to its control")
+    if "'archive_visibility' => (int) ($newsletter->archive_visibility ?? -1)" not in repository:
+        fail("0.6.34 Duplicate as draft does not preserve archive visibility")
+
+    for expected in ("new RouterViewConfiguration('archive')", "registerView($archive)", "archiveitem", "getArchiveitemSegment", "getArchiveitemId"):
+        if expected not in router:
+            fail(f"0.6.34 SEF archive router is missing {expected!r}")
+    for expected in ("#__menu", "view=archive", "getAuthorisedViewLevels", "archiveUrl", "itemUrl"):
+        if expected not in archive_route:
+            fail(f"0.6.34 eligible archive-menu resolver is missing {expected!r}")
+    for contents, label in ((archive_model, "archive list"), (archive_item, "archive item")):
+        for expected in ("STATUS_SENT", "STATUS_SENT_WITH_FAILURES", "snapshot_html", "archive_visibility", "public_archive_default"):
+            if expected not in contents:
+                fail(f"0.6.34 {label} eligibility is missing {expected!r}")
+    for expected in ("pm_track", "utm_source", "utm_medium", "utm_campaign", "utm_id", "utm_content", "archiveHtml"):
+        if expected not in public_snapshot:
+            fail(f"0.6.34 archive snapshot campaign isolation is missing {expected!r}")
+    if "PublicSnapshot::browserHtml" not in browser_tmpl:
+        fail("0.6.34 browser view does not use the shared public snapshot sanitizer")
+    if "ArchiveRoute::archiveUrl" not in subscription_view or "$this->archiveUrl !== null" not in subscription_tmpl:
+        fail("0.6.34 subscription page does not conditionally expose Previous newsletters")
+
+    for expected in ("archive_intro", "archive_page_size", "archive_topic_ids", "archive_show_sent_date", "archive_show_channels"):
+        if expected not in archive_xml:
+            fail(f"0.6.34 archive menu item is missing parameter {expected!r}")
+
+    for expected in ("Public Newsletter Archive", "Previous newsletters", "Open in browser", "Toggle Inline Help"):
+        if expected not in guide + tests:
+            fail(f"0.6.34 documentation is missing {expected!r}")
+
+
+
+def check_v0635_options_and_archive_polish() -> None:
+    """Verify archive breadcrumbs and the reduced, grouped Component Options layout."""
+    import xml.etree.ElementTree as ET
+
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    site = ROOT / "extensions/com_pungamail/components/com_pungamail"
+    config_path = admin / "config.xml"
+    root = ET.parse(config_path).getroot()
+    archive_view = (site / "src/View/Archiveitem/HtmlView.php").read_text(encoding="utf-8")
+    subscription = (site / "tmpl/subscription/default.php").read_text(encoding="utf-8")
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    tests = (ROOT / "docs/TEST_GUIDE.md").read_text(encoding="utf-8")
+    marker = (admin / "sql/updates/mysql/0.6.35.sql").read_text(encoding="utf-8")
+
+    if "no schema changes" not in marker.lower():
+        fail("0.6.35 SQL marker must explicitly state that there are no schema changes")
+
+    mail = root.find("./fieldset[@name='mail']")
+    if mail is None:
+        fail("0.6.35 Component Options is missing the Mail tab")
+    outgoing = mail.find("./fieldset[@name='mail_outgoing']")
+    returned = mail.find("./fieldset[@name='mail_bounce']")
+    if outgoing is None or returned is None:
+        fail("0.6.35 Mail tab must contain nested Outgoing mail and Returned mail fieldsets")
+    if root.find("./fieldset[@name='bounce']") is not None:
+        fail("0.6.35 Undeliverable mail must no longer be a top-level options tab")
+    if outgoing.find("./field[@name='default_user_subscribed']") is not None:
+        fail("0.6.35 default Joomla-user subscription setting must not remain in Mail")
+
+    subscription_group = root.find("./fieldset[@name='subscription']")
+    if subscription_group is None or subscription_group.find("./field[@name='default_user_subscribed']") is None:
+        fail("0.6.35 default Joomla-user subscription setting is not under Subscriptions & confirmation")
+    if subscription_group.get("description") != "COM_PUNGAMAIL_CONFIG_SUBSCRIPTION_DESC":
+        fail("0.6.35 Subscriptions & confirmation is missing its explanatory note")
+
+    queue = root.find("./fieldset[@name='queue']")
+    if queue is None or queue.get("description") != "COM_PUNGAMAIL_CONFIG_QUEUE_DESC":
+        fail("0.6.35 Delivery queue is missing its Scheduled Task / queue-policy explanation")
+
+    notifications = root.find("./fieldset[@name='notifications']")
+    if notifications is None:
+        fail("0.6.35 Component Options is missing the Notifications tab")
+    if notifications.find("./fieldset[@name='reminder']") is None or notifications.find("./fieldset[@name='automatic_draft_notifications']") is None:
+        fail("0.6.35 Notifications must group reminder and Automatic Newsletter draft notifications")
+    if root.find("./fieldset[@name='automatic']") is not None:
+        fail("0.6.35 Automatic newsletter notifications must no longer be a top-level options tab")
+
+    layout_page = root.find("./fieldset[@name='layout']/field[@name='layout_page_heading']")
+    if layout_page is None or layout_page.get("hr", "false").lower() == "true":
+        fail("0.6.35 Mail layout still renders an obsolete separator before its first Page section")
+
+    for expected in ("getPathway()->addItem($title)", "setDocumentTitle($title)"):
+        if expected not in archive_view:
+            fail(f"0.6.35 archive detail breadcrumb support is missing {expected!r}")
+
+    for expected in (
+        "d-flex flex-column flex-sm-row justify-content-between",
+        "align-self-start align-self-sm-auto",
+        "$this->archiveUrl !== null",
+    ):
+        if expected not in subscription:
+            fail(f"0.6.35 subscription archive action placement is missing {expected!r}")
+
+    for expected in (
+        "Delivery queue",
+        "Notifications",
+        "Outgoing mail",
+        "Returned / undeliverable mail",
+        "Home → Newsletter → Archive → Newsletter title",
+    ):
+        if expected not in guide + tests:
+            fail(f"0.6.35 documentation is missing {expected!r}")
+
+
+def check_v0636_all_day_period_end() -> None:
+    """Verify exclusive end-boundary handling for all-day period formatting."""
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    renderer = (admin / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    renderer_test = (ROOT / "tools/test_newsletter_renderer.php").read_text(encoding="utf-8")
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    marker = (admin / "sql/updates/mysql/0.6.36.sql").read_text(encoding="utf-8")
+
+    if "no schema changes" not in marker.lower():
+        fail("0.6.36 SQL marker must explicitly state that there are no schema changes")
+
+    for expected in (
+        "formatDatabaseAllDayPeriod",
+        "$displayEnd->modify('-1 day')",
+        "getTimestamp() > $start->getTimestamp()",
+    ):
+        if expected not in renderer:
+            fail(f"0.6.36 all-day period handling is missing {expected!r}")
+
+    for expected in (
+        "2026-12-24 00:00:00",
+        "2026-12-25 00:00:00",
+        "24\\\\. Dezember 2026",
+        "2026-10-12 00:00:00",
+        "2026-10-24 00:00:00",
+        "12\\\\.–23\\\\. October 2026",
+    ):
+        if expected not in renderer_test:
+            fail(f"0.6.36 all-day period regression coverage is missing {expected!r}")
+
+    if "exclusive boundary" not in guide:
+        fail("0.6.36 user guide does not document all-day exclusive end semantics")
+
+
+
+def check_v0637_tracking_url_encoding() -> None:
+    """Verify RFC 3986 campaign-query serialization and token compatibility."""
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    tracking = (admin / "src/Service/CampaignTrackingService.php").read_text(encoding="utf-8")
+    tracking_test = (ROOT / "tools/test_campaign_tracking.php").read_text(encoding="utf-8")
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    marker = (admin / "sql/updates/mysql/0.6.37.sql").read_text(encoding="utf-8")
+
+    if "no schema changes" not in marker.lower():
+        fail("0.6.37 SQL marker must explicitly state that there are no schema changes")
+
+    for expected in (
+        "private function renderUri(Uri $uri)",
+        "$uri->getQuery(true)",
+        "http_build_query($query, '', '&', PHP_QUERY_RFC3986)",
+        "$uri->toString(['fragment'])",
+    ):
+        if expected not in tracking:
+            fail(f"0.6.37 campaign URL encoder is missing {expected!r}")
+
+    for expected in (
+        "Test-Digest — 25. September 2026 — copy & + Übergröß",
+        "FILTER_VALIDATE_URL",
+        "%E2%80%94",
+        "%26",
+        "%2B",
+        "validateCampaignToken",
+    ):
+        if expected not in tracking_test:
+            fail(f"0.6.37 campaign URL regression coverage is missing {expected!r}")
+
+    if "RFC 3986" not in guide or "percent-encodes all UTM query values" not in guide:
+        fail("0.6.37 user guide does not document campaign URL percent encoding")
+
+    result = subprocess.run(["php", str(ROOT / "tools/test_campaign_tracking.php")], cwd=ROOT, text=True, capture_output=True)
+    if result.returncode != 0:
+        fail("0.6.37 campaign URL encoding regression failed: " + (result.stderr or result.stdout).strip())
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

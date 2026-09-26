@@ -1,4 +1,4 @@
-# Punga Mail 0.6.33 Live Acceptance Test Guide
+# Punga Mail 0.6.37 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -1606,6 +1606,54 @@ Keep the global queue paused except where a test explicitly says to resume it.
 5. Generate a new trusted click after the reset.
 
 **Expected:** Existing Punga Mail campaign-click rows are cleared and the Statistics overview starts from the reset moment. Newsletter/delivery/bounce/subscriber/audit records remain intact. New post-reset activity is counted. Data already recorded by Punga Analytics is unaffected.
+
+### PM-225 — Public Newsletter Archive routing and visibility
+
+**Prerequisite:** At least two genuinely sent Newsletters with immutable snapshots.
+
+**Steps:**
+
+1. Leave **Options → Public archive → Public archive default** at **Hide** and verify the sent Newsletters use **Public archive: Inherit**.
+2. Open the frontend Newsletter subscription page before creating an archive menu item.
+3. Create a published child menu item of type **Punga Mail → Newsletter archive** below the Newsletter subscription item. Configure an intro, a small page size, and the date/Channel display options.
+4. Reopen the subscription page.
+5. Open one sent Newsletter in the administrator and change **Public archive** to **Show**.
+6. Open the archive list and then the Newsletter detail page using SEF URLs.
+7. Change the Newsletter back to **Hide**, reload the detail URL directly, then set it to **Inherit** and change the component default to **Show**.
+
+**Expected:** Before an eligible archive menu item exists, the subscription page has no **Previous newsletters** link and no component fallback URL. After the menu item is published and accessible, the link appears and routes through that menu item. With the default Hide, inherited historic Newsletters are absent. A Newsletter explicitly set to Show appears; setting it to Hide removes it and makes its direct public archive detail unavailable. Inherit follows the component default. Archive detail is rendered from the frozen sent snapshot. Token-protected `/newsletter/browser?...` URLs remain unchanged and independent.
+
+### PM-226 — Archive filtering, snapshot privacy, and campaign isolation
+
+**Steps:**
+
+1. Publish several sent Newsletters across different Channels and configure the Archive menu item to restrict to one Channel.
+2. Verify pagination and the Show sent date / Show Channels switches.
+3. Open an archived Newsletter whose frozen HTML contains internal campaign-tracked links, browser/unsubscribe controls, and recipient placeholders.
+4. Inspect links in the public archive rendering.
+
+**Expected:** Only eligible Newsletters in the selected Channel are listed. Pagination and display switches follow menu parameters. The detail page preserves the immutable sent content but exposes no recipient-specific value or active unsubscribe/browser action. Archive links do not retain `pm_track`, `utm_source`, `utm_medium`, `utm_campaign`, `utm_id`, or `utm_content`, so browsing the public archive is not attributed as an email campaign click.
+
+### PM-227 — Dashboard label and Component Options help polish
+
+**Steps:**
+
+1. Open the Punga Mail Dashboard in English and German and inspect **Newsletter delivery — last 30 days**.
+2. Open **Options → Maintenance & data** and inspect **Reset statistics**.
+3. Use Joomla's **Toggle Inline Help** and inspect every field across every Punga Mail options tab.
+
+**Expected:** The chart endpoint label is localized as **Today** / **Heute**, never `JTODAY`. The Reset statistics explanation is visually grouped with its button rather than looking like a tab-wide warning. Every configurable option exposes meaningful inline help explaining its purpose, relevant interactions/defaults and destructive effects where applicable.
+
+### PM-228 — Archive breadcrumbs and Component Options grouping
+
+**Steps:**
+
+1. Open the public Newsletter Archive through its child menu item, then open one archived Newsletter.
+2. Inspect Joomla Breadcrumbs on the archive list and detail page.
+3. Open Punga Mail **Options** and inspect **Mail**, **Subscriptions & confirmation**, **Delivery queue**, **Notifications**, and **Mail layout**.
+4. Open the frontend Newsletter Subscription page with and without an eligible published Newsletter Archive menu item.
+
+**Expected:** Archive list breadcrumbs end at **Archive**. Detail breadcrumbs are **Home → Newsletter → Archive → Newsletter title**, with Archive linking back to the active archive menu item. Mail contains boxed **Outgoing mail** and **Returned / undeliverable mail** groups. The default-Joomla-user subscription setting is under **Subscriptions & confirmation**, whose introductory note explains the confirmation flow. **Delivery queue** explains that the Scheduled Task determines when processing runs while the component options determine pause/batch/retry policy. **Notifications** contains grouped Newsletter reminder and Automatic Newsletter draft-notification settings. Mail layout has no separator line before the first Page setting. The conditional **Previous newsletters** action sits in the subscription page heading row on wider screens and stacks cleanly on small screens.
 
 ### PM-230 — Delivery page overview and diagnostics
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+	<layout title="COM_PUNGAMAIL_ARCHIVE_MENU_TITLE" option="COM_PUNGAMAIL_ARCHIVE_MENU_TITLE">
+		<message><![CDATA[COM_PUNGAMAIL_ARCHIVE_MENU_DESC]]></message>
+	</layout>
+	<fields name="params">
+		<fieldset name="basic" label="JGLOBAL_FIELDSET_DISPLAY_OPTIONS">
+			<field name="archive_intro" type="textarea" rows="4" label="COM_PUNGAMAIL_ARCHIVE_INTRO" description="COM_PUNGAMAIL_ARCHIVE_INTRO_DESC" />
+			<field name="archive_page_size" type="number" default="12" min="1" max="100" label="COM_PUNGAMAIL_ARCHIVE_PAGE_SIZE" description="COM_PUNGAMAIL_ARCHIVE_PAGE_SIZE_DESC" />
+			<field name="archive_topic_ids" type="sql" multiple="true" layout="joomla.form.field.list-fancy-select" query="SELECT id AS value, title AS text FROM #__pungamail_topics WHERE state = 1 ORDER BY title" key_field="value" value_field="text" label="COM_PUNGAMAIL_ARCHIVE_CHANNELS" description="COM_PUNGAMAIL_ARCHIVE_CHANNELS_DESC" />
+			<field name="archive_show_sent_date" type="radio" layout="joomla.form.field.radio.switcher" default="1" label="COM_PUNGAMAIL_ARCHIVE_SHOW_SENT_DATE" description="COM_PUNGAMAIL_ARCHIVE_SHOW_SENT_DATE_DESC"><option value="0">JHIDE</option><option value="1">JSHOW</option></field>
+			<field name="archive_show_channels" type="radio" layout="joomla.form.field.radio.switcher" default="1" label="COM_PUNGAMAIL_ARCHIVE_SHOW_CHANNELS" description="COM_PUNGAMAIL_ARCHIVE_SHOW_CHANNELS_DESC"><option value="0">JHIDE</option><option value="1">JSHOW</option></field>
+		</fieldset>
+	</fields>
+</metadata>

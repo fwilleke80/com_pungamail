@@ -372,7 +372,7 @@ namespace
 		]
 	);
 
-	if ($allDayPeriod !== '22\\.–24\\. September 2026')
+	if ($allDayPeriod !== '22\\.–23\\. September 2026')
 	{
 		failNewsletterRendererTest('All-day period formatter did not suppress times or compact a same-month date range.');
 	}
@@ -388,9 +388,41 @@ namespace
 		]
 	);
 
-	if ($siteLanguagePeriod !== '29\\.–30\\. Dezember 2026')
+	if ($siteLanguagePeriod !== '29\\. Dezember 2026')
 	{
 		failNewsletterRendererTest('Content-layout date formatting leaked the active administrator language instead of using the site language.');
+	}
+
+	$singleDayAllDayPeriod = $renderItem->invoke(
+		$renderer,
+		'{start_at|period:{end_at},{all_day}}',
+		[],
+		[
+			'start_at' => '2026-12-24 00:00:00',
+			'end_at' => '2026-12-25 00:00:00',
+			'all_day' => '1',
+		]
+	);
+
+	if ($singleDayAllDayPeriod !== '24\\. Dezember 2026')
+	{
+		failNewsletterRendererTest('Single-day all-day period displayed its exclusive end boundary.');
+	}
+
+	$multiDayAllDayPeriod = $renderItem->invoke(
+		$renderer,
+		'{start_at|period:{end_at},{all_day}}',
+		[],
+		[
+			'start_at' => '2026-10-12 00:00:00',
+			'end_at' => '2026-10-24 00:00:00',
+			'all_day' => '1',
+		]
+	);
+
+	if ($multiDayAllDayPeriod !== '12\\.–23\\. October 2026')
+	{
+		failNewsletterRendererTest('Multi-day all-day period displayed its exclusive end boundary.');
 	}
 
 	$literalRange = $renderItem->invoke(

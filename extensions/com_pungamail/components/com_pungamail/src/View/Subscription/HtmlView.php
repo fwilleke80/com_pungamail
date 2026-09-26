@@ -11,6 +11,7 @@ namespace Punga\Component\PungaMail\Site\View\Subscription;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
+use Punga\Component\PungaMail\Site\Service\ArchiveRoute;
 
 /**
  * Public subscription page view.
@@ -19,6 +20,7 @@ final class HtmlView extends BaseHtmlView
 {
 	/** @var array{logged_in:bool,email:string,subscribed:bool,topics:array<int,object>,selected_topic_ids:array<int,int>} */
 	public array $subscriptionState = [];
+	public ?string $archiveUrl = null;
 
 	/**
 	 * Loads state before rendering.
@@ -30,6 +32,7 @@ final class HtmlView extends BaseHtmlView
 	public function display($tpl = null): void
 	{
 		$this->subscriptionState = $this->getModel()->getSubscriptionState();
+		$this->archiveUrl = ArchiveRoute::archiveUrl();
 
 		$params = Factory::getApplication()->getParams();
 		$title = trim((string) $params->get('page_title', ''));

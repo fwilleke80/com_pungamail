@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.6.37 — 2026-09-26
+
+- Fixed malformed campaign-tracking URLs when UTM values contain spaces, Unicode punctuation, umlauts or reserved characters such as `&` and `+`. Query values are now serialized explicitly using RFC 3986 percent encoding before they are placed in HTML/plain-text links.
+- Existing query parameters and URL fragments are preserved, and `pm_track` continues to authenticate the decoded logical UTM values, so campaign validation/statistics behavior is unchanged.
+- Added regression coverage using a Newsletter title containing an em dash, spaces, `&`, `+`, and German Unicode characters; the generated URL must pass URL validation and its authenticated token must still validate after query decoding.
+
+## 0.6.36 — 2026-09-26
+
+- Fixed the generic `{start|period:{end},{all_day}}` formatter for calendar-style all-day events. A later all-day end value is now treated as an exclusive boundary, so a one-day event represented as `[24 Dec, 25 Dec)` displays as **24 December**, not **24–25 December**, and a multi-day event ending at `24 Oct` displays through **23 October**.
+- Timed `period` formatting and the standalone `date_range` formatter are unchanged. Added regression coverage for both one-day and multi-day all-day ranges and clarified the formatter help/documentation.
+
+## 0.6.35 — 2026-09-24
+
+- Fixed public Newsletter Archive detail breadcrumbs. An archived Newsletter now extends the active menu pathway to **Home → Newsletter → Archive → Newsletter title**, so **Archive** links back to the archive list.
+- Reorganized Component Options using Joomla 6's supported nested fieldsets: **Mail** now contains boxed **Outgoing mail** and **Returned / undeliverable mail** sections, while **Notifications** contains **Newsletter reminder** and **Automatic Newsletter draft notifications**. Stored parameter names and behavior are unchanged.
+- Moved **Users without an explicit preference are subscribed** from Mail to **Subscriptions & confirmation**, where it belongs semantically, and added a tab-level explanation of the signup/confirmation flow.
+- Renamed **Automatic sending** to **Delivery queue** and added an explanation that the Scheduled Task controls *when* the queue runs while these component options control queue policy (pause, batch size, retries and retry delay) for both scheduled and manual processing.
+- Removed the obsolete leading horizontal rule from **Mail layout** while retaining the Page, Browser bar, Header, Content, Footer and Advanced section structure.
+- Moved the conditional **Previous newsletters** action into the Newsletter Subscription page header, right-aligned on wider screens and stacked cleanly on small screens. It remains absent when no eligible Archive menu item exists.
+
+## 0.6.34 — 2026-09-24
+
+- Added a public **Newsletter Archive** frontend menu item. It lists eligible sent Newsletters chronologically and opens public detail pages from the immutable sent snapshots rather than mutable current content/template data.
+- Added independent public-archive publication controls: a conservative component default (**Hide** by default) plus per-Newsletter **Inherit / Show / Hide**. Updating does not make existing sent Newsletters public automatically. Sent Newsletter visibility remains editable without modifying its immutable message snapshot.
+- Added archive menu parameters for introductory text, pagination size, optional Channel restriction, sent-date display and Channel-name display, while retaining Joomla's normal page-title/page-heading controls.
+- Added SEF archive child routes and a conditional **Previous newsletters** link on the frontend Newsletter subscription page. The link appears only when Joomla can resolve a published, accessible Newsletter Archive menu item; no component-route fallback is generated.
+- Kept token-protected **Open in browser** URLs separate from public archive URLs. Archive rendering neutralizes recipient-only controls and strips Punga Mail campaign tokens/UTM parameters so anonymous archive browsing does not pollute email-campaign attribution.
+- Fixed the Dashboard **Newsletter delivery — last 30 days** chart displaying the untranslated `JTODAY` key.
+- Reworked the **Reset statistics** control so its destructive-scope explanation is visually attached to the button rather than appearing to describe the whole **Maintenance & data** tab.
+- Audited Component Options inline help and added descriptions for every configurable field so Joomla's **Toggle Inline Help** explains routine configuration, interactions and destructive consequences without requiring the manual.
+
 ## 0.6.33 — 2026-09-24
 
 - Corrected **Content since the previous automatic newsletter** semantics. Creating a review draft, creating the send queue, or recording a skipped/no-content run no longer advances the Automatic Newsletter content cutoff.

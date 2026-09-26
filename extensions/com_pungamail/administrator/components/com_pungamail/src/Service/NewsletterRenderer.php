@@ -579,7 +579,7 @@ final class NewsletterRenderer
 	{
 		if ($this->contentBoolean($allDayValue))
 		{
-			return $this->formatDatabaseDateRange($startValue, $endValue);
+			return $this->formatDatabaseAllDayPeriod($startValue, $endValue);
 		}
 
 		$start = $this->databaseDate($startValue);
@@ -606,6 +606,49 @@ final class NewsletterRenderer
 		return $startDate . ', ' . $startTime
 			. ' – '
 			. $this->siteDate->format($end) . ', ' . $end->format('H:i', true);
+	}
+
+	/**
+	 * Formats an all-day period whose end value is an exclusive boundary.
+	 * Calendar-style all-day ranges conventionally represent 24 December as
+	 * [24 December, 25 December), so the displayed final date is one day before
+	 * a later end boundary. Equal/empty endpoints remain a single-day value.
+	 *
+	 * @return string
+	 */
+	private function formatDatabaseAllDayPeriod(string $startValue, string $endValue): string
+	{
+		$start = $this->databaseDate($startValue);
+		$end = $this->databaseDate($endValue);
+
+		if ($start === null)
+		{
+			return trim($startValue) === '' ? '' : $startValue;
+		}
+
+		$startText = $this->siteDate->format($start);
+
+		if ($end === null || trim($endValue) === '')
+		{
+			return $startText;
+		}
+
+		$displayEnd = clone $end;
+
+		if ($end->getTimestamp() > $start->getTimestamp())
+		{
+			$displayEnd->modify('-1 day');
+		}
+
+		if ($start->format('Y-m-d') === $displayEnd->format('Y-m-d'))
+		{
+			return $startText;
+		}
+
+		$endText = $this->siteDate->format($displayEnd);
+		$compact = $this->compactSameMonthDateRange($start, $displayEnd, $endText);
+
+		return $compact ?? ($startText . ' – ' . $endText);
 	}
 
 	/**

@@ -157,7 +157,7 @@ final class CampaignTrackingService
 			$uri->setVar('pm_track', $this->tokens->createCampaignToken((int) $newsletter->id, 0, $utm));
 		}
 
-		return $uri->toString();
+		return $this->renderUri($uri);
 	}
 
 	/** @return string */
@@ -208,10 +208,37 @@ final class CampaignTrackingService
 			$uri->setVar('pm_track', $this->tokens->createCampaignToken((int) $newsletter->id, $linkIndex, $utm));
 		}
 
-		$tracked = $uri->toString();
+		$tracked = $this->renderUri($uri);
 		$map[$url] = $tracked;
 
 		return $tracked;
+	}
+
+	/**
+	 * Renders a URI with an RFC 3986 encoded query string.
+	 *
+	 * Joomla's mutable URI object is useful for parsing and replacing query
+	 * variables, but its normal string rendering can leave Unicode and spaces
+	 * from newly assigned values unescaped. Email href attributes must contain a
+	 * syntactically valid URL, so serialize the decoded query values explicitly.
+	 *
+	 * @param Uri $uri URI whose query variables have already been updated.
+	 *
+	 * @return string
+	 */
+	private function renderUri(Uri $uri): string
+	{
+		$url = $uri->toString(['scheme', 'user', 'pass', 'host', 'port', 'path']);
+		$query = $uri->getQuery(true);
+
+		if (is_array($query) && $query !== [])
+		{
+			$url .= '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+		}
+
+		$url .= $uri->toString(['fragment']);
+
+		return $url;
 	}
 
 	/** @return bool */
