@@ -1,3 +1,20 @@
+# 0.6.41 — 2026-10-02
+
+- Replace heuristic content-type translations with Joomla ContenttypeField rules: administrator component sys.ini, COMPONENT_CONTENT_TYPE_TYPENAME, then unchanged registry title.
+- Use Joomla’s Language loader in an isolated default-website-language context for newsletters; only Website overrides apply. Backend content-type selectors use the same resolution rules in the administrator language.
+- Remove direct-alias and custom-field-context guesses introduced in 0.6.39/0.6.40. Extensions without standard content-type translations retain their registry title, exactly as Joomla does.
+- No schema changes.
+
+# 0.6.40 — 2026-10-02
+
+- Fix content-type labels using Joomla’s `COM_COMPONENT_CONTENT_TYPE_TYPE` and `COM_COMPONENT_FIELD_CONTEXT_TYPE` conventions, including Articles and Punga Polls. The German poll label now resolves to Umfrage instead of the untranslated registry title Poll.
+- No database schema changes.
+
+# 0.6.39 — 2026-10-02
+
+- Resolve `{content_type}` in the default website language in newsletter previews, test emails and delivery. Website language overrides take precedence; administrator labels retain their administrator language. Missing translations fall back to English, then the registered title.
+- No database schema changes.
+
 # Changelog
 
 ## 0.6.38 — 2026-09-26

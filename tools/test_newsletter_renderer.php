@@ -59,6 +59,26 @@ namespace Joomla\CMS\Language
 
 	class Language
 	{
+		protected array $strings = [];
+		protected array $override = [];
+
+		/** @param string $tag Language tag. @param bool $debug Debug flag. */
+		public function __construct(string $tag = 'de-DE', bool $debug = false)
+		{
+		}
+
+		/** @param string $file INI file. @return array<string,string> */
+		protected function parse(string $file): array
+		{
+			return [];
+		}
+
+		/** @param string $key Translation key. @return bool */
+		public function hasKey(string $key): bool
+		{
+			return false;
+		}
+
 		public function load(string $extension, string $basePath, ?string $lang = null, bool $reload = false): bool
 		{
 			return true;
@@ -209,6 +229,8 @@ namespace
 	require_once $serviceRoot . 'ContentLayoutRepository.php';
 	require_once $serviceRoot . 'MailStyleService.php';
 	require_once $serviceRoot . 'MailConfigurationService.php';
+	require_once $serviceRoot . 'WebsiteLanguage.php';
+	require_once $serviceRoot . 'ContentTypeLabelService.php';
 	require_once $serviceRoot . 'MailTextService.php';
 	require_once $serviceRoot . 'TemplateRepository.php';
 	require_once $serviceRoot . 'UserFieldService.php';

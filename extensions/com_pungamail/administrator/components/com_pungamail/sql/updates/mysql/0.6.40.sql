@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.40: no schema changes.

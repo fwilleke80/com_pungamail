@@ -42,6 +42,31 @@ final class MailTextService
 		return array_key_exists($key, $strings) ? $strings[$key] : Text::_($key);
 	}
 
+
+	/** @var WebsiteLanguage|null Isolated website language for content-type names. */
+	private ?WebsiteLanguage $typeLanguage = null;
+
+	/**
+	 * @param string $alias Registered content-type alias.
+	 * @param string $title Untranslated registry title.
+	 * @return string Joomla content-type label in the default website language.
+	 */
+	public function contentTypeLabel(string $alias, string $title): string
+	{
+		if (!defined('JPATH_SITE'))
+		{
+			return $title;
+		}
+
+		if ($this->typeLanguage === null)
+		{
+			$tag = trim((string) ComponentHelper::getParams('com_languages')->get('site', '')) ?: 'en-GB';
+			$this->typeLanguage = new WebsiteLanguage($tag);
+		}
+
+		return ContentTypeLabelService::translate($this->typeLanguage, $alias, $title);
+	}
+
 	/**
 	 * Loads the frontend language catalog plus Website language overrides.
 	 *

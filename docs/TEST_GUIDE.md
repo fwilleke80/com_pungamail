@@ -1,4 +1,4 @@
-# Punga Mail 0.6.38 Live Acceptance Test Guide
+# Punga Mail 0.6.41 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -2165,3 +2165,26 @@ The following checks cover the generic registered-content filter UI introduced i
 5. Queue/send a real Newsletter and inspect the frozen/sent URL.
 
 **Expected:** Preview and test URLs contain the configured UTM parameters but no `pm_track`. The real frozen/sent Newsletter contains the same UTM attribution plus a compact authenticated `pm_track` token. Clicking preview/test URLs therefore cannot create trusted Punga Mail campaign-click statistics.
+
+## 0.6.39 — Website-language content labels
+
+1. Set the default Site language to German and the administrator language to English.
+2. Use `_{content_type} {date_label}: {publish_date}_` in an Article or Poll content layout.
+3. Preview an automatic newsletter and an ordinary newsletter; verify the type name, date label and date are German while administrator selectors stay English.
+4. Add a German Site override for the registered type key (for example `COM_CONTENT_ARTICLE`); verify the override in a new preview and test email. An Administrator override must not affect the newsletter.
+5. Verify newly generated scheduled mail uses the same labels. Previously frozen/sent newsletter snapshots retain their original content.
+6. A third-party type without a German translation falls back to its English translation, or its registry title when no translation exists.
+
+
+## 0.6.40 — Registered type-name conventions
+
+Verify Article, Poll and Event in an automatic-newsletter preview with German as the default website language and English as the administrator language. The resolver supports direct alias keys, CONTENT_TYPE keys (Joomla Articles), and FIELD_CONTEXT keys (Punga Polls). The Punga Polls 0.3.0 and Punga Calendar 0.6.12 actual language catalogs were checked locally: Umfrage and Termin respectively. Live-site Event behavior reported on 0.6.39 was not reproduced in the isolated catalog test and requires live verification.
+
+
+## 0.6.41 — Joomla content-type resolution (supersedes 0.6.39/0.6.40 expectations)
+
+- Verified against Joomla 6.0.0 `libraries/src/Form/Field/ContenttypeField.php::getOptions`: load administrator component sys.ini, retry component-local base only when needed, derive COMPONENT_CONTENT_TYPE_TYPENAME, and fall back to the unchanged registry title.
+- Regression covers standard-key priority, rejected direct/context/regular-INI guesses, nested aliases, English fallback, component-local catalogs, Website override precedence, and exclusion of Administrator overrides.
+- Run `php tools/test_mail_language.php`. To use unmodified upstream Joomla language classes instead of the local language fixture, set `PUNGAMAIL_JOOMLA_LANGUAGE` to CMS `libraries/src/Language/Language.php` and `PUNGAMAIL_JOOMLA_BASE_LANGUAGE` to the Framework Language package `src/Language.php`.
+- The supplied Punga Polls 0.3.0 and Punga Calendar 0.6.12 catalogs do not define their standard CONTENT_TYPE keys. Expect registry titles until those extensions provide the keys or Website overrides are added. This is Joomla behavior, not a failed website-language switch.
+- Verify a new automatic-newsletter preview and test email with an English administrator and German website; override COM_PUNGAPOLLS_CONTENT_TYPE_POLL in German Site to Umfrage, and verify that backend selectors remain independent.

@@ -94,7 +94,9 @@ final class NewsletterRenderer
 
 			$url = (string) ($current?->url ?? $selection->snapshot_url ?? '');
 			$published = (string) ($current?->published ?? '');
-			$contentType = (string) ($current?->source_label ?? $selection->source_key);
+			$sourceKey = (string) $selection->source_key;
+			$type = $this->contentTypes->getTypes()[$sourceKey] ?? null;
+			$contentType = $this->mailText->contentTypeLabel($sourceKey, (string) ($type?->registry_title ?? $sourceKey));
 			$dateLabel = $this->contentDateLabel((string) $selection->source_key);
 			$publishDate = $this->formatPublishDate($published);
 			$titleMarkdown = $this->escapeMarkdown($title);

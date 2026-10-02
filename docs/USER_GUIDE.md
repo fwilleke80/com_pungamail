@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.38. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.41. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -1072,3 +1072,15 @@ Ask the named administrator to use Save & Close or Cancel. If the edit session w
 ## Per-source content filters
 
 Automatic Newsletters can filter each selected registered content type independently. Add rules inside a content-source card; all rules for that source must match. Punga Mail discovers fields and SQL data types from the registered content type and backing table, so filtering does not require source-specific Punga Mail integrations. The field picker shows the detected database type; Joomla category fields, booleans, and conventional sibling-table `*_id` relations receive friendlier controls where generic metadata can be resolved. Numeric single-value comparisons use number inputs, `DATE` fields use Joomla’s date picker, `DATETIME`/`TIMESTAMP` fields use Joomla’s date-and-time picker, and `TIME` fields use the standard time control. Use **Preview matching content** to inspect the current source, cutoff and audience-safe matches before sending a test or waiting for the real run. When Joomla access rules exclude an otherwise matching item, the preview identifies the item and required viewing-access level rather than reporting only a generic blocked count.
+
+
+## Newsletter language (0.6.39)
+
+`{content_type}`, `{date_label}` and `{publish_date}` use the default Joomla website language, even in an English administrator preview. Content-type translations follow Joomla’s ContenttypeField: the administrator component .sys.ini supplies COMPONENT_CONTENT_TYPE_TYPENAME, with Joomla language fallback and Website overrides; a missing key leaves the registry title unchanged. Direct-alias and custom-field-context keys are not used. Backend selectors keep the administrator language. Existing sent snapshots are unchanged.
+
+
+## Standard content-type labels (0.6.41)
+
+Punga Mail now uses Joomla’s own content-type selector convention in both backend selectors and newsletter content. Backend selectors use the administrator language. Newsletters use the default website language and Website overrides.
+
+For example, the standard Website override keys are `COM_CONTENT_CONTENT_TYPE_ARTICLE`, `COM_PUNGAPOLLS_CONTENT_TYPE_POLL`, and `COM_PUNGACALENDAR_CONTENT_TYPE_EVENT`. These are derived uniformly from the registered aliases; Punga Mail has no per-extension mappings. If an extension omits its standard key, Joomla and Punga Mail display its registered title, which may be English. Add a Website override or have that extension supply the missing standard translation. Changing the backend language cannot supply a missing key.

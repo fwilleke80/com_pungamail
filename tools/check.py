@@ -1593,7 +1593,7 @@ def check_release_ux_0313() -> None:
     for token in (
         "translatedTypeLabel",
         "getLanguage()",
-        "strtoupper(str_replace('.', '_', $typeAlias))",
+        "ContentTypeLabelService::translate",
     ):
         if token not in content_types:
             fail(f"0.3.13 translated content-type labels are missing: {token}")

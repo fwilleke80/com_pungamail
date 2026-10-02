@@ -244,6 +244,7 @@ final class ContentTypeService
 			$result[] = [
 				'name' => $name,
 				'label' => $label,
+			'registry_title' => (string) $row->type_title,
 				'kind' => $kind,
 				'input_kind' => $this->filterInputKind($typeName, $kind),
 				'data_type' => $this->dataTypeName($typeName),
@@ -756,6 +757,7 @@ final class ContentTypeService
 		return (object) [
 			'key' => $key,
 			'label' => $label,
+			'registry_title' => (string) $row->type_title,
 			'table' => $table,
 			'id' => $id,
 			'title' => $title,
@@ -774,40 +776,15 @@ final class ContentTypeService
 
 
 	/**
-	 * Resolves a registered content type to the current administrator language.
-	 * Joomla's content-type registry commonly stores English type titles, so we
-	 * first try the conventional component language key derived from type_alias.
-	 * Third-party types that do not provide such a key safely fall back to the
-	 * registry title.
+	 * Resolves a registered type using Joomla's content-type selector rules.
 	 *
 	 * @param string $typeTitle Registry type title.
 	 * @param string $typeAlias Registered type alias.
-	 *
-	 * @return string Translated display label.
+	 * @return string Label in the current administrator language.
 	 */
 	private function translatedTypeLabel(string $typeTitle, string $typeAlias): string
 	{
-		$parts = explode('.', $typeAlias, 2);
-		$component = $parts[0] ?? '';
-
-		if (preg_match('/^com_[a-z0-9_]+$/i', $component) === 1)
-		{
-			$language = Factory::getApplication()->getLanguage();
-			$language->load($component, JPATH_ADMINISTRATOR);
-			$language->load($component, JPATH_SITE);
-		}
-
-		$key = strtoupper(str_replace('.', '_', $typeAlias));
-		$translated = Text::_($key);
-
-		if ($translated !== $key)
-		{
-			return $translated;
-		}
-
-		$translatedTitle = Text::_($typeTitle);
-
-		return $translatedTitle !== $typeTitle ? $translatedTitle : $typeTitle;
+		return ContentTypeLabelService::translate(Factory::getApplication()->getLanguage(), $typeAlias, $typeTitle);
 	}
 
 	/**
