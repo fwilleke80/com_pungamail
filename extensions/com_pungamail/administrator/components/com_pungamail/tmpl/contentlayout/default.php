@@ -14,7 +14,6 @@ $isDefault = (string) $item->source_key === ContentLayoutRepository::DEFAULT_KEY
 $genericPlaceholders = [
 	'{title}' => 'COM_PUNGAMAIL_CONTENT_PLACEHOLDER_TITLE',
 	'{title_link}' => 'COM_PUNGAMAIL_CONTENT_PLACEHOLDER_TITLE_LINK',
-	'{date_label}' => 'COM_PUNGAMAIL_CONTENT_PLACEHOLDER_DATE_LABEL',
 	'{publish_date}' => 'COM_PUNGAMAIL_CONTENT_PLACEHOLDER_PUBLISH_DATE',
 	'{excerpt}' => 'COM_PUNGAMAIL_CONTENT_PLACEHOLDER_EXCERPT',
 	'{read_more}' => 'COM_PUNGAMAIL_CONTENT_PLACEHOLDER_READ_MORE',

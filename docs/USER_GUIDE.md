@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.41. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.42. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -541,7 +541,6 @@ Every layout always has the normalized Punga Mail placeholders:
 
 - `{title}`
 - `{title_link}`
-- `{date_label}`
 - `{publish_date}`
 - `{excerpt}`
 - `{read_more}`
@@ -582,7 +581,6 @@ Formatter arguments are values, not hidden column-name references. `{end_at}` in
 
 All newsletter-facing date formatters use the Joomla **site language** and **site timezone**, not the administrator language of the user who previews or sends the newsletter. This keeps Automatic Newsletter tests and real scheduled runs consistent with the frontend language.
 
-`{date_label}` supplies a localized semantic label for the date line. Ordinary content uses **Published** (German: **Veröffentlicht**), while a registered content type whose alias is `event`/`events` uses **When** (German: **Termin**). The label follows the Joomla site language and Website language overrides. Pair it with the field the layout actually displays, for example `*{date_label}: {publish_date}*` for an Article or `*{date_label}: {start|period:{end},{all_day}}*` for an Event.
 
 `{publish_date}` remains the date Punga Mail uses to describe when the item became new website content; it is deliberately separate from semantic fields such as an event start date. Generic Punga Mail placeholders take precedence over same-named database columns so Newsletter title/excerpt overrides continue to work. Obvious credential/secret fields are not exposed as layout placeholders.
 
@@ -1076,7 +1074,6 @@ Automatic Newsletters can filter each selected registered content type independe
 
 ## Newsletter language (0.6.39)
 
-`{content_type}`, `{date_label}` and `{publish_date}` use the default Joomla website language, even in an English administrator preview. Content-type translations follow Joomla’s ContenttypeField: the administrator component .sys.ini supplies COMPONENT_CONTENT_TYPE_TYPENAME, with Joomla language fallback and Website overrides; a missing key leaves the registry title unchanged. Direct-alias and custom-field-context keys are not used. Backend selectors keep the administrator language. Existing sent snapshots are unchanged.
 
 
 ## Standard content-type labels (0.6.41)
@@ -1084,3 +1081,8 @@ Automatic Newsletters can filter each selected registered content type independe
 Punga Mail now uses Joomla’s own content-type selector convention in both backend selectors and newsletter content. Backend selectors use the administrator language. Newsletters use the default website language and Website overrides.
 
 For example, the standard Website override keys are `COM_CONTENT_CONTENT_TYPE_ARTICLE`, `COM_PUNGAPOLLS_CONTENT_TYPE_POLL`, and `COM_PUNGACALENDAR_CONTENT_TYPE_EVENT`. These are derived uniformly from the registered aliases; Punga Mail has no per-extension mappings. If an extension omits its standard key, Joomla and Punga Mail display its registered title, which may be English. Add a Website override or have that extension supply the missing standard translation. Changing the backend language cannot supply a missing key.
+
+
+## Date captions (0.6.42)
+
+Write date captions as ordinary text in the custom content layout. The former `{date_label}` placeholder is no longer supported. This update does not change saved layouts: remove existing tokens manually or replace them with your preferred wording. Dates and `{content_type}` retain their existing behavior.

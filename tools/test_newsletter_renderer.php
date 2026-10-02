@@ -113,8 +113,6 @@ namespace Joomla\CMS\Language
 				'COM_PUNGAMAIL_MAIL_FOOTER_REASON' => 'Default footer reason.',
 				'COM_PUNGAMAIL_MAIL_UNSUBSCRIBE' => 'Unsubscribe',
 				'COM_PUNGAMAIL_MAIL_READ_MORE' => 'Read more',
-				'COM_PUNGAMAIL_MAIL_DATE_LABEL_PUBLISHED' => 'Published',
-				'COM_PUNGAMAIL_MAIL_DATE_LABEL_EVENT' => 'When',
 				'DATE_FORMAT_LC3' => 'd F Y',
 				'DATE_FORMAT_LC5' => 'd F Y H:i',
 				default => $key,
@@ -354,18 +352,6 @@ namespace
 	if (!str_contains($customResult['html'], 'Read more') || !str_contains($customResult['html'], 'https://site.example/item/42'))
 	{
 		failNewsletterRendererTest('Selected-content link placeholders were not rendered.');
-	}
-
-	$dateLabel = (new \ReflectionClass(NewsletterRenderer::class))->getMethod('contentDateLabel');
-
-	if ($dateLabel->invoke($renderer, 'com_content.article') !== 'Published')
-	{
-		failNewsletterRendererTest('Article date label did not resolve to the localized publication label.');
-	}
-
-	if ($dateLabel->invoke($renderer, 'com_pungacalendar.event') !== 'When')
-	{
-		failNewsletterRendererTest('Event date label did not resolve to the localized scheduling label.');
 	}
 
 	$renderItem = (new \ReflectionClass(NewsletterRenderer::class))->getMethod('renderContentItemTemplate');

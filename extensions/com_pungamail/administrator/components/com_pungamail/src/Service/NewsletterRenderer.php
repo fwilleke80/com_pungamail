@@ -97,7 +97,6 @@ final class NewsletterRenderer
 			$sourceKey = (string) $selection->source_key;
 			$type = $this->contentTypes->getTypes()[$sourceKey] ?? null;
 			$contentType = $this->mailText->contentTypeLabel($sourceKey, (string) ($type?->registry_title ?? $sourceKey));
-			$dateLabel = $this->contentDateLabel((string) $selection->source_key);
 			$publishDate = $this->formatPublishDate($published);
 			$titleMarkdown = $this->escapeMarkdown($title);
 			$excerptMarkdown = $this->escapeMarkdown($excerpt);
@@ -113,7 +112,6 @@ final class NewsletterRenderer
 				[
 					'title' => $titleMarkdown,
 					'title_link' => $titleLink,
-					'date_label' => $this->escapeMarkdown($dateLabel),
 					'publish_date' => $this->escapeMarkdown($publishDate),
 					'excerpt' => $excerptMarkdown,
 					'read_more' => $readMore,
@@ -733,28 +731,6 @@ final class NewsletterRenderer
 		{
 			return null;
 		}
-	}
-
-	/**
-	 * Returns the localized semantic label for the primary date shown by a
-	 * selected-content layout. Event content uses a scheduling label while
-	 * ordinary website content uses a publication label. The actual date value
-	 * remains layout-controlled so event layouts can pair this with their start
-	 * or period field instead of {publish_date}.
-	 *
-	 * @param string $sourceKey Registered Joomla content-type alias.
-	 *
-	 * @return string Localized label from the Joomla site language.
-	 */
-	private function contentDateLabel(string $sourceKey): string
-	{
-		$parts = explode('.', strtolower(trim($sourceKey)));
-		$typeAlias = (string) end($parts);
-		$key = in_array($typeAlias, ['event', 'events'], true)
-			? 'COM_PUNGAMAIL_MAIL_DATE_LABEL_EVENT'
-			: 'COM_PUNGAMAIL_MAIL_DATE_LABEL_PUBLISHED';
-
-		return $this->mailText->text($key);
 	}
 
 	/** @return string */

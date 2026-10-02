@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.42: no schema changes and no layout data migration.

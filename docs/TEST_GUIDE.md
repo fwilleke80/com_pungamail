@@ -1,4 +1,4 @@
-# Punga Mail 0.6.41 Live Acceptance Test Guide
+# Punga Mail 0.6.42 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -859,7 +859,6 @@ Keep the global queue paused except where a test explicitly says to resume it.
 2. Use a type-specific source field, e.g. `{start_at}`, `{venue}`, or another real column.
 3. For a date/time column, test `|date`, `|time`, and/or `|datetime`.
 4. If the type exposes two useful date/time fields, test `{start|date_range:{end}}`, `{start|time_range:{end}}`, and `{start|period:{end},{all_day}}` using the type's actual field names. Test both an all-day/truthy value and a timed/false value where applicable.
-5. Test `{date_label}` in an Article layout and an Event layout. It must follow the Joomla site language (e.g. **Published** / **Veröffentlicht** for the Article and **When** / **Termin** for the Event), independent of the administrator language. Pair it with `{publish_date}` for the Article and the Event's semantic start/period field.
 5. Also test a literal formatter parameter such as `{start|date_range:2026-09-24 00:00:00}` and a deliberately missing nested field.
 6. With the Joomla administrator language different from the site language (for example, English backend and German site), send/preview the same content layout and verify `|date`, `date_range`, and `period` still use the **site** language and punctuation (for example `29.–30. Dezember 2026`).
 6. Preview a Newsletter containing that content item.
@@ -2169,7 +2168,6 @@ The following checks cover the generic registered-content filter UI introduced i
 ## 0.6.39 — Website-language content labels
 
 1. Set the default Site language to German and the administrator language to English.
-2. Use `_{content_type} {date_label}: {publish_date}_` in an Article or Poll content layout.
 3. Preview an automatic newsletter and an ordinary newsletter; verify the type name, date label and date are German while administrator selectors stay English.
 4. Add a German Site override for the registered type key (for example `COM_CONTENT_ARTICLE`); verify the override in a new preview and test email. An Administrator override must not affect the newsletter.
 5. Verify newly generated scheduled mail uses the same labels. Previously frozen/sent newsletter snapshots retain their original content.
@@ -2188,3 +2186,8 @@ Verify Article, Poll and Event in an automatic-newsletter preview with German as
 - Run `php tools/test_mail_language.php`. To use unmodified upstream Joomla language classes instead of the local language fixture, set `PUNGAMAIL_JOOMLA_LANGUAGE` to CMS `libraries/src/Language/Language.php` and `PUNGAMAIL_JOOMLA_BASE_LANGUAGE` to the Framework Language package `src/Language.php`.
 - The supplied Punga Polls 0.3.0 and Punga Calendar 0.6.12 catalogs do not define their standard CONTENT_TYPE keys. Expect registry titles until those extensions provide the keys or Website overrides are added. This is Joomla behavior, not a failed website-language switch.
 - Verify a new automatic-newsletter preview and test email with an English administrator and German website; override COM_PUNGAPOLLS_CONTENT_TYPE_POLL in German Site to Umfrage, and verify that backend selectors remain independent.
+
+
+## 0.6.42 — Date-label removal
+
+Verify that the placeholder selectors no longer offer the retired date-label placeholder. Upgrade with custom layouts and confirm their stored text is unchanged. Manually replace old tokens with literal labels, preview ordinary and automatic newsletters, and verify dates and content-type names still render. Reinstalling must not insert labels into date-only layout lines.

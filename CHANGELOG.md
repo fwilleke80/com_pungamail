@@ -1,3 +1,9 @@
+# 0.6.42 — 2026-10-02
+
+- Remove date_label from the renderer, placeholder selectors, language catalogs and current documentation. Write date captions directly in custom content layouts.
+- Remove the old installer behavior that inserted date_label into selected layouts.
+- No layout migration: saved layouts and sent snapshots remain untouched. Remove any existing date_label tokens manually. No schema changes.
+
 # 0.6.41 — 2026-10-02
 
 - Replace heuristic content-type translations with Joomla ContenttypeField rules: administrator component sys.ini, COMPONENT_CONTENT_TYPE_TYPENAME, then unchanged registry title.

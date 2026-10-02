@@ -19,7 +19,7 @@ final class NewcontenttemplateField extends MarkdownField
 	{
 		if (!isset($this->element['placeholders']))
 		{
-			$this->element['placeholders'] = '{title}|{title_link}|{date_label}|{publish_date}|{excerpt}|{read_more}|{url}|{content_type}';
+			$this->element['placeholders'] = '{title}|{title_link}|{publish_date}|{excerpt}|{read_more}|{url}|{content_type}';
 		}
 
 		if (!isset($this->element['helpkeys']))
