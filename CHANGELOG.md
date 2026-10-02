@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.38 — 2026-09-26
+
+- Added the generic selected-content placeholder `{date_label}` so newsletter date lines can explain their semantics without hard-coded language. Ordinary content resolves to the site-language equivalent of **Published**; registered Event content resolves to **When** (German: **Termin**).
+- Date labels use the same Joomla frontend/site language path as other subscriber-facing mail strings, including Website language overrides, so previews, Automatic Newsletters, queued delivery and browser snapshots stay language-consistent.
+- Kept `{publish_date}` semantically separate from event scheduling fields. Event layouts can pair `{date_label}` with `{start|period:{end},{all_day}}`, while Article layouts can pair it with `{publish_date}`.
+- On update, existing standalone date lines for `com_content.article` and `com_pungacalendar.event` are upgraded conservatively to include `{date_label}` while preserving surrounding Markdown emphasis. Layouts containing custom prose are not rewritten.
+
 ## 0.6.37 — 2026-09-26
 
 - Fixed malformed campaign-tracking URLs when UTM values contain spaces, Unicode punctuation, umlauts or reserved characters such as `&` and `+`. Query values are now serialized explicitly using RFC 3986 percent encoding before they are placed in HTML/plain-text links.

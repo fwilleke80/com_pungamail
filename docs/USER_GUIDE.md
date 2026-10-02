@@ -2,7 +2,7 @@
 
 This guide explains Punga Mail from the point of view of a normal Joomla administrator. It covers the everyday screens, controls, settings, and decisions involved in collecting subscriptions, composing newsletters, scheduling or automating delivery, and keeping the mailing list healthy.
 
-The guide describes Punga Mail 0.6.37. Names may appear in English or German depending on the administrator language selected in Joomla.
+The guide describes Punga Mail 0.6.38. Names may appear in English or German depending on the administrator language selected in Joomla.
 
 ## What Punga Mail does
 
@@ -541,6 +541,7 @@ Every layout always has the normalized Punga Mail placeholders:
 
 - `{title}`
 - `{title_link}`
+- `{date_label}`
 - `{publish_date}`
 - `{excerpt}`
 - `{read_more}`
@@ -580,6 +581,8 @@ Range formatters can take the **resolved value of another placeholder** as an ar
 Formatter arguments are values, not hidden column-name references. `{end_at}` in the example is resolved exactly like an ordinary placeholder before the formatter runs. Literal values are also valid, e.g. `{start_at|date_range:2026-09-24 00:00:00}`. Punga Mail does not add `if`/`else` controls or calendar-specific placeholders for this feature.
 
 All newsletter-facing date formatters use the Joomla **site language** and **site timezone**, not the administrator language of the user who previews or sends the newsletter. This keeps Automatic Newsletter tests and real scheduled runs consistent with the frontend language.
+
+`{date_label}` supplies a localized semantic label for the date line. Ordinary content uses **Published** (German: **Veröffentlicht**), while a registered content type whose alias is `event`/`events` uses **When** (German: **Termin**). The label follows the Joomla site language and Website language overrides. Pair it with the field the layout actually displays, for example `*{date_label}: {publish_date}*` for an Article or `*{date_label}: {start|period:{end},{all_day}}*` for an Event.
 
 `{publish_date}` remains the date Punga Mail uses to describe when the item became new website content; it is deliberately separate from semantic fields such as an event start date. Generic Punga Mail placeholders take precedence over same-named database columns so Newsletter title/excerpt overrides continue to work. Obvious credential/secret fields are not exposed as layout placeholders.
 

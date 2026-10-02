@@ -1,0 +1,1 @@
+-- Punga Mail 0.6.38 adds semantic selected-content date labels; no schema changes.

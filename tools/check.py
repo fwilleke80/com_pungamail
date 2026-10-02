@@ -150,6 +150,7 @@ REQUIRED_FILES: tuple[str, ...] = (
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.35.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.36.sql",
     "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.37.sql",
+    "extensions/com_pungamail/administrator/components/com_pungamail/sql/updates/mysql/0.6.38.sql",
     "extensions/com_pungamail/components/com_pungamail/src/Model/ArchiveModel.php",
     "extensions/com_pungamail/components/com_pungamail/src/Model/ArchiveitemModel.php",
     "extensions/com_pungamail/components/com_pungamail/src/Service/ArchiveRoute.php",
@@ -3518,6 +3519,7 @@ def main() -> int:
     check_v0635_options_and_archive_polish()
     check_v0636_all_day_period_end()
     check_v0637_tracking_url_encoding()
+    check_v0638_semantic_date_labels()
     print(f"[OK] Punga Mail {VERSION} release checks passed")
     return 0
 
@@ -4609,5 +4611,65 @@ def check_v0637_tracking_url_encoding() -> None:
         fail("0.6.37 campaign URL encoding regression failed: " + (result.stderr or result.stdout).strip())
 
 
+
+def check_v0638_semantic_date_labels() -> None:
+    """Verify localized semantic date labels for selected content."""
+    admin = ROOT / "extensions/com_pungamail/administrator/components/com_pungamail"
+    site = ROOT / "extensions/com_pungamail/components/com_pungamail"
+    renderer = (admin / "src/Service/NewsletterRenderer.php").read_text(encoding="utf-8")
+    layout = (admin / "tmpl/contentlayout/default.php").read_text(encoding="utf-8")
+    installer = (ROOT / "package/script.php").read_text(encoding="utf-8")
+    renderer_test = (ROOT / "tools/test_newsletter_renderer.php").read_text(encoding="utf-8")
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    marker = (admin / "sql/updates/mysql/0.6.38.sql").read_text(encoding="utf-8")
+
+    if "no schema changes" not in marker.lower():
+        fail("0.6.38 SQL marker must explicitly state that there are no schema changes")
+
+    for expected in (
+        "'date_label' => $this->escapeMarkdown($dateLabel)",
+        "private function contentDateLabel",
+        "COM_PUNGAMAIL_MAIL_DATE_LABEL_EVENT",
+        "COM_PUNGAMAIL_MAIL_DATE_LABEL_PUBLISHED",
+    ):
+        if expected not in renderer:
+            fail(f"0.6.38 semantic date-label renderer is missing {expected!r}")
+
+    if "'{date_label}' => 'COM_PUNGAMAIL_CONTENT_PLACEHOLDER_DATE_LABEL'" not in layout:
+        fail("0.6.38 Content Layout editor does not expose {date_label}")
+
+    for locale in ("en-GB", "de-DE"):
+        admin_values = ini_values(admin / f"language/{locale}/com_pungamail.ini")
+        site_values = ini_values(site / f"language/{locale}/com_pungamail.ini")
+        if admin_values.get("COM_PUNGAMAIL_CONTENT_PLACEHOLDER_DATE_LABEL", "").strip() == "":
+            fail(f"0.6.38 is missing {locale} administrator date-label help")
+        for key in ("COM_PUNGAMAIL_MAIL_DATE_LABEL_PUBLISHED", "COM_PUNGAMAIL_MAIL_DATE_LABEL_EVENT"):
+            if site_values.get(key, "").strip() == "":
+                fail(f"0.6.38 is missing {locale} frontend mail string {key}")
+
+    for expected in (
+        "migrateSemanticDateLabels",
+        "com_content.article",
+        "com_pungacalendar.event",
+        "{date_label}: ",
+    ):
+        if expected not in installer:
+            fail(f"0.6.38 conservative existing-layout migration is missing {expected!r}")
+
+    for expected in (
+        "Article date label did not resolve",
+        "Event date label did not resolve",
+    ):
+        if expected not in renderer_test:
+            fail(f"0.6.38 renderer regression coverage is missing {expected!r}")
+
+    if "`{date_label}` supplies a localized semantic label" not in guide:
+        fail("0.6.38 user guide does not document {date_label}")
+
+    result = subprocess.run(["php", str(ROOT / "tools/test_newsletter_renderer.php")], cwd=ROOT, text=True, capture_output=True)
+    if result.returncode != 0:
+        fail("0.6.38 semantic date-label renderer regression failed: " + (result.stderr or result.stdout).strip())
+
 if __name__ == "__main__":
     raise SystemExit(main())
+

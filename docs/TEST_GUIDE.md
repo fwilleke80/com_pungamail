@@ -1,4 +1,4 @@
-# Punga Mail 0.6.37 Live Acceptance Test Guide
+# Punga Mail 0.6.38 Live Acceptance Test Guide
 
 This guide is for a Joomla administrator testing the current Punga Mail release on a real installation. It is an end-to-end acceptance and regression checklist covering installation, administration, subscriptions, Channels, content layouts, newsletter authoring, automation, delivery, returned mail, import/export, permissions, and frontend flows.
 
@@ -859,6 +859,7 @@ Keep the global queue paused except where a test explicitly says to resume it.
 2. Use a type-specific source field, e.g. `{start_at}`, `{venue}`, or another real column.
 3. For a date/time column, test `|date`, `|time`, and/or `|datetime`.
 4. If the type exposes two useful date/time fields, test `{start|date_range:{end}}`, `{start|time_range:{end}}`, and `{start|period:{end},{all_day}}` using the type's actual field names. Test both an all-day/truthy value and a timed/false value where applicable.
+5. Test `{date_label}` in an Article layout and an Event layout. It must follow the Joomla site language (e.g. **Published** / **Veröffentlicht** for the Article and **When** / **Termin** for the Event), independent of the administrator language. Pair it with `{publish_date}` for the Article and the Event's semantic start/period field.
 5. Also test a literal formatter parameter such as `{start|date_range:2026-09-24 00:00:00}` and a deliberately missing nested field.
 6. With the Joomla administrator language different from the site language (for example, English backend and German site), send/preview the same content layout and verify `|date`, `date_range`, and `period` still use the **site** language and punctuation (for example `29.–30. Dezember 2026`).
 6. Preview a Newsletter containing that content item.

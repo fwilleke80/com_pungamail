@@ -230,8 +230,86 @@ return new class () implements InstallerScriptInterface
 
 		$db->setQuery($query)->execute();
 		$this->migrateLegacyContentLayout();
+		$this->migrateSemanticDateLabels();
 
 		return true;
+	}
+
+
+	/**
+	 * Adds the semantic date-label placeholder to the two established content
+	 * layouts where older Punga Mail versions commonly stored a bare date on its
+	 * own Markdown line. Existing prose/custom labels are deliberately untouched.
+	 *
+	 * @return void
+	 */
+	private function migrateSemanticDateLabels(): void
+	{
+		$this->prefixStandaloneDateLabel('com_content.article', ['{publish_date}']);
+		$this->prefixStandaloneDateLabel(
+			'com_pungacalendar.event',
+			[
+				'{start|period:{end},{all_day}}',
+				'{start|date_range:{end}}',
+				'{start|date}',
+			]
+		);
+	}
+
+	/**
+	 * Prefixes the first matching standalone date placeholder in one stored
+	 * content layout. Markdown emphasis around the token is preserved, so e.g.
+	 * `*{publish_date}*` becomes `*{date_label}: {publish_date}*`.
+	 *
+	 * @param string            $sourceKey Registered content-type alias.
+	 * @param array<int,string> $tokens    Candidate date placeholders.
+	 *
+	 * @return void
+	 */
+	private function prefixStandaloneDateLabel(string $sourceKey, array $tokens): void
+	{
+		$db = Factory::getContainer()->get(DatabaseInterface::class);
+		$query = $db->getQuery(true)
+			->select($db->quoteName('layout_markdown'))
+			->from($db->quoteName('#__pungamail_content_layouts'))
+			->where($db->quoteName('source_key') . ' = :sourceKey')
+			->bind(':sourceKey', $sourceKey);
+		$layout = $db->setQuery($query)->loadResult();
+
+		if (!is_string($layout) || trim($layout) === '' || str_contains($layout, '{date_label}'))
+		{
+			return;
+		}
+
+		$updated = $layout;
+
+		foreach ($tokens as $token)
+		{
+			$pattern = '/^([ \\t]*[*_]{0,2})' . preg_quote($token, '/') . '([*_]{0,2}[ \\t]*)$/m';
+			$replacement = '$1{date_label}: ' . $token . '$2';
+			$updated = preg_replace($pattern, $replacement, $updated, 1, $count) ?? $updated;
+
+			if ($count > 0)
+			{
+				break;
+			}
+		}
+
+		if ($updated === $layout)
+		{
+			return;
+		}
+
+		$modified = Factory::getDate('now', 'UTC')->toSql();
+		$query = $db->getQuery(true)
+			->update($db->quoteName('#__pungamail_content_layouts'))
+			->set($db->quoteName('layout_markdown') . ' = :layout')
+			->set($db->quoteName('modified') . ' = :modified')
+			->where($db->quoteName('source_key') . ' = :sourceKey')
+			->bind(':layout', $updated)
+			->bind(':modified', $modified)
+			->bind(':sourceKey', $sourceKey);
+		$db->setQuery($query)->execute();
 	}
 
 	/**
